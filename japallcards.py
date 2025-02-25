@@ -4,10 +4,10 @@ import re
 import time
 import requests
 import concurrent.futures
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium import webdriver
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.firefox import GeckoDriverManager
 from concurrent.futures import ThreadPoolExecutor
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -200,9 +200,9 @@ SITES = {
 
 def setup_driver():
     """Setup headless Selenium WebDriver."""
-    options = webdriver.ChromeOptions()
+    options = webdriver.FirefoxOptions()  # Create Firefox options
     options.add_argument("--headless")
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)  # Initialize Firefox driver
 
 
 def read_skipped_csv(site_folder):
