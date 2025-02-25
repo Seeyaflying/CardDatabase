@@ -70,7 +70,7 @@ SITES = {
         "total_pages": 42,  # Adjust as needed
         "pattern": re.compile(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\d+\.jpg\.l2_thumbnail\.jpg")
     },
-    "Final Fantasy TCG": {
+    "Final Fantasy": {
         "base_url": "https://tcgrepublic.com/category/category_page_56.html?p={}",
         "total_pages": 217,  # Adjust as needed
         "pattern": re.compile(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\d+\.jpg\.l2_thumbnail\.jpg")
