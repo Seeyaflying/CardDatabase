@@ -36,6 +36,7 @@ DEFAULT_TCG_URLS = {
     "Future Card BuddyFight": ["https://tcgcsv.com/tcgplayer/19/groups"],
     "Gate Ruler": ["https://tcgcsv.com/tcgplayer/65/groups"],
     "Grand Archive": ["https://tcgcsv.com/tcgplayer/74/groups"],
+    "Gundam": ["https://tcgcsv.com/tcgplayer/86/groups"],
     "Kryptik": ["https://tcgcsv.com/tcgplayer/76/groups"],
     "Lightseekers": ["https://tcgcsv.com/tcgplayer/48/groups"],
     "Lorcana": ["https://tcgcsv.com/tcgplayer/71/groups"],
@@ -45,7 +46,7 @@ DEFAULT_TCG_URLS = {
     "Munchkin": ["https://tcgcsv.com/tcgplayer/53/groups"],
     "One Piece": ["https://tcgcsv.com/tcgplayer/68/groups"],
     "Pokemon": ["https://tcgcsv.com/tcgplayer/3/groups"],
-    # Not working atm"Pokemon Japan": ["https://tcgcsv.com/tcgplayer/82/groups"],
+    "Pokemon Japan": ["https://tcgcsv.com/tcgplayer/82/groups"],
     "Shadowverse Evolve": ["https://tcgcsv.com/tcgplayer/73/groups"],
     "Sorcery Contested Realm": ["https://tcgcsv.com/tcgplayer/77/groups"],
     "Star Wars Destiny": ["https://tcgcsv.com/tcgplayer/26/groups"],
@@ -154,7 +155,7 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
 
 def load_skipped_images(tcg_name):
     skipped_image_ids = set()
-    skipped_csv_file = os.path.join('../json', tcg_name, 'skipped.csv')
+    skipped_csv_file = os.path.join('json', tcg_name,'skipped.csv')
 
     os.makedirs(os.path.dirname(skipped_csv_file), exist_ok=True)
 
@@ -220,7 +221,7 @@ async def process_tcg(session, tcg_name, urls, all_data):
                         group_bar.update(1)
             url_bar.update(1)
 
-    tcg_json_file = os.path.join('../json', tcg_name, f'{tcg_name}.json')
+    tcg_json_file = os.path.join('json', tcg_name, f'{tcg_name}.json')
     try:
         os.makedirs(os.path.dirname(tcg_json_file), exist_ok=True)
         with open(tcg_json_file, 'w', encoding='utf-8') as json_file:
@@ -239,7 +240,7 @@ async def main():
                 tcg_bar.update(1)
 
     try:
-        with open('../json/all_tcg_data.json', 'w', encoding='utf-8') as json_file:
+        with open('json/all_tcg_data.json', 'w', encoding='utf-8') as json_file:
             json.dump(all_data, json_file, ensure_ascii=False, indent=4)
         logger.info("Saved all TCG data to all_tcg_data.json")
     except Exception as e:
