@@ -120,6 +120,11 @@ SITES = {
         "total_pages": 64,  # Adjust as needed
         "pattern": re.compile(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\d+\.jpg\.l2_thumbnail\.jpg")
     },
+    "Pokemon": {
+        "base_url": "https://tcgrepublic.com/category/category_page_35.html?p={}",
+        "total_pages": 592,  # Adjust as needed
+        "pattern": re.compile(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\d+\.jpg\.l2_thumbnail\.jpg")
+    },
     "Precious Memories": {
         "base_url": "https://tcgrepublic.com/category/category_page_41.html?p={}",
         "total_pages": 415,  # Adjust as needed
@@ -188,6 +193,11 @@ SITES = {
     "Yugioh": {
         "base_url": "https://tcgrepublic.com/category/category_page_34.html?p={}",
         "total_pages": 761,  # Adjust as needed
+        "pattern": re.compile(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\d+\.jpg\.l2_thumbnail\.jpg")
+    },
+    "Yugioh Rush Duel": {
+        "base_url": "https://tcgrepublic.com/category/category_page_49.html?p={}",
+        "total_pages": 103,  # Adjust as needed
         "pattern": re.compile(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\d+\.jpg\.l2_thumbnail\.jpg")
     },
     "Z-X Zillions over enemy X": {

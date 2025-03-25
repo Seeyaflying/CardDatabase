@@ -5,7 +5,7 @@ import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options
 from PIL import Image
 from io import BytesIO
 
@@ -18,12 +18,12 @@ output_dir = "test"
 os.makedirs(json_dir, exist_ok=True)
 os.makedirs(output_dir, exist_ok=True)
 
-# Setup Selenium WebDriver (Headless Chrome)
+# Setup Selenium WebDriver (Headless Firefox)
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
-driver = webdriver.Chrome(options=options)
+driver = webdriver.Firefox(options=options)
 
 base_url = "https://wikimon.net/Category:Card_Images_(Digimon_Card_Game)"
 image_page_urls = set()  # Use a set to avoid duplicates
@@ -72,7 +72,7 @@ downloaded_images = set(os.listdir(output_dir))
 def is_valid_image(image_url):
     try:
         img_response = requests.get(image_url)
-        if img_response.status_code != 200:
+        if img_response.status_code!= 200:
             print(f"Failed to fetch {image_url}, Status Code: {img_response.status_code}")
             return False
 
@@ -90,7 +90,7 @@ for page_url in image_page_urls:
         print(f"Fetching image page: {page_url}")
         response = requests.get(page_url)
 
-        if response.status_code != 200:
+        if response.status_code!= 200:
             print(f"Failed to fetch {page_url}, Status Code: {response.status_code}")
             continue
 
@@ -135,4 +135,4 @@ for page_url in image_page_urls:
     except Exception as e:
         print(f"Error processing {page_url}: {e}")
 
-print("✅ All images downloaded successfully!")
+print(" All images downloaded successfully!")
