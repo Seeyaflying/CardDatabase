@@ -133,13 +133,13 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
         image_number = match.group(0) if match else None
 
         if image_number and image_number in skipped_image_ids:
-            #logger.info(f"Skipping download for {image_name} (image number {image_number} is in skipped list).")
+            logger.info(f"Skipping download for {image_name} (image number {image_number} is in skipped list).")
             return
 
         try:
             image_path = os.path.join(folder_path, image_name)
             if os.path.exists(image_path):
-                #logger.info(f"Image {image_name} already exists. Skipping download.")
+                logger.info(f"Image {image_name} already exists. Skipping download.")
                 return
 
             os.makedirs(folder_path, exist_ok=True)
@@ -150,12 +150,12 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
                     await image_file.write(image_data)
                 logger.info(f"Downloaded {image_name} to {folder_path}")
         except Exception as e:
-            #logger.error(f"Error downloading image from {image_url}: {e}")
+            logger.error(f"Error downloading image from {image_url}: {e}")
             pass
 
-def load_skipped_images(tcg_name):
+def load_skipped_images():
     skipped_image_ids = set()
-    skipped_csv_file = os.path.join('json', tcg_name,'skipped.csv')
+    skipped_csv_file = os.path.join('json','skipped.csv')
 
     os.makedirs(os.path.dirname(skipped_csv_file), exist_ok=True)
 
@@ -163,7 +163,7 @@ def load_skipped_images(tcg_name):
         with open(skipped_csv_file, 'w', encoding='utf-8', newline='') as skipped_file:
             writer = csv.writer(skipped_file)
             writer.writerow(['image_number'])
-        logger.info(f"Created skipped.csv for {tcg_name} at {skipped_csv_file}")
+        logger.info(f"Created skipped.csv at {skipped_csv_file}")
     else:
         with open(skipped_csv_file, 'r', encoding='utf-8') as skipped_file:
             skipped_csv_reader = csv.reader(skipped_file)
@@ -181,10 +181,10 @@ async def process_tcg(session, tcg_name, urls, all_data):
     """
     logger.info(f"Processing TCG: {tcg_name}")
     tcg_folder = os.path.join('G:/My Drive/Card Database',
-                              tcg_name if tcg_name != "Magic the Gathering" else "Magic the Gathering")
+                              tcg_name if tcg_name!= "Magic the Gathering" else "Magic the Gathering")
     os.makedirs(tcg_folder, exist_ok=True)
 
-    skipped_image_ids = load_skipped_images(tcg_name)
+    skipped_image_ids = load_skipped_images()
 
     semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent downloads
 
