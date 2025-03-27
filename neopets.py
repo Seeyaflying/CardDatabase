@@ -3,20 +3,20 @@ import time
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.firefox.service import Service
+from webdriver_manager.firefox import GeckoDriverManager
 
 # Create a directory to store images
-os.makedirs('G:/My Drive/Card Database/NeoPets Battledome', exist_ok=True)
+os.makedirs('G:/My Drive/Cards Sorted/NeoPets Battledome', exist_ok=True)
 
 # Function to download an image
-def download_image(url, folder='G:/My Drive/Card Database/NeoPets Battledome'):
+def download_image(url, folder='G:/My Drive/Cards Sorted/NeoPets Battledome'):
     try:
         # Extract the image name from the URL
         image_name = os.path.join(folder, url.split("/")[-1])
 
         # Skip specific images based on file name
-        if image_name.endswith("Upper_Deck_Logo.png"):
+        if "upper_deck_logo" in image_name.lower():
             print(f"Skipping specific file: {image_name}")
             return
 
@@ -33,12 +33,12 @@ def download_image(url, folder='G:/My Drive/Card Database/NeoPets Battledome'):
     except Exception as e:
         print(f"Error downloading {url}: {e}")
 
-# Set up the Selenium WebDriver (automatically fetches the correct ChromeDriver version)
-options = webdriver.ChromeOptions()
+# Set up the Selenium WebDriver (automatically fetches the correct GeckoDriver version)
+options = webdriver.FirefoxOptions()
 options.add_argument("--headless")  # Run in headless mode (no UI)
 
 # Use WebDriver Manager to automatically handle driver version matching
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=options)
 
 # URL of the website
 base_url = 'https://my.upperdeck.com/public/neopets/cards'
@@ -57,9 +57,10 @@ def scrape_images_from_page():
     for img in images:
         img_url = img.get_attribute('src')
         if img_url:
-            # Skip certain images based on conditions
-            if "placeholder" in img_url or not img_url.endswith(('.jpg', '.png', '.jpeg')):
-                print(f"Skipping image: {img_url}")
+            # Check if the image URL ends with a valid image extension
+            valid_extensions = ['.jpg', '.png', '.jpeg', '.webp']
+            if not any(img_url.lower().endswith(ext) for ext in valid_extensions):
+                print(f"Skipping image: {img_url} (invalid extension)")
                 continue
 
             # Download the image

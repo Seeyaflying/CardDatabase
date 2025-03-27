@@ -3,25 +3,25 @@ import time
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.firefox.service import Service
+from webdriver_manager.firefox import GeckoDriverManager
 from urllib.parse import urljoin
 
 
 # Setup WebDriver with headless mode
 def setup_driver():
-    options = webdriver.ChromeOptions()
+    options = webdriver.FirefoxOptions()
     options.add_argument("--headless")  # Make sure headless mode is set
     options.add_argument("--disable-gpu")  # Disable GPU acceleration (helps in headless mode)
     options.add_argument("--no-sandbox")  # Necessary for some environments (e.g., Docker)
 
     # Set path for the WebDriver
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=options)
     return driver
 
 
 # Function to download all images
-def download_all_images(url, folder="G:/My Drive/Card Database/Altered"):
+def download_all_images(url, folder="G:/My Drive/Cards Sorted/Altered"):
     if not os.path.exists(folder):
         os.makedirs(folder)
 

@@ -295,7 +295,7 @@ def sanitize_filename(filename):
 
 def download_image(url, skipped_image_ids, site_name, site_folder):
     """Download a single image and skip if already exists or listed in skipped CSV."""
-    save_folder = os.path.join("G:/My Drive/Card Database", site_name)
+    save_folder = os.path.join("G:/My Drive/Cards Sorted", site_name)
     os.makedirs(save_folder, exist_ok=True)
 
     # Ensure the image name is sanitized and has a .jpg extension
@@ -358,7 +358,7 @@ def main():
     for site_name in SITES.keys():
         site_folder = os.path.join(csv_logs_dir, site_name)
         os.makedirs(site_folder, exist_ok=True)
-        os.makedirs(os.path.join("G:/My Drive/Card Database", site_name), exist_ok=True)
+        os.makedirs(os.path.join("G:/My Drive/Cards Sorted", site_name), exist_ok=True)
 
         print(f"Starting to scrape {site_name}...")
         scrape_images(site_name, SITES[site_name], site_folder)

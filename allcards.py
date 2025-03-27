@@ -180,7 +180,7 @@ async def process_tcg(session, tcg_name, urls, all_data):
     Process a specific TCG by fetching data and downloading images.
     """
     logger.info(f"Processing TCG: {tcg_name}")
-    tcg_folder = os.path.join('G:/My Drive/Card Database',
+    tcg_folder = os.path.join('G:/My Drive/Cards Sorted',
                               tcg_name if tcg_name!= "Magic the Gathering" else "Magic the Gathering")
     os.makedirs(tcg_folder, exist_ok=True)
 

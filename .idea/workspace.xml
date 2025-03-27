@@ -3,22 +3,88 @@
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
+  <component name="BackendCodeEditorMiscSettings">
+    <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
+    <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
+    <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
+    <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexRemoved" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Finished/Altered.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Finished/allcards.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Finished/digimonjap.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Finished/neopets.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Battle Spirits/image_links.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/Battle Spirits/image_links.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Buddy Fight/image_links.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/Buddy Fight/image_links.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Build Divide/image_links.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/Build Divide/image_links.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AiRun.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/AiRun.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Altered.py" beforeDir="false" afterPath="$PROJECT_DIR$/Altered.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/allcards.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/digimonjap.py" beforeDir="false" afterPath="$PROJECT_DIR$/digimonjap.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/japallcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/japallcards.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Buddy Fight/skipped_images.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/Buddy Fight/skipped_images.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Cardfight Vanguard/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Caster Chronicles/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Chaos/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Chrono Clash System/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/DB Heroes/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/DB Super Divers/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/DBZ Super Fusion World/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/DBZ Super Fusion World/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/DBZ Super/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/DBZ TCG/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Detective Conan/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Dice Masters/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Digimon/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Exodus/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Fate-Grand Order Arcade/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Final Fantasy TCG/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Final Fantasy/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Fire Emblem Cipher/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Flesh and Blood/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Force of Will/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Future Card BuddyFight/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Gate Ruler/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Grand Archive/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Gundam/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Hololive/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Kamen Rider Battle Ganba Legends/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Kamen Rider Battle Ganbarizing/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Kantai Collection Kancolle Arcade/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Kryptik/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Lightseekers/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Lorcana/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Love Live/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Lycee Over Ture/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Magic the Gathering/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/MetaX/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/MetaZoo/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Munchkin/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/One Piece/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/One Piece/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Osica/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Pokemon Japan/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Pokemon/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Precious Memories/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Prism Connect/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Rebirth for you/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Shadowverse Evolve/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Shadowverse Evolve/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Sorcery Contested Realm/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Star Wars Destiny/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Union Arena/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Union Arena/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Vividz/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Weiss Schwarz/image_links.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Wixoss/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Yugioh/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/skipped.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/skipped.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/neopets.py" beforeDir="false" afterPath="$PROJECT_DIR$/neopets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/testtest.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -46,38 +112,52 @@
   &quot;associatedIndex&quot;: 8
 }</component>
   <component name="ProjectId" id="2sNJH19teFGIrW9sz7NYkAgNMP1" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;Python.allcards.executor&quot;: &quot;Run&quot;,
-    &quot;Python.japallcards.executor&quot;: &quot;Run&quot;,
-    &quot;Python.maybe.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/seeya/Documents/CardDatabase&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Python.AI_run.executor": "Run",
+    "Python.Altered.executor": "Run",
+    "Python.Drivedownload.executor": "Run",
+    "Python.allcards.executor": "Run",
+    "Python.digimonjap.executor": "Run",
+    "Python.japallcards.executor": "Run",
+    "Python.maybe.executor": "Run",
+    "Python.neopets.executor": "Run",
+    "Python.test.executor": "Run",
+    "Python.testtest.executor": "Run",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/seeya/Documents/CardDatabase",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase" />
       <recent name="C:\Users\seeya\Documents\CardDatabase\json\Yugioh" />
       <recent name="C:\Users\seeya\Documents\CardDatabase\json\Weiss Schwarz" />
       <recent name="C:\Users\seeya\Documents\CardDatabase\json\Wixoss" />
       <recent name="C:\Users\seeya\Documents\CardDatabase\json" />
-      <recent name="C:\Users\seeya\Documents\CardDatabase\json\Union Arena" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -121,6 +201,19 @@
       <workItem from="1742761217521" duration="195000" />
       <workItem from="1742774296573" duration="1139000" />
       <workItem from="1742775598348" duration="123000" />
+      <workItem from="1742777738903" duration="310000" />
+      <workItem from="1742778159765" duration="1173000" />
+      <workItem from="1742779792416" duration="356000" />
+      <workItem from="1742782023211" duration="30000" />
+      <workItem from="1742782216127" duration="2606000" />
+      <workItem from="1742867787134" duration="1642000" />
+      <workItem from="1742870344298" duration="40000" />
+      <workItem from="1742871024944" duration="430000" />
+      <workItem from="1742871581147" duration="29000" />
+      <workItem from="1742948880136" duration="6138000" />
+      <workItem from="1742956663348" duration="1246000" />
+      <workItem from="1742958054069" duration="1174000" />
+      <workItem from="1743031679002" duration="1916000" />
     </task>
     <servers />
   </component>
@@ -129,13 +222,21 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/AI_run_py$maybe.coverage" NAME="maybe Coverage Results" MODIFIED="1739686510219" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/AI_run_py$neopets.coverage" NAME="neopets Coverage Results" MODIFIED="1743034863211" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/japallcards_py$japallcards.coverage" NAME="japallcards Coverage Results" MODIFIED="1742761344940" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/AI_run_py$AI_run.coverage" NAME="AI_run Coverage Results" MODIFIED="1742784647786" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/CardDatabase$test.coverage" NAME="test Coverage Results" MODIFIED="1739747799829" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Drivedownload_py$Drivedownload.coverage" NAME="Drivedownload Coverage Results" MODIFIED="1742779272975" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/allcards_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1742951360851" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/CardDatabase$japallcards.coverage" NAME="japallcards Coverage Results" MODIFIED="1739694374653" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/allcards_py$testtest.coverage" NAME="testtest Coverage Results" MODIFIED="1742953039615" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/json" />
+    <SUITE FILE_PATH="coverage/allcards_py$AI_run.coverage" NAME="AI_run Coverage Results" MODIFIED="1742957634804" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/japallcards_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1742761337296" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Finished" />
     <SUITE FILE_PATH="coverage/AI_run_py$test.coverage" NAME="test Coverage Results" MODIFIED="1739690359643" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/japallcards_py$test.coverage" NAME="test Coverage Results" MODIFIED="1739828772096" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/CardDatabase$test.coverage" NAME="test Coverage Results" MODIFIED="1739747799829" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/allcards_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1742774820962" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/digimonjap_py$digimonjap.coverage" NAME="digimonjap Coverage Results" MODIFIED="1742871443887" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/AI_run_py$Altered.coverage" NAME="Altered Coverage Results" MODIFIED="1743034516273" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/AI_run_py$japallcards.coverage" NAME="japallcards Coverage Results" MODIFIED="1739690395271" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/CardDatabase$japallcards.coverage" NAME="japallcards Coverage Results" MODIFIED="1739694374653" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/allcards_py$test.coverage" NAME="test Coverage Results" MODIFIED="1742954886972" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
