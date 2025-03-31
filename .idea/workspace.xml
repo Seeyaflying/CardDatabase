@@ -11,84 +11,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Altered.py" beforeDir="false" afterPath="$PROJECT_DIR$/Altered.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/allcards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/digimonjap.py" beforeDir="false" afterPath="$PROJECT_DIR$/digimonjap.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/japallcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/japallcards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Battle Spirits/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Buddy Fight/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Buddy Fight/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Build Divide/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Build Divide/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Cardfight Vanguard/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Cardfight Vanguard/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Chaos/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Chaos/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/DB Heroes/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/DB Heroes/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/DB Super Divers/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/DB Super Divers/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/DBZ Super Fusion World/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/DBZ Super Fusion World/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Detective Conan/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Detective Conan/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Duel Masters/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Duel Masters/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Fate-Grand Order Arcade/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Fate-Grand Order Arcade/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Final Fantasy/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Final Fantasy/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Fire Emblem Cipher/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Fire Emblem Cipher/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Hololive/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Hololive/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Kamen Rider Battle Ganba Legends/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Kamen Rider Battle Ganba Legends/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Kamen Rider Battle Ganbarizing/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Kamen Rider Battle Ganbarizing/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Kantai Collection Kancolle Arcade/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Kantai Collection Kancolle Arcade/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Love Live/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Love Live/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Lycee Over Ture/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Lycee Over Ture/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/One Piece/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/One Piece/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Osica/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Osica/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Pokemon/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Pokemon/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Precious Memories/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Precious Memories/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Prism Connect/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Prism Connect/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Rebirth for you/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Rebirth for you/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Shadowverse Evolve/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Shadowverse Evolve/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Takashi Murakami Jellyfish Eyes/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Takashi Murakami Jellyfish Eyes/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/The Quintessential Quintuplets/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/The Quintessential Quintuplets/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Trails Series/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Trails Series/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Ultraman/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Ultraman/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Union Arena/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Union Arena/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Vividz/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Vividz/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Weiss Schwarz Blau/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Weiss Schwarz Blau/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Weiss Schwarz/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Weiss Schwarz/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Wixoss/image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Wixoss/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/json/Yugioh/skipped_images.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/neopets.py" beforeDir="false" afterPath="$PROJECT_DIR$/neopets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Battle Spirits Saga/skipped.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Battle Spirits/skipped_images.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Buddy Fight/skipped_images.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Build Divide/skipped_images.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Cardfight Vanguard/skipped_images.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/Cardfight Vanguard/skipped_images.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/Yugioh/skipped_images.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/japskipped.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/japskipped.csv" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -228,7 +157,7 @@
       <workItem from="1742958054069" duration="1174000" />
       <workItem from="1743031679002" duration="1916000" />
       <workItem from="1743459170937" duration="130000" />
-      <workItem from="1743459313213" duration="2634000" />
+      <workItem from="1743459313213" duration="2929000" />
     </task>
     <servers />
   </component>
