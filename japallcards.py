@@ -13,6 +13,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from tqdm import tqdm
 from collections import Counter
+import logging
+from datetime import date
 
 # Base URL pattern and image pattern
 BASE_URL_PATTERN = "https://tcgrepublic.com/category/category_page_{}.html"
@@ -114,7 +116,7 @@ def scrape_page(driver, site_name, site_data, page):
 
     return image_urls
 
-def scrape_images(site_name, site_data, site_folder):
+def scrape_images(site_name, site_data):
     """Scrape image URLs from the given site."""
     driver = setup_driver()
     image_urls = []
@@ -141,50 +143,11 @@ def scrape_images(site_name, site_data, site_folder):
     image_urls = list(set(image_urls))
     image_urls = [url for url in image_urls if url.split("/")[-1] not in skipped_image_ids]
 
-    save_csv(image_urls, site_folder, "image_links.csv")
-    print(f"[{site_name}] Scraping complete. {len(image_urls)} images saved.")
+    return image_urls
 
-    # Check for duplicate image names
-    image_names = [url.split("/")[-1] for url in image_urls]
-    duplicate_image_names = [name for name, count in Counter(image_names).items() if count > 1]
-
-    if duplicate_image_names:
-        print(f"[{site_name}] Found {len(duplicate_image_names)} duplicate image names:")
-        for name in duplicate_image_names:
-            print(name)
-    else:
-        print(f"[{site_name}] No duplicate image names found.")
-
-    # Check if max page is higher than total pages
-    try:
-        last_page_url = f"{BASE_URL_PATTERN.format(site_data['id'])}?p={max_pages + 1}"
-        driver = setup_driver()
-        driver.get(last_page_url)
-        time.sleep(2)
-        if driver.title!= "404 Not Found":
-            print(f"[{site_name}] Warning: Max page ({max_pages}) might be lower than the total pages. Consider updating the total pages.")
-        driver.quit()
-    except Exception as e:
-        print(f"[{site_name}] Error checking max page: {e}")
-
-    download_images(image_urls, skipped_image_ids, site_name, site_folder)
-
-def save_csv(data, site_folder, filename):
-    """Saves a list of data to a CSV file inside its site-specific directory."""
-    os.makedirs(site_folder, exist_ok=True)
-    filepath = os.path.join(site_folder, filename) # Changed this line
-
-    with open(filepath, "w", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file)
-        for row in data:
-            writer.writerow([row])
-
-def sanitize_filename(filename):
-    return ''.join(filter(str.isalnum, filename.split('.')[0]))
-
-def download_image(url, skipped_image_ids, site_name, site_folder):
+def download_image(url, skipped_image_ids, site_name):
     """Download a single image and skip if already exists or listed in skipped CSV."""
-    save_folder = os.path.join("G:/My Drive/Card Database", site_name)
+    save_folder = os.path.join("G:/My Drive/Card Database")
     os.makedirs(save_folder, exist_ok=True)
 
     image_name = url.split("/")[-1] + ".jpg"
@@ -213,15 +176,18 @@ def download_image(url, skipped_image_ids, site_name, site_folder):
             with open(image_path, "wb") as file:
                 for chunk in response.iter_content(1024):
                     file.write(chunk)
+            logger.info(f"[{site_name}] Downloaded: {image_name}")
             print(f"[{site_name}] Downloaded: {image_name}")
         else:
+            logger.error(f"[{site_name}] Failed to download: {url}, Status Code: {response.status_code}")
             print(f"[{site_name}] Failed to download: {url}, Status Code: {response.status_code}")
     except requests.RequestException as e:
+        logger.error(f"[{site_name}] Error downloading {url}: {e}")
         print(f"[{site_name}] Error downloading {url}: {e}")
 
-def download_images(image_urls, skipped_image_ids, site_name, site_folder):
+def download_images(image_urls, skipped_image_ids, site_names):
     """Downloads images concurrently using ThreadPoolExecutor."""
-    image_list = [{'url': url, 'destination': (skipped_image_ids, site_name, site_folder)} for url in image_urls]
+    image_list = [{'url': url, 'destination': (skipped_image_ids, site_names[i])} for i, url in enumerate(image_urls)]
 
     def worker(image_info):
         try:
@@ -230,20 +196,59 @@ def download_images(image_urls, skipped_image_ids, site_name, site_folder):
             print(f"Failed to download {image_info['url']}: {e}")
 
     with ThreadPoolExecutor(max_workers=10) as executor:
-        list(tqdm(executor.map(worker, image_list), total=len(image_list), desc=f"Downloading {site_name} images", unit="image"))
+        list(tqdm(executor.map(worker, image_list), total=len(image_list), desc="Downloading images", unit="image"))
+
+def save_csv(data, filename):
+    """Saves a list of data to a CSV file."""
+    os.makedirs("json", exist_ok=True)
+    filepath = os.path.join("json", filename)
+
+    with open(filepath, "w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        for row in data:
+            writer.writerow([row])
 
 def main():
     """Main function to start the scraping."""
-    csv_logs_dir = "json"
-    os.makedirs(csv_logs_dir, exist_ok=True)
+    global logger
+    os.makedirs("json", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
+
+    # Create a logger
+    today = date.today()
+    log_filename = f"{today.strftime('%Y-%m-%d')}_image_scraper.log"
+    logger = logging.getLogger('image_scraper')
+    logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(os.path.join("logs", log_filename))
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    logger.addHandler(handler)
+
+    site_names = list(SITES.keys())
+    image_urls = []
+    skipped_image_ids = read_skipped_csv()
 
     for site_name, site_data in SITES.items():
-        site_folder = os.path.join(csv_logs_dir, site_name)
-        os.makedirs(site_folder, exist_ok=True)
-        os.makedirs(os.path.join("G:/My Drive/Card Database", site_name), exist_ok=True)
-
         print(f"Starting to scrape {site_name}...")
-        scrape_images(site_name, site_data, site_folder)
+        image_urls.extend(scrape_images(site_name, site_data))
+
+    image_urls = list(set(image_urls))
+    image_urls = [url for url in image_urls if url.split("/")[-1] not in skipped_image_ids]
+
+    save_csv(image_urls, "image_links.csv")
+    print(f"Scraping complete. {len(image_urls)} images saved.")
+
+    # Check for duplicate image names
+    image_names = [url.split("/")[-1] for url in image_urls]
+    duplicate_image_names = [name for name, count in Counter(image_names).items() if count > 1]
+
+    if duplicate_image_names:
+        print(f"Found {len(duplicate_image_names)} duplicate image names:")
+        for name in duplicate_image_names:
+            print(name)
+    else:
+        print(f"No duplicate image names found.")
+
+    download_images(image_urls, skipped_image_ids, site_names)
 
 if __name__ == "__main__":
     main()
