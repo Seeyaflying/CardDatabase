@@ -21,7 +21,7 @@ def setup_driver():
 
 
 # Function to download all images
-def download_all_images(url, folder="G:/My Drive/Cards Sorted/Altered"):
+def download_all_images(url, folder="G:/My Drive/Card Database/Altered"):
     if not os.path.exists(folder):
         os.makedirs(folder)
 

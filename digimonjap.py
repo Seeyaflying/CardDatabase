@@ -12,7 +12,7 @@ from io import BytesIO
 # Paths for JSON and image storage
 json_dir = "json"
 json_file_path = os.path.join(json_dir, "digimonjap.json")
-output_dir = "G:/My Drive/Cards Sorted"
+output_dir = "G:/My Drive/Card Database"
 
 # Ensure directories exist
 os.makedirs(json_dir, exist_ok=True)

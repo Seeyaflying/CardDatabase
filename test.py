@@ -217,7 +217,7 @@ def download_images(image_urls, skipped_image_ids, site_name, site_folder):
 
 def main():
     """Main function to start the scraping."""
-    csv_logs_dir = "json/json"
+    csv_logs_dir = "/json"
     os.makedirs(csv_logs_dir, exist_ok=True)
 
     for site_name, site_data in SITES.items():

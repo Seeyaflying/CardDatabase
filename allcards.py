@@ -46,7 +46,7 @@ DEFAULT_TCG_URLS = {
     "Munchkin": ["https://tcgcsv.com/tcgplayer/53/groups"],
     "One Piece": ["https://tcgcsv.com/tcgplayer/68/groups"],
     "Pokemon": ["https://tcgcsv.com/tcgplayer/3/groups"],
-    "Pokemon Japan": ["https://tcgcsv.com/tcgplayer/85/groups"],
+    "Pokemon": ["https://tcgcsv.com/tcgplayer/85/groups"], # Pokemon Japan
     "Shadowverse Evolve": ["https://tcgcsv.com/tcgplayer/73/groups"],
     "Sorcery Contested Realm": ["https://tcgcsv.com/tcgplayer/77/groups"],
     "Star Wars Destiny": ["https://tcgcsv.com/tcgplayer/26/groups"],
