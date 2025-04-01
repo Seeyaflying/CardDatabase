@@ -10,7 +10,12 @@
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexRemoved" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="" />
+    <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/japskipped.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/japskipped.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/json/skipped.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/skipped.csv" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -149,6 +154,9 @@
       <workItem from="1743031679002" duration="1916000" />
       <workItem from="1743459170937" duration="130000" />
       <workItem from="1743459313213" duration="4688000" />
+      <workItem from="1743475286177" duration="81000" />
+      <workItem from="1743475812831" duration="51000" />
+      <workItem from="1743532935382" duration="2103000" />
     </task>
     <servers />
   </component>
@@ -171,7 +179,7 @@
     <SUITE FILE_PATH="coverage/AI_run_py$test.coverage" NAME="test Coverage Results" MODIFIED="1739690359643" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/japallcards_py$test.coverage" NAME="test Coverage Results" MODIFIED="1739828772096" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/digimonjap_py$digimonjap.coverage" NAME="digimonjap Coverage Results" MODIFIED="1742871443887" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/AI_run_py$Altered.coverage" NAME="Altered Coverage Results" MODIFIED="1743034516273" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/AI_run_py$Altered.coverage" NAME="Altered Coverage Results" MODIFIED="1743535210372" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/allcards_py$digimonjap.coverage" NAME="digimonjap Coverage Results" MODIFIED="1743463975147" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/AI_run_py$japallcards.coverage" NAME="japallcards Coverage Results" MODIFIED="1739690395271" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/allcards_py$test.coverage" NAME="test Coverage Results" MODIFIED="1743460339046" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
