@@ -12,8 +12,8 @@ from tensorflow.keras.optimizers import Adam
 import json
 
 # Paths for saving data
-VALUES_FILE_PATH = "G:/My Drive/model/values.json"
-MODELS_DIR = "G:/My Drive/model"
+VALUES_FILE_PATH = "G:/My Drive/models/CardData/values.json"
+MODELS_DIR = "G:/My Drive/models/CardData"
 
 # JSON Helpers
 def load_values_from_json(file_path, default_values):
