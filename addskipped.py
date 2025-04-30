@@ -22,7 +22,7 @@ def read_skipped_csv(csv_filepath):
             for row in reader:
                 if row and len(row) > 0:
                     number = row[0].strip()
-                    skipped_images.append(number + ".jpg")
+                    skipped_images.append(number)
             return skipped_images
     except Exception as e:
         logger.error(f"Error reading skipped images file: {e}")
