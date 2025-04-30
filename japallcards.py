@@ -15,6 +15,7 @@ from tqdm import tqdm
 from collections import Counter
 import logging
 from datetime import date
+from pymongo import MongoClient
 
 # Base URL pattern and image pattern
 BASE_URL_PATTERN = "https://tcgrepublic.com/category/category_page_{}.html"
@@ -56,6 +57,7 @@ SITES = {
     "Vividz": {"id": 70, "total_pages": 12},
     "Weiss Schwarz": {"id": 31, "total_pages": 1235},
     "Weiss Schwarz Blau": {"id": 72, "total_pages": 79},
+    "Weiss Schwarz Rose": {"id": 96, "total_pages": 13},
     "Wixoss": {"id": 43, "total_pages": 331},
     "Yugioh": {"id": 34, "total_pages": 761},
     "Yugioh Rush Duel": {"id": 49, "total_pages": 103},
@@ -68,35 +70,15 @@ def setup_driver():
     options.add_argument("--headless")
     return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)  # Initialize Firefox driver
 
-def read_skipped_csv():
-    """Reads a CSV file of skipped image numbers and returns a list of filenames with '.jpg' appended.
-    If the file does not exist, it is created as an empty file.
-
-    Returns:
-        list: A list of skipped image filenames (e.g., '001.jpg').
-    """
-    csv_filepath = os.path.join("json", "japskipped.csv")
-
+def read_skipped_image_ids(mongo_client):
+    """Reads skipped image IDs from MongoDB database."""
+    skipped_image_ids = []
     try:
-        if not os.path.exists(csv_filepath):
-            with open(csv_filepath, 'w') as file:
-                pass  # Create an empty file
+        for doc in mongo_client["tcg_database"]["jap_skipped_images"].find():
+            skipped_image_ids.append(doc["image_name"])
     except Exception as e:
-        print(f"Error creating skipped images file: {e}")
-        return []
-
-    try:
-        with open(csv_filepath, mode='r', encoding='utf-8') as file:
-            reader = csv.reader(file)
-            skipped_images = []
-            for row in reader:
-                if row and len(row) > 0:
-                    number = row[0].strip()
-                    skipped_images.append(number + ".jpg")
-            return skipped_images
-    except Exception as e:
-        print(f"Error reading skipped images file: {e}")
-        return []
+        print(f"Error reading skipped image IDs: {e}")
+    return skipped_image_ids
 
 def scrape_page(driver, site_name, site_data, page):
     """Scrape image URLs from a single page."""
@@ -120,7 +102,7 @@ def scrape_images(site_name, site_data):
     """Scrape image URLs from the given site."""
     driver = setup_driver()
     image_urls = []
-    skipped_image_ids = read_skipped_csv()
+    skipped_image_ids = []
 
     max_pages = site_data["total_pages"]
     print(f"[{site_name}] Total pages: {max_pages}")
@@ -140,13 +122,10 @@ def scrape_images(site_name, site_data):
 
     driver.quit()
 
-    image_urls = list(set(image_urls))
-    image_urls = [url for url in image_urls if url.split("/")[-1] not in skipped_image_ids]
-
     return image_urls
 
-def download_image(url, skipped_image_ids, site_name):
-    """Download a single image and skip if already exists or listed in skipped CSV."""
+def download_image(url, skipped_image_ids, site_name, mongo_client):
+    """Download a single image and skip if already exists or listed in skipped database."""
     save_folder = os.path.join("G:/My Drive/Card Database")
     os.makedirs(save_folder, exist_ok=True)
 
@@ -154,7 +133,7 @@ def download_image(url, skipped_image_ids, site_name):
     image_path = os.path.join(save_folder, image_name)
 
     if image_name in skipped_image_ids:
-        print(f"[{site_name}] Skipped (Listed in CSV): {image_name}")
+        print(f"[{site_name}] Skipped (Listed in database): {image_name}")
         return
     if os.path.exists(image_path):
         print(f"[{site_name}] Skipped (Already Exists): {image_name}")
@@ -176,18 +155,16 @@ def download_image(url, skipped_image_ids, site_name):
             with open(image_path, "wb") as file:
                 for chunk in response.iter_content(1024):
                     file.write(chunk)
-            logger.info(f"[{site_name}] Downloaded: {image_name}")
+            mongo_client["tcg_database"]["jap_skipped_images"].insert_one({"image_name": image_name, "url": url})
             print(f"[{site_name}] Downloaded: {image_name}")
         else:
-            logger.error(f"[{site_name}] Failed to download: {url}, Status Code: {response.status_code}")
             print(f"[{site_name}] Failed to download: {url}, Status Code: {response.status_code}")
     except requests.RequestException as e:
-        logger.error(f"[{site_name}] Error downloading {url}: {e}")
         print(f"[{site_name}] Error downloading {url}: {e}")
 
-def download_images(image_urls, skipped_image_ids, site_names):
+def download_images(image_urls, skipped_image_ids, site_names, mongo_client):
     """Downloads images concurrently using ThreadPoolExecutor."""
-    image_list = [{'url': url, 'destination': (skipped_image_ids, site_names[i])} for i, url in enumerate(image_urls)]
+    image_list = [{'url': url, 'destination': (skipped_image_ids, site_names[0], mongo_client)} for url in image_urls]
 
     def worker(image_info):
         try:
@@ -223,9 +200,15 @@ def main():
     handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     logger.addHandler(handler)
 
+    # Connect to MongoDB
+    MONGO_URI ='mongodb+srv://seeyaflying:Riversong1969@cluster0.7fugd.mongodb.net/'
+    mongo_client = MongoClient(MONGO_URI)
+    db = mongo_client["tcg_database"]
+    db["jap_skipped_images"].create_index("image_name", unique=True)
+
     site_names = list(SITES.keys())
     image_urls = []
-    skipped_image_ids = read_skipped_csv()
+    skipped_image_ids = read_skipped_image_ids(mongo_client)
 
     for site_name, site_data in SITES.items():
         print(f"Starting to scrape {site_name}...")
@@ -248,7 +231,7 @@ def main():
     else:
         print(f"No duplicate image names found.")
 
-    download_images(image_urls, skipped_image_ids, site_names)
+    download_images(image_urls, skipped_image_ids, site_names, mongo_client)
 
 if __name__ == "__main__":
     main()

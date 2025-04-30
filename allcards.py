@@ -7,6 +7,7 @@ import aiofiles
 import csv
 import re
 from tqdm.asyncio import tqdm
+from motor import motor_asyncio
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -29,7 +30,6 @@ DEFAULT_TCG_URLS = {
     "DBZ Super Fusion World": ["https://tcgcsv.com/tcgplayer/80/groups"],
     "Dragoborne": ["https://tcgcsv.com/tcgplayer/28/groups"],
     "Elestrals": ["https://tcgcsv.com/tcgplayer/83/groups"],
-    "Exodus": ["https://tcgcsv.com/tcgplayer/40/groups"],
     "Final Fantasy": ["https://tcgcsv.com/tcgplayer/24/groups"],
     "Flesh and Blood": ["https://tcgcsv.com/tcgplayer/62/groups"],
     "Force of Will": ["https://tcgcsv.com/tcgplayer/17/groups"],
@@ -153,29 +153,18 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
             logger.error(f"Error downloading image from {image_url}: {e}")
             pass
 
-def load_skipped_images():
+async def load_skipped_images(mongo_client):
+    db = mongo_client['tcg_database']
+    if'skipped_images' not in await db.list_collection_names():
+        await db.create_collection('skipped_images')
+        logger.info('Created skipped_images collection in MongoDB')
+    collection = db['skipped_images']
     skipped_image_ids = set()
-    skipped_csv_file = os.path.join('json','skipped.csv')
-
-    os.makedirs(os.path.dirname(skipped_csv_file), exist_ok=True)
-
-    if not os.path.exists(skipped_csv_file):
-        with open(skipped_csv_file, 'w', encoding='utf-8', newline='') as skipped_file:
-            writer = csv.writer(skipped_file)
-            writer.writerow(['image_number'])
-        logger.info(f"Created skipped.csv at {skipped_csv_file}")
-    else:
-        with open(skipped_csv_file, 'r', encoding='utf-8') as skipped_file:
-            skipped_csv_reader = csv.reader(skipped_file)
-            next(skipped_csv_reader, None)
-            for row in skipped_csv_reader:
-                if not row or not row[0].strip():
-                    continue
-                skipped_image_ids.add(row[0].strip())
-
+    async for document in collection.find():
+        skipped_image_ids.add(document.get('image_number', ''))
     return skipped_image_ids
 
-async def process_tcg(session, tcg_name, urls, all_data):
+async def process_tcg(session, mongo_client, tcg_name, urls, all_data):
     """
     Process a specific TCG by fetching data and downloading images.
     """
@@ -184,7 +173,7 @@ async def process_tcg(session, tcg_name, urls, all_data):
                               tcg_name if tcg_name!= "Magic the Gathering" else "Magic the Gathering")
     os.makedirs(tcg_folder, exist_ok=True)
 
-    skipped_image_ids = load_skipped_images()
+    skipped_image_ids = await load_skipped_images(mongo_client)
 
     semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent downloads
 
@@ -231,12 +220,16 @@ async def process_tcg(session, tcg_name, urls, all_data):
         logger.error(f"Error saving {tcg_name} data to JSON: {e}")
 
 async def main():
+    # MongoDB Compass connection string
+    MONGO_URI = "mongodb+srv://seeyaflying:Riversong1969@cluster0.7fugd.mongodb.net/"
+    mongo_client = motor_asyncio.AsyncIOMotorClient(MONGO_URI)
+    db = mongo_client['tcg_database']  # Access the database directly
     all_data = []
 
     async with aiohttp.ClientSession() as session:
         with tqdm(total=len(tcg_urls), desc="Processing TCGs", unit="tcg") as tcg_bar:
             for tcg_name, urls in tcg_urls.items():
-                await process_tcg(session, tcg_name, urls, all_data)
+                await process_tcg(session, mongo_client, tcg_name, urls, all_data)
                 tcg_bar.update(1)
 
     try:
