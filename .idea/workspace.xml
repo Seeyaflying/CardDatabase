@@ -11,13 +11,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/addskipped.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/addskippedjap.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/allcards.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/2025-04-29_csv_importer.log" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/japallcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/japallcards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/japskipped.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/japskipped.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/skipped.csv" beforeDir="false" afterPath="$PROJECT_DIR$/json/skipped.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/2025-04-29_image_scraper.log" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,40 +58,40 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Python.AI_run.executor": "Run",
-    "Python.Altered.executor": "Run",
-    "Python.Drivedownload.executor": "Run",
-    "Python.addskippedjap.executor": "Run",
-    "Python.allcards.executor": "Run",
-    "Python.digimonjap.executor": "Run",
-    "Python.japallcards.executor": "Run",
-    "Python.maybe.executor": "Run",
-    "Python.neopets.executor": "Run",
-    "Python.test.executor": "Run",
-    "Python.testtest.executor": "Run",
-    "RunOnceActivity.RadMigrateCodeStyle": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "C:/Users/seeya/Documents/CardDatabase",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Python.AI_run.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Altered.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Drivedownload.executor&quot;: &quot;Run&quot;,
+    &quot;Python.addskippedjap.executor&quot;: &quot;Run&quot;,
+    &quot;Python.allcards.executor&quot;: &quot;Run&quot;,
+    &quot;Python.digimonjap.executor&quot;: &quot;Run&quot;,
+    &quot;Python.japallcards.executor&quot;: &quot;Run&quot;,
+    &quot;Python.maybe.executor&quot;: &quot;Run&quot;,
+    &quot;Python.neopets.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testtest.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/seeya/Documents/CardDatabase&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase" />
@@ -171,6 +169,7 @@
       <workItem from="1745964434838" duration="2056000" />
       <workItem from="1745978951276" duration="715000" />
       <workItem from="1745979752248" duration="493000" />
+      <workItem from="1746043962469" duration="766000" />
     </task>
     <servers />
   </component>
