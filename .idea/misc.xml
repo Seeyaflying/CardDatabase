@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.13 (Zeldamaybe)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="card" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Card" project-jdk-type="Python SDK" />
 </project>

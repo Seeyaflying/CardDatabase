@@ -7,61 +7,72 @@ import aiofiles
 import csv
 import re
 from tqdm.asyncio import tqdm
-from motor import motor_asyncio
+from pymongo import MongoClient
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Default TCG URLs if JSON file is not found or invalid
-DEFAULT_TCG_URLS = {
-    'Akora': ['https://tcgcsv.com/tcgplayer/75/groups'],
-    "Alpha Clash": ["https://tcgcsv.com/tcgplayer/78/groups"],
-    'Argent Saga': ['https://tcgcsv.com/tcgplayer/61/groups'],
-    'Bakugan': ['https://tcgcsv.com/tcgplayer/58/groups'],
-    'Battle Spirits Saga': ['https://tcgcsv.com/tcgplayer/72/groups'],
-    'Cardfight Vanguard': ['https://tcgcsv.com/tcgplayer/16/groups'],
-    'Caster Chronicles': ["https://tcgcsv.com/tcgplayer/37/groups"],
-    "Chrono Clash System":["https://tcgcsv.com/tcgplayer/60/groups"],
-    "Dice Masters": ["https://tcgcsv.com/tcgplayer/18/groups"],
-    "Digimon": ["https://tcgcsv.com/tcgplayer/63/groups"],
-    "DBZ TCG": ["https://tcgcsv.com/tcgplayer/23/groups"],
-    "DBZ Super": ["https://tcgcsv.com/tcgplayer/27/groups"],
-    "DBZ Super Fusion World": ["https://tcgcsv.com/tcgplayer/80/groups"],
-    "Dragoborne": ["https://tcgcsv.com/tcgplayer/28/groups"],
-    "Elestrals": ["https://tcgcsv.com/tcgplayer/83/groups"],
-    "Final Fantasy": ["https://tcgcsv.com/tcgplayer/24/groups"],
-    "Flesh and Blood": ["https://tcgcsv.com/tcgplayer/62/groups"],
-    "Force of Will": ["https://tcgcsv.com/tcgplayer/17/groups"],
-    "Future Card BuddyFight": ["https://tcgcsv.com/tcgplayer/19/groups"],
-    "Gate Ruler": ["https://tcgcsv.com/tcgplayer/65/groups"],
-    "Grand Archive": ["https://tcgcsv.com/tcgplayer/74/groups"],
-    "Gundam": ["https://tcgcsv.com/tcgplayer/86/groups"],
-    "Kryptik": ["https://tcgcsv.com/tcgplayer/76/groups"],
-    "Lightseekers": ["https://tcgcsv.com/tcgplayer/48/groups"],
-    "Lorcana": ["https://tcgcsv.com/tcgplayer/71/groups"],
-    "Magic the Gathering": ["https://tcgcsv.com/tcgplayer/1/groups"],
-    "MetaX": ["https://tcgcsv.com/tcgplayer/30/groups"],
-    "MetaZoo": ["https://tcgcsv.com/tcgplayer/66/groups"],
-    "Munchkin": ["https://tcgcsv.com/tcgplayer/53/groups"],
-    "One Piece": ["https://tcgcsv.com/tcgplayer/68/groups"],
-    "Pokemon": ["https://tcgcsv.com/tcgplayer/3/groups"],
-    "Pokemon": ["https://tcgcsv.com/tcgplayer/85/groups"], # Pokemon Japan
-    "Shadowverse Evolve": ["https://tcgcsv.com/tcgplayer/73/groups"],
-    "Sorcery Contested Realm": ["https://tcgcsv.com/tcgplayer/77/groups"],
-    "Star Wars Destiny": ["https://tcgcsv.com/tcgplayer/26/groups"],
-    "Star Wars Unlimited": ["https://tcgcsv.com/tcgplayer/79/groups"],
-    "Transformers": ["https://tcgcsv.com/tcgplayer/57/groups"],
-    "Union Arena": ["https://tcgcsv.com/tcgplayer/81/groups"],
-    "UniVersus": ["https://tcgcsv.com/tcgplayer/25/groups"],
-    "Warhammer Age of Sigmar Champions": ["https://tcgcsv.com/tcgplayer/54/groups"],
-    "Weiss Schwarz": ["https://tcgcsv.com/tcgplayer/20/groups"],
-    "Wixoss": ["https://tcgcsv.com/tcgplayer/67/groups"],
-    "World of Warcraft": ["https://tcgcsv.com/tcgplayer/13/groups"],
-    "Yugioh": ["https://tcgcsv.com/tcgplayer/2/groups"],
-    "Zombie World Order": ["https://tcgcsv.com/tcgplayer/36/groups"]
-    # Add other TCGs as needed...
+BASE_URL = 'https://tcgcsv.com/tcgplayer'
+
+TCG_IDS = {
+    'Akora': 75,
+    "Alpha Clash": 78,
+    'Argent Saga': 61,
+    'Bakugan': 58,
+    'Battle Spirits Saga': 72,
+    'Cardfight Vanguard': 16,
+    'Caster Chronicles': 37,
+    "Chrono Clash System": 60,
+    "Dice Masters": 18,
+    "Digimon": 63,
+    "DBZ TCG": 23,
+    "DBZ Super": 27,
+    "DBZ Super Fusion World": 80,
+    "Dragoborne": 28,
+    "Elestrals": 83,
+    "Final Fantasy": 24,
+    "Flesh and Blood": 62,
+    "Force of Will": 17,
+    "Future Card BuddyFight": 19,
+    "Gate Ruler": 65,
+    "Grand Archive": 74,
+    "Gundam": 86,
+    "Kryptik": 76,
+    "Lightseekers": 48,
+    "Lorcana": 71,
+    "Magic the Gathering": 1,
+    "MetaX": 30,
+    "MetaZoo": 66,
+    "Munchkin": 53,
+    "One Piece": 68,
+    "Pokemon": 3,
+    "Pokemon Japan": 85,
+    "Shadowverse Evolve": 73,
+    "Sorcery Contested Realm": 77,
+    "Star Wars Destiny": 26,
+    "Star Wars Unlimited": 79,
+    "Transformers": 57,
+    "Union Arena": 81,
+    "UniVersus": 25,
+    "Warhammer Age of Sigmar Champions": 54,
+    "Weiss Schwarz": 20,
+    "Wixoss": 67,
+    "World of Warcraft": 13,
+    "Yugioh": 2,
+    "Zombie World Order": 36,
 }
+
+DEFAULT_TCG_URLS = {
+    tcg: [f'{BASE_URL}/{tcg_id}/groups']
+    for tcg, tcg_id in TCG_IDS.items()
+}
+
+# To use the Pokemon folder for both Pokemon and Pokemon Japan
+for key, value in list(DEFAULT_TCG_URLS.items()):
+    if key == "Pokemon Japan":
+        DEFAULT_TCG_URLS["Pokemon"].extend(value)
+        del DEFAULT_TCG_URLS["Pokemon Japan"]
 
 def load_tcg_urls():
     """
@@ -129,8 +140,10 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
     Download an image if not in the skipped list and if it doesn't already exist.
     """
     async with semaphore:
+        image_number = None
         match = re.search(r'\d+', image_name)
-        image_number = match.group(0) if match else None
+        if match:
+            image_number = match.group(0)
 
         if image_number and image_number in skipped_image_ids:
             logger.info(f"Skipping download for {image_name} (image number {image_number} is in skipped list).")
@@ -155,13 +168,16 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
 
 async def load_skipped_images(mongo_client):
     db = mongo_client['tcg_database']
-    if'skipped_images' not in await db.list_collection_names():
-        await db.create_collection('skipped_images')
+    if'skipped_images' not in db.list_collection_names():
+        db.create_collection('skipped_images')
         logger.info('Created skipped_images collection in MongoDB')
     collection = db['skipped_images']
     skipped_image_ids = set()
-    async for document in collection.find():
-        skipped_image_ids.add(document.get('image_number', ''))
+    for document in collection.find():
+        image_name = document.get('image_name', '')
+        match = re.search(r'\d+', image_name)
+        if match:
+            skipped_image_ids.add(match.group(0))
     return skipped_image_ids
 
 async def process_tcg(session, mongo_client, tcg_name, urls, all_data):
@@ -222,7 +238,7 @@ async def process_tcg(session, mongo_client, tcg_name, urls, all_data):
 async def main():
     # MongoDB Compass connection string
     MONGO_URI = "mongodb+srv://seeyaflying:Riversong1969@cluster0.7fugd.mongodb.net/"
-    mongo_client = motor_asyncio.AsyncIOMotorClient(MONGO_URI)
+    mongo_client = MongoClient(MONGO_URI)
     db = mongo_client['tcg_database']  # Access the database directly
     all_data = []
 
