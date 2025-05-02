@@ -172,12 +172,16 @@ async def load_skipped_images(mongo_client):
         db.create_collection('skipped_images')
         logger.info('Created skipped_images collection in MongoDB')
     collection = db['skipped_images']
+    pipeline = [
+        {"$group": {"_id": None, "image_names": {"$push": "$image_name"}}}
+    ]
+    result = collection.aggregate(pipeline)
     skipped_image_ids = set()
-    for document in collection.find():
-        image_name = document.get('image_name', '')
-        match = re.search(r'\d+', image_name)
-        if match:
-            skipped_image_ids.add(match.group(0))
+    for document in result:
+        for image_name in document.get('image_names', []):
+            match = re.search(r'\d+', image_name)
+            if match:
+                skipped_image_ids.add(match.group(0))
     return skipped_image_ids
 
 async def process_tcg(session, mongo_client, tcg_name, urls, all_data):

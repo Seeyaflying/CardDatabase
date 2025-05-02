@@ -16,6 +16,7 @@ from collections import Counter
 import logging
 from datetime import date
 from pymongo import MongoClient
+import ssl
 
 # Base URL pattern and image pattern
 BASE_URL_PATTERN = "https://tcgrepublic.com/category/category_page_{}.html"
@@ -68,22 +69,27 @@ SITES = {
 
 def setup_driver():
     """Setup headless Selenium WebDriver."""
+    print("Setting up driver...")
     options = webdriver.FirefoxOptions()  # Create Firefox options
     options.add_argument("--headless")
+    print("Driver setup complete.")
     return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)  # Initialize Firefox driver
 
 def read_skipped_image_ids(mongo_client):
     """Reads skipped image IDs from MongoDB database."""
+    print("Reading skipped image IDs...")
     skipped_image_ids = []
     try:
         for doc in mongo_client["tcg_database"]["jap_skipped_images"].find():
             skipped_image_ids.append(doc["image_name"])
+        print(f"Skipped image IDs read: {len(skipped_image_ids)}")
     except Exception as e:
         print(f"Error reading skipped image IDs: {e}")
     return skipped_image_ids
 
 def scrape_page(driver, site_name, site_data, page):
     """Scrape image URLs from a single page."""
+    print(f"Scraping page {page} of {site_name}...")
     image_urls = []
 
     url = f"{BASE_URL_PATTERN.format(site_data['id'])}?p={page}"
@@ -98,39 +104,28 @@ def scrape_page(driver, site_name, site_data, page):
             image_urls.append(clean_url)
             print(f"[{site_name}] Found: {clean_url}")
 
+    print(f"Scraping page {page} of {site_name} complete.")
     return image_urls
 
 def scrape_images(site_name, site_data):
     """Scrape image URLs from the given site."""
+    print(f"Scraping {site_name}...")
     driver = setup_driver()
     image_urls = []
-    skipped_image_ids = []
 
     max_pages = site_data["total_pages"]
     print(f"[{site_name}] Total pages: {max_pages}")
 
     for page in tqdm(range(1, max_pages + 1), desc=f"Scraping {site_name}", unit="page"):
-        url = f"{BASE_URL_PATTERN.format(site_data['id'])}?p={page}"
-        driver.get(url)
-        time.sleep(2)
-
-        images = driver.find_elements(By.TAG_NAME, "img")
-        for img in images:
-            src = img.get_attribute("src")
-            if src and IMAGE_PATTERN.match(src):
-                clean_url = src.replace(".l2_thumbnail.jpg", "")
-                image_urls.append(clean_url)
-                print(f"[{site_name}] Found: {clean_url}")
+        image_urls.extend(scrape_page(driver, site_name, site_data, page))
 
     driver.quit()
-
+    print(f"Scraping {site_name} complete.")
     return image_urls
 
-def download_image(url, skipped_image_ids, site_name, mongo_client):
+def download_image(url, skipped_image_ids, site_name, save_folder):
     """Download a single image and skip if already exists or listed in skipped database."""
-    save_folder = os.path.join("G:/My Drive/Card Database")
-    os.makedirs(save_folder, exist_ok=True)
-
+    print(f"Downloading {url}...")
     image_name = url.split("/")[-1] + ".jpg"
     image_path = os.path.join(save_folder, image_name)
 
@@ -157,16 +152,26 @@ def download_image(url, skipped_image_ids, site_name, mongo_client):
             with open(image_path, "wb") as file:
                 for chunk in response.iter_content(1024):
                     file.write(chunk)
-            mongo_client["tcg_database"]["jap_skipped_images"].insert_one({"image_name": image_name, "url": url})
             print(f"[{site_name}] Downloaded: {image_name}")
         else:
             print(f"[{site_name}] Failed to download: {url}, Status Code: {response.status_code}")
     except requests.RequestException as e:
         print(f"[{site_name}] Error downloading {url}: {e}")
 
-def download_images(image_urls, skipped_image_ids, site_names, mongo_client):
+def download_images(image_urls, skipped_image_ids, site_name):
     """Downloads images concurrently using ThreadPoolExecutor."""
-    image_list = [{'url': url, 'destination': (skipped_image_ids, site_names[0], mongo_client)} for url in image_urls]
+    print(f"Downloading images from {site_name}...")
+    base_folder = "G:/My Drive/Card Database"
+    save_folder = os.path.join(base_folder, site_name)
+
+    if not os.path.exists(base_folder):
+        os.makedirs(base_folder)
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+
+    existing_image_names = [os.path.basename(file) for file in os.listdir(save_folder) if file.endswith(".jpg")]
+
+    image_list = [{'url': url, 'destination': (skipped_image_ids, site_name, save_folder)} for url in image_urls if (url.split("/")[-1] + ".jpg") not in existing_image_names and (url.split("/")[-1] + ".jpg") not in skipped_image_ids]
 
     def worker(image_info):
         try:
@@ -174,11 +179,12 @@ def download_images(image_urls, skipped_image_ids, site_names, mongo_client):
         except Exception as e:
             print(f"Failed to download {image_info['url']}: {e}")
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        list(tqdm(executor.map(worker, image_list), total=len(image_list), desc="Downloading images", unit="image"))
+    with ThreadPoolExecutor(max_workers=10) as executor:  # Using 10 worker threads
+        list(tqdm(executor.map(worker, image_list), total=len(image_list), desc=f"Downloading {site_name}", unit="image"))
 
 def save_csv(data, filename):
     """Saves a list of data to a CSV file."""
+    print("Saving CSV...")
     os.makedirs("json", exist_ok=True)
     filepath = os.path.join("json", filename)
 
@@ -186,6 +192,7 @@ def save_csv(data, filename):
         writer = csv.writer(file)
         for row in data:
             writer.writerow([row])
+    print("CSV saved.")
 
 def main():
     """Main function to start the scraping."""
@@ -202,28 +209,43 @@ def main():
     handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     logger.addHandler(handler)
 
-    # Connect to MongoDB
-    MONGO_URI ='mongodb+srv://seeyaflying:Riversong1969@cluster0.7fugd.mongodb.net/'
-    mongo_client = MongoClient(MONGO_URI)
-    db = mongo_client["tcg_database"]
-    db["jap_skipped_images"].create_index("image_name", unique=True)
+    print("Connecting to MongoDB...")
+    MONGO_URI ='mongodb+srv://seeyaflying:Riversong1969@cluster0.7fugd.mongodb.net/?ssl=true&tlsAllowInvalidCertificates=true'
+
+    try:
+        mongo_client = MongoClient(MONGO_URI)
+        print("Connected to MongoDB")
+    except Exception as e:
+        print(f"Failed to connect to MongoDB: {e}")
+        return
+
+    try:
+        db = mongo_client["tcg_database"]
+        print("Connected to database")
+    except Exception as e:
+        print(f"Failed to connect to database: {e}")
+        return
+
+    try:
+        collection = db["jap_skipped_images"]
+        print("Connected to collection")
+    except Exception as e:
+        print(f"Failed to connect to collection: {e}")
+        return
 
     site_names = list(SITES.keys())
-    image_urls = []
     skipped_image_ids = read_skipped_image_ids(mongo_client)
 
     for site_name, site_data in SITES.items():
         print(f"Starting to scrape {site_name}...")
-        image_urls.extend(scrape_images(site_name, site_data))
+        image_urls = scrape_images(site_name, site_data)
+        download_images(image_urls, skipped_image_ids, site_name)
 
-    image_urls = list(set(image_urls))
-    image_urls = [url for url in image_urls if url.split("/")[-1] not in skipped_image_ids]
-
-    save_csv(image_urls, "image_links.csv")
-    print(f"Scraping complete. {len(image_urls)} images saved.")
+    save_csv([url for site_name, site_data in SITES.items() for url in scrape_images(site_name, site_data)], "image_links.csv")
+    print(f"Scraping complete.")
 
     # Check for duplicate image names
-    image_names = [url.split("/")[-1] for url in image_urls]
+    image_names = [url.split("/")[-1] + ".jpg" for site_name, site_data in SITES.items() for url in scrape_images(site_name, site_data)]
     duplicate_image_names = [name for name, count in Counter(image_names).items() if count > 1]
 
     if duplicate_image_names:
@@ -232,8 +254,6 @@ def main():
             print(name)
     else:
         print(f"No duplicate image names found.")
-
-    download_images(image_urls, skipped_image_ids, site_names, mongo_client)
 
 if __name__ == "__main__":
     main()
