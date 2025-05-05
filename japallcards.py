@@ -6,17 +6,15 @@ import requests
 import concurrent.futures
 from selenium.webdriver.common.by import By
 from selenium import webdriver
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.edge.service import Service as EdgeService
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from concurrent.futures import ThreadPoolExecutor
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from tqdm import tqdm
-from collections import Counter
 import logging
 from datetime import date
 from pymongo import MongoClient
-import ssl
 
 # Base URL pattern and image pattern
 BASE_URL_PATTERN = "https://tcgrepublic.com/category/category_page_{}.html"
@@ -58,7 +56,7 @@ SITES = {
     "Ultraman": {"id": 90, "total_pages": 10},
     "Union Arena": {"id": 74, "total_pages": 146},
     "Vividz": {"id": 70, "total_pages": 12},
-    "Weiss Schwarz": {"id": 31, "total_pages": 1266},
+    "Weiss Schwarz": {"id": 31, "total_pages": 1266},  # Weiss Schwarz
     "Weiss Schwarz Blau": {"id": 72, "total_pages": 85},
     "Weiss Schwarz Rose": {"id": 96, "total_pages": 13},
     "Wixoss": {"id": 43, "total_pages": 338},
@@ -68,20 +66,20 @@ SITES = {
 }
 
 def setup_driver():
-    """Setup headless Selenium WebDriver."""
+    """Setup headless Edge WebDriver."""
     print("Setting up driver...")
-    options = webdriver.FirefoxOptions()  # Create Firefox options
+    options = webdriver.EdgeOptions()  # Create Edge options
     options.add_argument("--headless")
     print("Driver setup complete.")
-    return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)  # Initialize Firefox driver
+    return webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)  # Initialize Edge driver
 
 def read_skipped_image_ids(mongo_client):
     """Reads skipped image IDs from MongoDB database."""
     print("Reading skipped image IDs...")
-    skipped_image_ids = []
+    skipped_image_ids = set()
     try:
         for doc in mongo_client["tcg_database"]["jap_skipped_images"].find():
-            skipped_image_ids.append(doc["image_name"])
+            skipped_image_ids.add(doc["image_name"])
         print(f"Skipped image IDs read: {len(skipped_image_ids)}")
     except Exception as e:
         print(f"Error reading skipped image IDs: {e}")
@@ -89,8 +87,7 @@ def read_skipped_image_ids(mongo_client):
 
 def scrape_page(driver, site_name, site_data, page):
     """Scrape image URLs from a single page."""
-    print(f"Scraping page {page} of {site_name}...")
-    image_urls = []
+    image_urls = set()
 
     url = f"{BASE_URL_PATTERN.format(site_data['id'])}?p={page}"
     driver.get(url)
@@ -101,23 +98,23 @@ def scrape_page(driver, site_name, site_data, page):
         src = img.get_attribute("src")
         if src and IMAGE_PATTERN.match(src):
             clean_url = src.replace(".l2_thumbnail.jpg", "")
-            image_urls.append(clean_url)
+            image_urls.add(clean_url)
             print(f"[{site_name}] Found: {clean_url}")
 
-    print(f"Scraping page {page} of {site_name} complete.")
     return image_urls
 
 def scrape_images(site_name, site_data):
     """Scrape image URLs from the given site."""
     print(f"Scraping {site_name}...")
     driver = setup_driver()
-    image_urls = []
+    image_urls = set()
 
     max_pages = site_data["total_pages"]
     print(f"[{site_name}] Total pages: {max_pages}")
 
     for page in tqdm(range(1, max_pages + 1), desc=f"Scraping {site_name}", unit="page"):
-        image_urls.extend(scrape_page(driver, site_name, site_data, page))
+        image_urls.update(scrape_page(driver, site_name, site_data, page))
+        time.sleep(1)  # Add a delay between requests
 
     driver.quit()
     print(f"Scraping {site_name} complete.")
@@ -125,17 +122,15 @@ def scrape_images(site_name, site_data):
 
 def download_image(url, skipped_image_ids, site_name, save_folder):
     """Download a single image and skip if already exists or listed in skipped database."""
-    print(f"Downloading {url}...")
     image_name = url.split("/")[-1] + ".jpg"
-    image_path = os.path.join(save_folder, image_name)
-
     if image_name in skipped_image_ids:
         print(f"[{site_name}] Skipped (Listed in database): {image_name}")
         return
-    if os.path.exists(image_path):
+    if image_name in os.listdir(save_folder):
         print(f"[{site_name}] Skipped (Already Exists): {image_name}")
         return
 
+    print(f"Downloading {url}...")
     session = requests.Session()
     retry = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
     adapter = HTTPAdapter(max_retries=retry)
@@ -149,7 +144,7 @@ def download_image(url, skipped_image_ids, site_name, save_folder):
     try:
         response = session.get(url, headers=headers, stream=True, timeout=5)
         if response.status_code == 200:
-            with open(image_path, "wb") as file:
+            with open(os.path.join(save_folder, image_name), "wb") as file:
                 for chunk in response.iter_content(1024):
                     file.write(chunk)
             print(f"[{site_name}] Downloaded: {image_name}")
@@ -161,7 +156,7 @@ def download_image(url, skipped_image_ids, site_name, save_folder):
 def download_images(image_urls, skipped_image_ids, site_name):
     """Downloads images concurrently using ThreadPoolExecutor."""
     print(f"Downloading images from {site_name}...")
-    base_folder = "G:/My Drive/Card Database"
+    base_folder = "G:/My Drive/Card Database"  # Update the base folder path
     save_folder = os.path.join(base_folder, site_name)
 
     if not os.path.exists(base_folder):
@@ -169,29 +164,29 @@ def download_images(image_urls, skipped_image_ids, site_name):
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
 
-    existing_image_names = [os.path.basename(file) for file in os.listdir(save_folder) if file.endswith(".jpg")]
+    existing_image_names = set(os.listdir(save_folder))  # Use a set for existing image names
 
-    image_list = [{'url': url, 'destination': (skipped_image_ids, site_name, save_folder)} for url in image_urls if (url.split("/")[-1] + ".jpg") not in existing_image_names and (url.split("/")[-1] + ".jpg") not in skipped_image_ids]
+    image_set = image_urls - existing_image_names - skipped_image_ids  # Use set operations
 
-    def worker(image_info):
+    def worker(url):
         try:
-            download_image(image_info['url'], *image_info['destination'])
+            download_image(url, skipped_image_ids, site_name, save_folder)
         except Exception as e:
-            print(f"Failed to download {image_info['url']}: {e}")
+            print(f"Failed to download {url}: {e}")
 
     with ThreadPoolExecutor(max_workers=10) as executor:  # Using 10 worker threads
-        list(tqdm(executor.map(worker, image_list), total=len(image_list), desc=f"Downloading {site_name}", unit="image"))
+        list(tqdm(executor.map(worker, image_set), total=len(image_set), desc=f"Downloading {site_name}", unit="image"))
 
 def save_csv(data, filename):
-    """Saves a list of data to a CSV file."""
+    """Saves a set of data to a CSV file."""
     print("Saving CSV...")
     os.makedirs("json", exist_ok=True)
     filepath = os.path.join("json", filename)
 
     with open(filepath, "w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        for row in data:
-            writer.writerow([row])
+        for url in data:
+            writer.writerow([url])
     print("CSV saved.")
 
 def main():
@@ -241,12 +236,12 @@ def main():
         image_urls = scrape_images(site_name, site_data)
         download_images(image_urls, skipped_image_ids, site_name)
 
-    save_csv([url for site_name, site_data in SITES.items() for url in scrape_images(site_name, site_data)], "image_links.csv")
+    save_csv({url for site_name, site_data in SITES.items() for url in scrape_images(site_name, site_data)}, "image_links.csv")
     print(f"Scraping complete.")
 
     # Check for duplicate image names
-    image_names = [url.split("/")[-1] + ".jpg" for site_name, site_data in SITES.items() for url in scrape_images(site_name, site_data)]
-    duplicate_image_names = [name for name, count in Counter(image_names).items() if count > 1]
+    image_names = {url.split("/")[-1] + ".jpg" for site_name, site_data in SITES.items() for url in scrape_images(site_name, site_data)}
+    duplicate_image_names = {name for name in image_names if list(image_names).count(name) > 1}
 
     if duplicate_image_names:
         print(f"Found {len(duplicate_image_names)} duplicate image names:")
