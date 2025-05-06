@@ -1,17 +1,47 @@
 import asyncio
 import aiohttp
 import logging
-import json
 import os
 import aiofiles
-import csv
 import re
 from tqdm.asyncio import tqdm
 from pymongo import MongoClient
+from datetime import datetime
+import json
+
+# Create a log folder if it doesn't exist
+log_folder = 'log'
+if not os.path.exists(log_folder):
+    os.makedirs(log_folder)
+
+# Get today's date and time
+now = datetime.now()
+log_file_name = now.strftime('%Y-%m-%d_%H-%M-%S') + '.log'
+log_file_path = os.path.join(log_folder, log_file_name)
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+new_download_logger = logging.getLogger('new_downloads')
+new_download_logger.setLevel(logging.INFO)
+
+# Create a file handler
+file_handler = logging.FileHandler(log_file_path)
+file_handler.setLevel(logging.INFO)
+
+# Create a console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Create a formatter
+formatter = logging.Formatter('%(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add the handlers to the logger
+new_download_logger.addHandler(file_handler)
+new_download_logger.addHandler(console_handler)
+
+# Disable logging for the root logger
+logging.getLogger().setLevel(logging.CRITICAL)
 
 BASE_URL = 'https://tcgcsv.com/tcgplayer'
 
@@ -80,27 +110,13 @@ def load_tcg_urls():
     """
     try:
         with open('json/tcg_urls.json', 'r', encoding='utf-8') as f:
-            logger.info("Loaded TCG URLs from tcg_urls.json")
             return json.load(f)
     except FileNotFoundError:
-        logger.warning("tcg_urls.json not found. Using default TCG URLs.")
         return DEFAULT_TCG_URLS
     except json.JSONDecodeError as e:
-        logger.error(f"Error decoding tcg_urls.json: {e}")
         return DEFAULT_TCG_URLS
 
 tcg_urls = load_tcg_urls()
-
-def parse_json_data(text):
-    """
-    Parse JSON data from a text response.
-    """
-    try:
-        parsed_json = json.loads(text)
-        return parsed_json.get('results', [])
-    except Exception as e:
-        logger.error(f"Error parsing JSON data: {e}")
-        return []
 
 async def fetch_and_parse_data(session, url, tcg_name):
     """
@@ -112,7 +128,6 @@ async def fetch_and_parse_data(session, url, tcg_name):
             'Accept': 'application/json',
             'Connection': 'keep-alive',
         }
-        logger.debug(f"Fetching data from {url} for {tcg_name}...")
         response = await session.get(url, headers=headers)
         response.raise_for_status()
 
@@ -120,12 +135,10 @@ async def fetch_and_parse_data(session, url, tcg_name):
         text = await response.text()
 
         if 'json' in content_type:
-            return parse_json_data(text)
+            return json.loads(text).get('results', [])
         else:
-            logger.error(f"Unsupported content type: {content_type} for {url}")
             return []
     except aiohttp.ClientError as e:
-        logger.error(f"Error fetching data from {url} for {tcg_name}: {e}")
         return []
 
 async def fetch_group_details(session, tcg_name, category_id, group_id):
@@ -146,13 +159,11 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
             image_number = match.group(0)
 
         if image_number and image_number in skipped_image_ids:
-            logger.info(f"Skipping download for {image_name} (image number {image_number} is in skipped list).")
             return
 
         try:
             image_path = os.path.join(folder_path, image_name)
             if os.path.exists(image_path):
-                logger.info(f"Image {image_name} already exists. Skipping download.")
                 return
 
             os.makedirs(folder_path, exist_ok=True)
@@ -161,16 +172,14 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
                 image_data = await response.read()
                 async with aiofiles.open(image_path, 'wb') as image_file:
                     await image_file.write(image_data)
-                logger.info(f"Downloaded {image_name} to {folder_path}")
+                new_download_logger.info(f"Downloaded {image_name} to {folder_path}")
         except Exception as e:
-            logger.error(f"Error downloading image from {image_url}: {e}")
             pass
 
 async def load_skipped_images(mongo_client):
     db = mongo_client['tcg_database']
     if'skipped_images' not in db.list_collection_names():
         db.create_collection('skipped_images')
-        logger.info('Created skipped_images collection in MongoDB')
     collection = db['skipped_images']
     pipeline = [
         {"$group": {"_id": None, "image_names": {"$push": "$image_name"}}}
@@ -184,80 +193,45 @@ async def load_skipped_images(mongo_client):
                 skipped_image_ids.add(match.group(0))
     return skipped_image_ids
 
-async def process_tcg(session, mongo_client, tcg_name, urls, all_data):
+async def process_tcg(session, mongo_client, tcg_name, urls):
     """
     Process a specific TCG by fetching data and downloading images.
     """
-    logger.info(f"Processing TCG: {tcg_name}")
+    semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent downloads
+    skipped_image_ids = await load_skipped_images(mongo_client)
     tcg_folder = os.path.join('G:/My Drive/Card Database',
                               tcg_name if tcg_name!= "Magic the Gathering" else "Magic the Gathering")
     os.makedirs(tcg_folder, exist_ok=True)
 
-    skipped_image_ids = await load_skipped_images(mongo_client)
+    for url in tqdm(urls, desc=f"{tcg_name}: URLs", unit="url"):
+        groups_data = await fetch_and_parse_data(session, url, tcg_name)
 
-    semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent downloads
-
-    with tqdm(total=len(urls), desc=f"{tcg_name}: URLs", unit="url") as url_bar:
-        for url in urls:
-            groups_data = await fetch_and_parse_data(session, url, tcg_name)
-
-            if groups_data:
-                all_data.append({'tcg_name': tcg_name, 'groups': groups_data})
-
-                with tqdm(total=len(groups_data), desc=f"{tcg_name}: Groups", unit="group") as group_bar:
-                    for group in groups_data:
-                        group_id = group.get('groupId')
-                        category_id = group.get('categoryId')
-                        if group_id and category_id:
-                            group_details = await fetch_group_details(session, tcg_name, category_id, group_id)
-                            if group_details:
-                                all_data[-1].setdefault('group_details', []).append({
-                                    'group_id': group_id,
-                                    'details': group_details
-                                })
-
-                                # Concurrently download images
-                                download_tasks = []
-                                for item in group_details:
-                                    image_url = item.get('imageUrl')
-                                    if image_url:
-                                        image_name = image_url.split('/')[-1]
-                                        download_tasks.append(
-                                            download_image(session, image_url, tcg_folder, image_name, skipped_image_ids, semaphore)
-                                        )
-                                await asyncio.gather(*download_tasks)
-
-                        group_bar.update(1)
-            url_bar.update(1)
-
-    tcg_json_file = os.path.join('json', tcg_name, f'{tcg_name}.json')
-    try:
-        os.makedirs(os.path.dirname(tcg_json_file), exist_ok=True)
-        with open(tcg_json_file, 'w', encoding='utf-8') as json_file:
-            json.dump(all_data, json_file, ensure_ascii=False, indent=4)
-        logger.info(f"Saved {tcg_name} data to {tcg_json_file}")
-    except Exception as e:
-        logger.error(f"Error saving {tcg_name} data to JSON: {e}")
+        for group in tqdm(groups_data, desc=f"{tcg_name}: Groups", unit="group"):
+            group_id = group.get('groupId')
+            category_id = group.get('categoryId')
+            if group_id and category_id:
+                group_details = await fetch_group_details(session, tcg_name, category_id, group_id)
+                if group_details:
+                    # Concurrently download images
+                    download_tasks = []
+                    for item in group_details:
+                        image_url = item.get('imageUrl')
+                        if image_url:
+                            image_name = image_url.split('/')[-1]
+                            download_tasks.append(
+                                download_image(session, image_url, tcg_folder, image_name, skipped_image_ids, semaphore)
+                            )
+                    await asyncio.gather(*download_tasks)
 
 async def main():
     # MongoDB Compass connection string
     MONGO_URI = "mongodb+srv://seeyaflying:Riversong1969@cluster0.7fugd.mongodb.net/"
     mongo_client = MongoClient(MONGO_URI)
     db = mongo_client['tcg_database']  # Access the database directly
-    all_data = []
 
     async with aiohttp.ClientSession() as session:
-        with tqdm(total=len(tcg_urls), desc="Processing TCGs", unit="tcg") as tcg_bar:
-            for tcg_name, urls in tcg_urls.items():
-                await process_tcg(session, mongo_client, tcg_name, urls, all_data)
-                tcg_bar.update(1)
-
-    try:
-        with open('json/all_tcg_data.json', 'w', encoding='utf-8') as json_file:
-            json.dump(all_data, json_file, ensure_ascii=False, indent=4)
-        logger.info("Saved all TCG data to all_tcg_data.json")
-    except Exception as e:
-        logger.error(f"Error saving all TCG data: {e}")
+        for tcg_name, urls in tqdm(tcg_urls.items(), desc="Processing TCGs", unit="tcg"):
+            await process_tcg(session, mongo_client, tcg_name, urls)
 
 if __name__ == '__main__':
     asyncio.run(main())

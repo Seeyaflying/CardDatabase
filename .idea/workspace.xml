@@ -11,10 +11,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Japallcards.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/japallcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/japallcards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/logs/2025-05-01_image_scraper.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Database Downloaders/Magic Database.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/Database Downloaders/Magic Database.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addskipped.py" beforeDir="false" afterPath="$PROJECT_DIR$/addskipped.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/addskippedjap.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/allcards.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/digimonjap.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/2025-05-04_image_scraper.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,6 +33,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Python Script" />
+        <option value="Jupyter Notebook" />
       </list>
     </option>
   </component>
@@ -176,7 +182,10 @@
       <workItem from="1746058959329" duration="58000" />
       <workItem from="1746138152913" duration="1204000" />
       <workItem from="1746140552941" duration="173000" />
-      <workItem from="1746405318007" duration="6406000" />
+      <workItem from="1746405318007" duration="7765000" />
+      <workItem from="1746482127541" duration="6288000" />
+      <workItem from="1746488558759" duration="120000" />
+      <workItem from="1746488947162" duration="609000" />
     </task>
     <servers />
   </component>
@@ -202,13 +211,13 @@
     <SUITE FILE_PATH="coverage/AI_run_py$Altered.coverage" NAME="Altered Coverage Results" MODIFIED="1743535210372" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/AI_run_py$AI_run.coverage" NAME="AI_run Coverage Results" MODIFIED="1742784647786" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/CardDatabase$japallcards.coverage" NAME="japallcards Coverage Results" MODIFIED="1739694374653" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/addskipped_py$addskipped.coverage" NAME="addskipped Coverage Results" MODIFIED="1745991958036" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/addskipped_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1745991910389" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/addskipped_py$addskipped.coverage" NAME="addskipped Coverage Results" MODIFIED="1746489319283" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/addskipped_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1746489388819" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/allcards_py$AI_run.coverage" NAME="AI_run Coverage Results" MODIFIED="1742957634804" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/japallcards_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1742761337296" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Finished" />
+    <SUITE FILE_PATH="coverage/japallcards_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1746488137404" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/AI_run_py$maybe.coverage" NAME="maybe Coverage Results" MODIFIED="1739686510219" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/digimonjap_py$digimonjap.coverage" NAME="digimonjap Coverage Results" MODIFIED="1742871443887" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/japallcards_py$test.coverage" NAME="test Coverage Results" MODIFIED="1746049770032" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/japallcards_py$test.coverage" NAME="test Coverage Results" MODIFIED="1746483720697" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/CardDatabase$test.coverage" NAME="test Coverage Results" MODIFIED="1739747799829" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/AI_run_py$test.coverage" NAME="test Coverage Results" MODIFIED="1739690359643" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
