@@ -31,7 +31,7 @@ def save_values_to_json(file_path, values):
         print(f"Error saving JSON to {file_path}: {e}")
 
 # Training function
-def train_model(model, data_path, target_size, epochs, class_labels, max_steps_per_epoch, json_file, genome, full_iteration):
+def train_model(model, data_path, target_size, epochs, class_labels, max_steps_per_epoch, json_file, genome, total_steps, full_iteration):
     try:
         if not os.path.exists(MODELS_DIR):
             os.makedirs(MODELS_DIR)
@@ -49,18 +49,19 @@ def train_model(model, data_path, target_size, epochs, class_labels, max_steps_p
 
         if not image_paths:
             print("No images found in the dataset.")
-            return
+            return total_steps, full_iteration
 
-        total_steps = max_steps_per_epoch * epochs
-        current_step = 0
+        total_steps_in_epochs = max_steps_per_epoch * epochs
+        steps_in_epoch = min(max_steps_per_epoch, len(image_paths))
 
         for epoch in range(epochs):
             combined = list(zip(image_paths, labels))
             random.shuffle(combined)
 
-            steps_in_epoch = min(max_steps_per_epoch, len(image_paths))
-
             for step, (image_path, class_index) in enumerate(combined):
+                if step >= steps_in_epoch:
+                    break
+
                 img = Image.open(image_path).convert("RGB").resize(target_size, Image.BICUBIC)
                 img_array = np.array(img) / 255.0
                 img_array = np.expand_dims(img_array, axis=0)
@@ -73,13 +74,12 @@ def train_model(model, data_path, target_size, epochs, class_labels, max_steps_p
                 predicted_class = np.argmax(model.predict(img_array))
                 print(f"Genome {genome}, Epoch {epoch+1}/{epochs}, Step {step+1}/{steps_in_epoch}: Image={image_path}, Loss={loss:.4f}, Accuracy={accuracy:.4f}, Predicted Class={class_labels[predicted_class]}")
 
-                current_step += 1
-
-                progress_percent = int((current_step / total_steps) * 100)
+                total_steps += 1
+                full_iteration += 1
+                progress_percent = int((total_steps / (total_steps_in_epochs * num_genomes)) * 100)
                 print(f"Progress: {progress_percent}%")
 
-                full_iteration += 1
-                save_values_to_json(json_file, {"genome": genome, "full_iteration": full_iteration})
+                save_values_to_json(json_file, {"genome": genome, "total_steps": total_steps, "full_iteration": full_iteration})
 
             model_filename = f'card_predictor_model_genome_{genome}_epoch_{epoch + 1}_full_iteration_{full_iteration}.keras'
             model_path = os.path.join(MODELS_DIR, model_filename)
@@ -87,8 +87,10 @@ def train_model(model, data_path, target_size, epochs, class_labels, max_steps_p
             print(f"Genome {genome} completed. Model saved at: {model_path}")
 
         print(f"Genome {genome} training complete.")
+        return total_steps, full_iteration
     except Exception as e:
         print(f"Error during training: {str(e)}")
+        return total_steps, full_iteration
 
 # Application
 def main():
@@ -116,11 +118,13 @@ def main():
                       loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
-    default_values = {"genome": 1, "full_iteration": 0}
+    default_values = {"genome": 1, "total_steps": 0, "full_iteration": 0}
     values = load_values_from_json(VALUES_FILE_PATH, default_values)
-    genome = values["genome"]
-    full_iteration = values["full_iteration"]
+    genome = values.get("genome", default_values["genome"])
+    total_steps = values.get("total_steps", default_values["total_steps"])
+    full_iteration = values.get("full_iteration", default_values["full_iteration"])
 
+    global num_genomes
     num_genomes = int(input("Enter the number of genomes to train: "))
 
     epochs = 10
@@ -128,10 +132,10 @@ def main():
 
     for i in range(num_genomes):
         print(f"Training genome {i+1}...")
-        train_model(model, dataset_path, target_size, epochs, class_labels, max_steps_per_epoch, VALUES_FILE_PATH, genome, full_iteration)
+        total_steps, full_iteration = train_model(model, dataset_path, target_size, epochs, class_labels, max_steps_per_epoch, VALUES_FILE_PATH, genome, total_steps, full_iteration)
         genome += 1
         full_iteration = 0
-        save_values_to_json(VALUES_FILE_PATH, {"genome": genome, "full_iteration": full_iteration})
+        save_values_to_json(VALUES_FILE_PATH, {"genome": genome, "total_steps": total_steps, "full_iteration": full_iteration})
 
 if __name__ == "__main__":
     main()
