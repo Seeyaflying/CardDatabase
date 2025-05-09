@@ -81,10 +81,10 @@ def train_model(model, data_path, target_size, epochs, class_labels, max_steps_p
 
                 save_values_to_json(json_file, {"genome": genome, "total_steps": total_steps, "full_iteration": full_iteration})
 
-            model_filename = f'card_predictor_model_genome_{genome}_epoch_{epoch + 1}_full_iteration_{full_iteration}.keras'
-            model_path = os.path.join(MODELS_DIR, model_filename)
-            model.save(model_path)
-            print(f"Genome {genome} completed. Model saved at: {model_path}")
+        model_filename = f'card_predictor_model_genome_{genome}.keras'
+        model_path = os.path.join(MODELS_DIR, model_filename)
+        model.save(model_path)
+        print(f"Genome {genome} completed. Model saved at: {model_path}")
 
         print(f"Genome {genome} training complete.")
         return total_steps, full_iteration
@@ -127,15 +127,15 @@ def main():
     global num_genomes
     num_genomes = int(input("Enter the number of genomes to train: "))
 
-    epochs = 10
-    max_steps_per_epoch = 5000
+    epochs = 1
+    max_steps_per_epoch = 2500
 
     for i in range(num_genomes):
         print(f"Training genome {i+1}...")
         total_steps, full_iteration = train_model(model, dataset_path, target_size, epochs, class_labels, max_steps_per_epoch, VALUES_FILE_PATH, genome, total_steps, full_iteration)
         genome += 1
+        save_values_to_json(VALUES_FILE_PATH, {"genome": genome, "total_steps": total_steps, "full_iteration": 0})
         full_iteration = 0
-        save_values_to_json(VALUES_FILE_PATH, {"genome": genome, "total_steps": total_steps, "full_iteration": full_iteration})
 
 if __name__ == "__main__":
     main()
