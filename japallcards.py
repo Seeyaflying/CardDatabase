@@ -22,10 +22,10 @@ IMAGE_PATTERN = re.compile(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\
 
 # Site configurations
 SITES = {
-    "Battle Spirits": {"id": 79, "total_pages": 145},
-    "Buddy Fight": {"id": 71, "total_pages": 233},
-    "Build Divide": {"id": 61, "total_pages": 169},
-    "Cardfight Vanguard": {"id": 44, "total_pages": 525},
+    #"Battle Spirits": {"id": 79, "total_pages": 145},
+    #"Buddy Fight": {"id": 71, "total_pages": 233},
+    #"Build Divide": {"id": 61, "total_pages": 169},
+    #"Cardfight Vanguard": {"id": 44, "total_pages": 525},
     "Chaos": {"id": 50, "total_pages": 433},
     "Detective Conan": {"id": 84, "total_pages": 23},
     "DB Heroes": {"id": 73, "total_pages": 202},
