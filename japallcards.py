@@ -22,10 +22,10 @@ IMAGE_PATTERN = re.compile(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\
 
 # Site configurations
 SITES = {
-    #"Battle Spirits": {"id": 79, "total_pages": 145},
-    #"Buddy Fight": {"id": 71, "total_pages": 233},
-    #"Build Divide": {"id": 61, "total_pages": 169},
-    #"Cardfight Vanguard": {"id": 44, "total_pages": 525},
+    "Battle Spirits": {"id": 79, "total_pages": 145},
+    "Buddy Fight": {"id": 71, "total_pages": 233},
+    "Build Divide": {"id": 61, "total_pages": 169},
+    "Cardfight Vanguard": {"id": 44, "total_pages": 525},
     "Chaos": {"id": 50, "total_pages": 433},
     "Detective Conan": {"id": 84, "total_pages": 23},
     "DB Heroes": {"id": 73, "total_pages": 202},
@@ -123,7 +123,7 @@ def scrape_images(site_name, site_data):
 
 def download_image(url, skipped_image_ids, site_name, save_folder):
     """Download a single image and skip if already exists or listed in skipped database."""
-    image_name = url.split("/")[-1] + ".jpg"
+    image_name = url.split("/")[-1]
     if image_name in skipped_image_ids:
         print(f"[{site_name}] Skipped (Listed in database): {image_name}")
         return
@@ -241,7 +241,7 @@ def main():
     print(f"Scraping complete.")
 
     # Check for duplicate image names
-    image_names = {url.split("/")[-1] + ".jpg" for site_name, site_data in SITES.items() for url in scrape_images(site_name, site_data)}
+    image_names = {url.split("/")[-1]  for site_name, site_data in SITES.items() for url in scrape_images(site_name, site_data)}
     duplicate_image_names = {name for name in image_names if list(image_names).count(name) > 1}
 
     if duplicate_image_names:
