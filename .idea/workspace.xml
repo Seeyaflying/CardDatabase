@@ -10,11 +10,7 @@
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexRemoved" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/japallcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/japallcards.py" afterDir="false" />
-    </list>
+    <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -207,6 +203,7 @@
       <workItem from="1752381524691" duration="121000" />
       <workItem from="1752381754494" duration="376000" />
       <workItem from="1752436194848" duration="609000" />
+      <workItem from="1752547169046" duration="4000" />
     </task>
     <servers />
   </component>
