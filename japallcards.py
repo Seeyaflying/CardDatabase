@@ -6,8 +6,8 @@ import requests
 import concurrent.futures
 from selenium.webdriver.common.by import By
 from selenium import webdriver
-from selenium.webdriver.edge.service import Service as EdgeService
-from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.firefox import GeckoDriverManager
 from concurrent.futures import ThreadPoolExecutor
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -67,12 +67,12 @@ SITES = {
 }
 
 def setup_driver():
-    """Setup headless Edge WebDriver."""
-    print("Setting up driver...")
-    options = webdriver.EdgeOptions()  # Create Edge options
-    options.add_argument("--headless")
-    print("Driver setup complete.")
-    return webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)  # Initialize Edge driver
+    options = webdriver.FirefoxOptions()
+    options.add_argument("--headless")  # remove this line if you want the browser window visible
+    return webdriver.Firefox(
+        service=FirefoxService(GeckoDriverManager().install()),
+        options=options
+    )
 
 def read_skipped_image_ids(mongo_client):
     """Reads skipped image IDs from MongoDB database."""
@@ -160,7 +160,7 @@ def download_images(image_urls, skipped_image_ids, site_name):
 
     # Base folders
     base_folder = "D:/Card Database"       # reference only
-    new_base_folder = "D:/New Cards"  # download target
+    new_base_folder = "G:/My Drive/New Cards"  # download target
 
     # Site-specific folders
     check_folder = os.path.join(base_folder, site_name)   # only check here

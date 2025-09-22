@@ -201,9 +201,9 @@ async def process_tcg(session, mongo_client, tcg_name, urls):
     skipped_image_ids = await load_skipped_images(mongo_client)
 
     # 👇 check in the main folder, save only in the new folder
-    check_folder = os.path.join("G:/My Drive/Card Database",
+    check_folder = os.path.join("D:/Card Database",
                                 tcg_name if tcg_name != "Magic the Gathering" else "Magic the Gathering")
-    save_folder = os.path.join("G:/My Drive/Card Database New",
+    save_folder = os.path.join("G:/My Drive/New Cards",
                                tcg_name if tcg_name != "Magic the Gathering" else "Magic the Gathering")
 
     os.makedirs(save_folder, exist_ok=True)
