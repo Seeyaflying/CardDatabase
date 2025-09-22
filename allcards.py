@@ -164,7 +164,7 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
         try:
             image_path = os.path.join(folder_path, image_name)
             if os.path.exists(image_path):
-                return
+                return  # already in "new" folder
 
             os.makedirs(folder_path, exist_ok=True)
             async with session.get(image_url) as response:
@@ -173,7 +173,7 @@ async def download_image(session, image_url, folder_path, image_name, skipped_im
                 async with aiofiles.open(image_path, 'wb') as image_file:
                     await image_file.write(image_data)
                 new_download_logger.info(f"Downloaded {image_name} to {folder_path}")
-        except Exception as e:
+        except Exception:
             pass
 
 async def load_skipped_images(mongo_client):
@@ -199,9 +199,18 @@ async def process_tcg(session, mongo_client, tcg_name, urls):
     """
     semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent downloads
     skipped_image_ids = await load_skipped_images(mongo_client)
-    tcg_folder = os.path.join('G:/My Drive/Card Database',
-                              tcg_name if tcg_name!= "Magic the Gathering" else "Magic the Gathering")
-    os.makedirs(tcg_folder, exist_ok=True)
+
+    # 👇 check in the main folder, save only in the new folder
+    check_folder = os.path.join("G:/My Drive/Card Database",
+                                tcg_name if tcg_name != "Magic the Gathering" else "Magic the Gathering")
+    save_folder = os.path.join("G:/My Drive/Card Database New",
+                               tcg_name if tcg_name != "Magic the Gathering" else "Magic the Gathering")
+
+    os.makedirs(save_folder, exist_ok=True)
+
+    existing_image_names = set()
+    if os.path.exists(check_folder):
+        existing_image_names = set(os.listdir(check_folder))
 
     for url in tqdm(urls, desc=f"{tcg_name}: URLs", unit="url"):
         groups_data = await fetch_and_parse_data(session, url, tcg_name)
@@ -218,8 +227,13 @@ async def process_tcg(session, mongo_client, tcg_name, urls):
                         image_url = item.get('imageUrl')
                         if image_url:
                             image_name = image_url.split('/')[-1]
+
+                            # 👇 Skip if image already exists in main folder
+                            if image_name in existing_image_names:
+                                continue
+
                             download_tasks.append(
-                                download_image(session, image_url, tcg_folder, image_name, skipped_image_ids, semaphore)
+                                download_image(session, image_url, save_folder, image_name, skipped_image_ids, semaphore)
                             )
                     await asyncio.gather(*download_tasks)
 

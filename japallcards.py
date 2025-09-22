@@ -155,27 +155,39 @@ def download_image(url, skipped_image_ids, site_name, save_folder):
         print(f"[{site_name}] Error downloading {url}: {e}")
 
 def download_images(image_urls, skipped_image_ids, site_name):
-    """Downloads images concurrently using ThreadPoolExecutor."""
+    """Downloads new images into 'Card Database New', checks against 'Card Database'."""
     print(f"Downloading images from {site_name}...")
-    base_folder = "G:/My Drive/Card Database"  # Update the base folder path
-    save_folder = os.path.join(base_folder, site_name)
 
-    if not os.path.exists(base_folder):
-        os.makedirs(base_folder)
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
+    # Base folders
+    base_folder = "D:/Card Database"       # reference only
+    new_base_folder = "D:/New Cards"  # download target
 
-    existing_image_names = set(os.listdir(save_folder))  # Use a set for existing image names
+    # Site-specific folders
+    check_folder = os.path.join(base_folder, site_name)   # only check here
+    new_save_folder = os.path.join(new_base_folder, site_name)  # save here
 
-    image_set = image_urls - existing_image_names - skipped_image_ids  # Use set operations
+    # Ensure "new" path exists
+    os.makedirs(new_save_folder, exist_ok=True)
+
+    # Get already existing images in the main folder (for skipping)
+    existing_image_names = set()
+    if os.path.exists(check_folder):
+        existing_image_names = set(os.listdir(check_folder))
+
+    # Skip already existing and skipped IDs
+    image_set = image_urls - existing_image_names - skipped_image_ids
 
     def worker(url):
         try:
-            download_image(url, skipped_image_ids, site_name, save_folder)
+            image_name = url.split("/")[-1]
+
+            # Download only into "new" folder
+            download_image(url, skipped_image_ids, site_name, new_save_folder)
+
         except Exception as e:
             print(f"Failed to download {url}: {e}")
 
-    with ThreadPoolExecutor(max_workers=10) as executor:  # Using 10 worker threads
+    with ThreadPoolExecutor(max_workers=10) as executor:
         list(tqdm(executor.map(worker, image_set), total=len(image_set), desc=f"Downloading {site_name}", unit="image"))
 
 def save_csv(data, filename):
