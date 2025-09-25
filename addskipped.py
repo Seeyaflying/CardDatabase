@@ -1,7 +1,7 @@
 import csv
 import logging
+import sqlite3
 from datetime import date
-from pymongo import MongoClient
 import os
 
 # Create a logger
@@ -9,7 +9,6 @@ today = date.today()
 log_folder = 'log'
 log_filename = f"{log_folder}/{today.strftime('%Y-%m-%d')}_csv_importer.log"
 
-# Create the log folder if it doesn't exist
 if not os.path.exists(log_folder):
     os.makedirs(log_folder)
 
@@ -18,6 +17,31 @@ logger.setLevel(logging.INFO)
 handler = logging.FileHandler(log_filename)
 handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
+
+DB_FILE = "skipped_images.sqlite"
+
+
+def init_db():
+    """Initialize SQLite database and create tables if not exist."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS skipped_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            image_name TEXT UNIQUE
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS jap_skipped_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            image_name TEXT UNIQUE
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
 
 def read_skipped_csv(csv_filepath):
     """Reads a CSV file of skipped image numbers and returns a list of filenames with '.jpg' appended."""
@@ -34,30 +58,55 @@ def read_skipped_csv(csv_filepath):
         logger.error(f"Error reading skipped images file: {e}")
         return []
 
-def import_to_mongo(skipped_image_ids, collection_name):
-    """Imports the skipped image IDs into the MongoDB database."""
-    MONGO_URI ='mongodb+srv://seeyaflying:Riversong1969@cluster0.7fugd.mongodb.net/'
-    mongo_client = MongoClient(MONGO_URI)
-    db = mongo_client["tcg_database"]
-    db[collection_name].create_index("image_name", unique=True)
 
+def import_to_sqlite(skipped_image_ids, table_name):
+    """Imports skipped image IDs into SQLite database."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
     added_count = 0
+
     for image_id in skipped_image_ids:
         try:
-            db[collection_name].insert_one({"image_name": image_id})
-            print(f"Added {image_id} to the database")
-            logger.info(f"Inserted skipped image ID: {image_id}")
-            added_count += 1
+            cursor.execute(f"INSERT OR IGNORE INTO {table_name} (image_name) VALUES (?)", (image_id,))
+            if cursor.rowcount > 0:
+                print(f"Added {image_id} to {table_name}")
+                logger.info(f"Inserted skipped image ID: {image_id}")
+                added_count += 1
         except Exception as e:
-            logger.error(f"Error inserting skipped image ID: {e}")
-    print(f"Added {added_count} skipped image IDs to the database")
+            logger.error(f"Error inserting {image_id}: {e}")
+
+    conn.commit()
+    conn.close()
+    print(f"Added {added_count} skipped image IDs to {table_name}")
+
+
+def delete_from_sqlite(image_id, table_name):
+    """Deletes a skipped image ID from SQLite database."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute(f"DELETE FROM {table_name} WHERE image_name = ?", (image_id,))
+    conn.commit()
+    deleted = cursor.rowcount
+    conn.close()
+
+    if deleted > 0:
+        print(f"Deleted {image_id} from {table_name}")
+        logger.info(f"Deleted skipped image ID: {image_id}")
+    else:
+        print(f"{image_id} not found in {table_name}")
+        logger.warning(f"Attempted to delete non-existent ID: {image_id}")
+
 
 def main():
+    init_db()
+
     while True:
         print("\nMenu:")
         print("1. Import skipped images from CSV file")
         print("2. Add skipped image manually")
-        print("3. Quit")
+        print("3. Delete skipped image ID")  # moved up
+        print("4. Quit")  # moved down
         choice = input("Enter your choice: ")
 
         if choice == "1":
@@ -68,9 +117,9 @@ def main():
             print("2. Japanese skipped images")
             collection_choice = input("Enter your choice (1/2): ")
             if collection_choice == "1":
-                import_to_mongo(skipped_image_ids, "skipped_images")
+                import_to_sqlite(skipped_image_ids, "skipped_images")
             elif collection_choice == "2":
-                import_to_mongo(skipped_image_ids, "jap_skipped_images")
+                import_to_sqlite(skipped_image_ids, "jap_skipped_images")
             else:
                 print("Invalid choice. Please try again.")
         elif choice == "2":
@@ -80,15 +129,28 @@ def main():
             print("2. Japanese skipped images")
             collection_choice = input("Enter your choice (1/2): ")
             if collection_choice == "1":
-                import_to_mongo([image_id], "skipped_images")
+                import_to_sqlite([image_id], "skipped_images")
             elif collection_choice == "2":
-                import_to_mongo([image_id], "jap_skipped_images")
+                import_to_sqlite([image_id], "jap_skipped_images")
             else:
                 print("Invalid choice. Please try again.")
         elif choice == "3":
+            image_id = input("Enter the skipped image ID (with '.jpg' extension) to delete: ")
+            print("\nSelect a collection to delete from:")
+            print("1. Regular skipped images")
+            print("2. Japanese skipped images")
+            collection_choice = input("Enter your choice (1/2): ")
+            if collection_choice == "1":
+                delete_from_sqlite(image_id, "skipped_images")
+            elif collection_choice == "2":
+                delete_from_sqlite(image_id, "jap_skipped_images")
+            else:
+                print("Invalid choice. Please try again.")
+        elif choice == "4":
             break
         else:
             print("Invalid choice. Please try again.")
+
 
 if __name__ == "__main__":
     main()
