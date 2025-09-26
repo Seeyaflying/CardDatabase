@@ -1,80 +1,110 @@
-import requests
-import requests
 import os
-import time
-import json
+import sys
+import ijson
+import aiohttp
+import asyncio
+import aiofiles
+from tqdm import tqdm
 
-# -----------------------------
-# Settings
-# -----------------------------
-OUTPUT_FOLDER = "G:/My Drive/New Cards/Magic the Gathering"
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+# ==============================
+# Configuration
+# ==============================
+JSON_FILE = "scryfall_all_cards.json"   # Path to your downloaded Scryfall bulk file
+OUTPUT_FOLDER = "foreign_cards"         # Folder to save new downloads
+CHECK_FOLDER = "check_folder"           # Folder with already existing images
+NUM_WORKERS = 10                        # Number of async download workers
+MAX_RETRIES = 3                          # Retry downloads
 
-JSON_FILE = "scryfall_all_cards.json"  # local copy of the 2GB JSON
-REQUEST_DELAY = 0.05  # throttle image requests
-
-# -----------------------------
-# Step 1: Download bulk JSON once
-# -----------------------------
-if not os.path.exists(JSON_FILE):
-    print("Downloading bulk JSON file from Scryfall...")
-    bulk_data_url = "https://api.scryfall.com/bulk-data"
-    bulk_data = requests.get(bulk_data_url).json()
-
-    cards_json_url = None
-    for data in bulk_data['data']:
-        if data['type'] == 'all_cards':
-            cards_json_url = data['download_uri']
+# ==============================
+# Async download worker
+# ==============================
+async def download_worker(session, queue, pbar):
+    while True:
+        task = await queue.get()
+        if task is None:
+            queue.task_done()
             break
 
-    if not cards_json_url:
-        raise Exception("Could not find all_cards bulk data URL")
+        name, lang, url, filename = task
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                print(f"[DL] Downloading {name} ({lang}) -> {os.path.basename(filename)}", flush=True)
+                async with session.get(url) as resp:
+                    if resp.status == 200:
+                        content = await resp.read()
+                        async with aiofiles.open(filename, "wb") as f:
+                            await f.write(content)
+                        print(f"[OK] Finished {name} ({lang})", flush=True)
+                        break
+                    else:
+                        print(f"[ERR] Failed {name} ({lang}) -> HTTP {resp.status}", flush=True)
+            except Exception as e:
+                if attempt == MAX_RETRIES:
+                    print(f"[ERR] Exception downloading {name} ({lang}): {e}", flush=True)
+                else:
+                    print(f"[RETRY] {name} ({lang}) attempt {attempt} failed: {e}", flush=True)
+                    await asyncio.sleep(1)
 
-    # Stream download to disk
-    with requests.get(cards_json_url, stream=True) as r:
-        r.raise_for_status()
-        with open(JSON_FILE, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
+        pbar.update(1)
+        queue.task_done()
 
-    print(f"Downloaded bulk JSON to {JSON_FILE}")
-else:
-    print(f"Using existing JSON file: {JSON_FILE}")
+# ==============================
+# Process JSON and queue tasks
+# ==============================
+async def process_cards():
+    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+    os.makedirs(CHECK_FOLDER, exist_ok=True)
 
-# -----------------------------
-# Step 2: Load JSON from disk
-# -----------------------------
-print("Loading JSON (this may take a minute)...")
-with open(JSON_FILE, "r", encoding="utf-8") as f:
-    cards_data = json.load(f)
+    queue = asyncio.Queue()
+    total_queued = 0
 
-print(f"Total cards in JSON: {len(cards_data)}")
+    async with aiohttp.ClientSession() as session:
+        # First, scan JSON and queue tasks
+        with open(JSON_FILE, "r", encoding="utf-8") as f:
+            for idx, card in enumerate(ijson.items(f, "item"), 1):
+                # Only non-English cards with images
+                if card.get("lang") != "en" and "image_uris" in card:
+                    name = card["name"]
+                    lang = card["lang"]
+                    url = card["image_uris"].get("large") or card["image_uris"].get("normal")
 
-# -----------------------------
-# Step 3: Filter and download foreign cards
-# -----------------------------
-download_count = 0
-for idx, card in enumerate(cards_data):
-    try:
-        if card["lang"] != "en" and "image_uris" in card:
-            img_url = card["image_uris"]["normal"]
-            filename = f"{card['name'].replace('/', '-')}_{card['lang']}.jpg"
-            path = os.path.join(OUTPUT_FOLDER, filename)
+                    if not url:
+                        print(f"[SKIP] No image for {name} ({lang})", flush=True)
+                        continue
 
-            if not os.path.exists(path):
-                img_data = requests.get(img_url).content
-                with open(path, "wb") as f:
-                    f.write(img_data)
+                    filename = f"{name}_{lang}.jpg".replace("/", "_")
+                    output_path = os.path.join(OUTPUT_FOLDER, filename)
+                    check_path = os.path.join(CHECK_FOLDER, filename)
 
-                download_count += 1
-                if download_count % 50 == 0:
-                    print(f"Downloaded {download_count} images so far")
+                    # Debug print for every foreign card
+                    print(f"[CARD] #{idx}: {name} ({lang})", flush=True)
 
-                time.sleep(REQUEST_DELAY)
+                    if os.path.exists(output_path) or os.path.exists(check_path):
+                        print(f"    -> Skipped (already exists in folders)", flush=True)
+                    else:
+                        print(f"    -> Queued for download -> {filename}", flush=True)
+                        await queue.put((name, lang, url, output_path))
+                        total_queued += 1
 
-    except Exception as e:
-        print(f"Error processing card {card.get('name', 'unknown')}: {e}")
-        continue
+        print(f"Total cards queued for download: {total_queued}", flush=True)
 
-print(f"Done! Total foreign card images downloaded: {download_count}")
+        # Setup progress bar and workers
+        with tqdm(total=total_queued, desc="Downloading", unit="card") as pbar:
+            workers = [asyncio.create_task(download_worker(session, queue, pbar)) for _ in range(NUM_WORKERS)]
+            await queue.join()
 
+            # Stop workers
+            for _ in workers:
+                await queue.put(None)
+            await asyncio.gather(*workers)
+
+# ==============================
+# Entry point
+# ==============================
+if __name__ == "__main__":
+    if not os.path.exists(JSON_FILE):
+        print(f"Error: {JSON_FILE} not found")
+        sys.exit(1)
+
+    asyncio.run(process_cards())
+    print("Done downloading foreign card images!", flush=True)
