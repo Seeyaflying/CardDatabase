@@ -11,10 +11,9 @@ from datetime import datetime
 # ==========================
 # Database Setup
 # ==========================
-# Always use folder above dist as main folder
 if getattr(sys, 'frozen', False):
     exe_folder = os.path.dirname(sys.executable)
-    main_folder = os.path.dirname(exe_folder)  # parent folder
+    main_folder = os.path.dirname(exe_folder)
 else:
     main_folder = os.path.dirname(os.path.abspath(__file__))
 
@@ -22,7 +21,6 @@ DB_FILE = os.path.join(main_folder, "skipped_images.sqlite")
 conn_main = sqlite3.connect(DB_FILE)
 cursor_main = conn_main.cursor()
 
-# Create tables if not exist
 cursor_main.execute("""
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
@@ -107,18 +105,17 @@ history_stack = []
 # ==========================
 root.deiconify()
 root.title("Image Reviewer")
+root.geometry("480x780")
+root.resizable(False, False)
 
 image_label = tk.Label(root)
-image_label.pack()
+image_label.pack(padx=10, pady=10)
 
 label = tk.Label(root, text="Loading images...")
-label.pack()
-
-button_frame = tk.Frame(root)
-button_frame.pack(pady=10)
+label.pack(pady=5)
 
 # ==========================
-# Move Images
+# Move Functions
 # ==========================
 def move_image(destination_folder, status="yes"):
     global index
@@ -131,33 +128,6 @@ def move_image(destination_folder, status="yes"):
             os.rename(img_path, dest_path)
         mark_processed(img_path, status)
     next_image()
-
-def move_yes():
-    move_image(yes_folder, "yes")
-
-def move_no():
-    global index
-    if index > 0:
-        img_path = images_list[index - 1]
-        if os.path.exists(img_path):
-            # Ensure the skipped folder exists
-            os.makedirs(no_folder, exist_ok=True)
-            base_name = os.path.basename(img_path)
-            dest_path = os.path.join(no_folder, base_name)
-
-            # Add numeric suffix if file already exists
-            base, ext = os.path.splitext(dest_path)
-            counter = 1
-            while os.path.exists(dest_path):
-                dest_path = f"{base}_{counter}{ext}"
-                counter += 1
-
-            os.rename(img_path, dest_path)
-
-        mark_processed(img_path, "no")
-    next_image()
-
-
 
 def move_skip():
     mark_processed(images_list[index-1], "skipped")
@@ -172,7 +142,7 @@ def preload_next():
         img_path = images_list[index]
         try:
             pil_img = Image.open(img_path)
-            pil_img.thumbnail((800, 600), Image.LANCZOS)
+            pil_img = pil_img.resize((460, 680), Image.LANCZOS)
             next_img_tk = ImageTk.PhotoImage(pil_img)
         except:
             next_img_tk = None
@@ -210,11 +180,9 @@ def go_back():
     global index, img_tk, next_img_tk
     if history_stack:
         last_image = history_stack.pop()
-        # Undo last move in DB
         cursor_main.execute("DELETE FROM progress WHERE img_path=?", (last_image,))
         conn_main.commit()
 
-        # Move back to source folder if it was moved
         for folder in [yes_folder, no_folder]:
             rel_path = os.path.relpath(last_image, source_folder)
             moved_path = os.path.join(folder, rel_path)
@@ -226,7 +194,7 @@ def go_back():
         index -= 1
         try:
             pil_img = Image.open(last_image)
-            pil_img.thumbnail((800, 600), Image.LANCZOS)
+            pil_img = pil_img.resize((460, 680), Image.LANCZOS)
             img_tk = ImageTk.PhotoImage(pil_img)
             image_label.config(image=img_tk)
             label.config(text=f"{index}/{len(images_list)}: {os.path.basename(last_image)} | Remaining: {len(images_list) - index}")
@@ -237,10 +205,6 @@ def go_back():
 # Load Images
 # ==========================
 def load_images():
-    """
-    Load all images from the source folder that haven't been processed yet.
-    Shuffles them randomly. This runs once when the app starts.
-    """
     global images_list, index
     all_images = []
     for root_dir, _, files in os.walk(source_folder):
@@ -258,28 +222,34 @@ def load_images():
     next_image()
 
 # ==========================
-# Buttons for Yes/No/Skip/Back
+# Buttons (Yes/No/Skip/Back/Settings)
 # ==========================
-yes_button = tk.Button(button_frame, text="Yes", width=10, command=move_yes)
+button_frame = tk.Frame(root)
+button_frame.pack(pady=10)
+
+yes_button = tk.Button(button_frame, text="Yes", width=10, command=lambda: move_image(yes_folder, "yes"))
 yes_button.pack(side="left", padx=5)
 
-no_button = tk.Button(button_frame, text="No", width=10, command=move_no)
+no_button = tk.Button(button_frame, text="No", width=10, command=lambda: move_image(no_folder, "no"))
 no_button.pack(side="left", padx=5)
 
-skip_button = tk.Button(button_frame, text="Skip", width=10, command=move_skip)
+skip_button = tk.Button(button_frame, text="Skip", width=10, command=lambda: move_skip())
 skip_button.pack(side="left", padx=5)
 
-back_button = tk.Button(button_frame, text="Go Back", width=10, command=go_back)
+back_button = tk.Button(button_frame, text="Go Back", width=10, command=lambda: go_back())
 back_button.pack(side="left", padx=5)
+
+settings_btn = tk.Button(button_frame, text="Settings", width=10, command=lambda: open_settings())
+settings_btn.pack(side="left", padx=5)
 
 # ==========================
 # Key Bindings
 # ==========================
 def key_press(event):
     if event.char == yes_key:
-        move_yes()
+        move_image(yes_folder, "yes")
     elif event.char == no_key:
-        move_no()
+        move_image(no_folder, "no")
     elif event.char == skip_key:
         move_skip()
     elif event.char == back_key:
@@ -351,11 +321,8 @@ def open_settings():
     no_label_f.grid(row=6, column=1)
     tk.Button(settings_win, text="Change", command=lambda: change_folder("'No'")).grid(row=6, column=2)
 
-settings_btn = tk.Button(root, text="Settings", command=open_settings)
-settings_btn.pack()
-
 # ==========================
-# Load Images & Start App
+# Start App
 # ==========================
 load_images()
 root.mainloop()
