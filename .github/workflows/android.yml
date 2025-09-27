@@ -16,15 +16,15 @@ jobs:
       PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:$JAVA_HOME/bin:$PATH
 
     steps:
+    # Install tar first to avoid checkout errors
+    - name: Install essential tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y unzip wget curl git python3 python3-pip openjdk-17-jdk tar
+
     # Checkout repository
     - name: Checkout repository
       uses: actions/checkout@v4
-
-    # Install dependencies
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y unzip wget curl git python3 python3-pip openjdk-17-jdk
 
     # Download and setup Android SDK command-line tools
     - name: Setup Android SDK
