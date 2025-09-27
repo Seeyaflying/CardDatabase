@@ -1,0 +1,44 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout your code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Set up JDK (needed for Android builds)
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      # Install Android SDK command-line tools
+      - name: Install Android SDK
+        run: |
+          sudo mkdir -p /usr/local/lib/android/sdk
+          cd /usr/local/lib/android
+          wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
+          unzip commandlinetools-linux-10406996_latest.zip -d sdk/cmdline-tools
+          yes | sdk/cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=/usr/local/lib/android/sdk --licenses
+          yes | sdk/cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=/usr/local/lib/android/sdk "platform-tools" "platforms;android-30" "build-tools;30.0.3"
+
+      # Build with Gradle
+      - name: Build APK
+        run: ./gradlew assembleDebug
+
+      # Upload APK artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: my-app-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
