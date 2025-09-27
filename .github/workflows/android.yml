@@ -1,78 +1,63 @@
-name: Build Android APK
+name: Build APK
 
 on:
   push:
     branches:
       - main
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:$PATH
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      # Install required system packages
+      - name: Install basic dependencies
+        run: sudo apt-get update && sudo apt-get install -y openjdk-11-jdk wget unzip tar curl git
 
-    # Install required system packages
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          python3.7 python3.7-venv python3.7-dev \
-          openjdk-11-jdk \
-          unzip curl git build-essential \
-          libncurses5 libncurses5-dev zlib1g-dev \
-          libssl-dev libffi-dev pkg-config \
-          wget xz-utils
+      # Checkout repository using v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # Install pip for Python 3.7
-    - name: Install pip for Python 3.7
-      run: |
-        curl -O https://bootstrap.pypa.io/pip/3.7/get-pip.py
-        sudo python3.7 get-pip.py
+      # Setup Android SDK
+      - name: Setup Android SDK
+        env:
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+        run: |
+          mkdir -p $ANDROID_SDK_ROOT
+          cd $ANDROID_SDK_ROOT
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip
+          rm cmdline-tools.zip
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest/
 
-    # Upgrade pip, setuptools, wheel
-    - name: Upgrade pip and tools
-      run: |
-        sudo python3.7 -m pip install --upgrade pip setuptools wheel
+      # Set environment variables for Android SDK and PATH
+      - name: Set Android environment variables
+        run: |
+          echo "ANDROID_SDK_ROOT=${{ github.workspace }}/android-sdk" >> $GITHUB_ENV
+          echo "PATH=${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
-    # Create a Python virtual environment
-    - name: Create venv
-      run: python3.7 -m venv venv
-    - name: Activate venv
-      run: echo "source $PWD/venv/bin/activate" >> $GITHUB_ENV
+      # Accept licenses
+      - name: Accept Android SDK licenses
+        run: yes | ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
-    # Install Buildozer
-    - name: Install Buildozer
-      run: |
-        source venv/bin/activate
-        pip install --upgrade buildozer cython
+      # Install essential SDK packages
+      - name: Install SDK packages
+        run: |
+          ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-    # Install Android SDK and NDK
-    - name: Download Android SDK Command Line Tools
-      run: |
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-        cd $ANDROID_SDK_ROOT/cmdline-tools
-        curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip sdk-tools.zip
-        rm sdk-tools.zip
-        mv cmdline-tools latest
+      # Make Gradle wrapper executable
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
 
-    - name: Accept Android licenses
-      run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+      # Build APK
+      - name: Build APK
+        run: ./gradlew assembleDebug
 
-    - name: Install required SDK packages
-      run: |
-        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0" "ndk;25.2.9519653"
-
-    # Build APK
-    - name: Build APK
-      run: |
-        source venv/bin/activate
-        buildozer android debug
+      # Upload APK as artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
