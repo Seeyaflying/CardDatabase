@@ -4,58 +4,62 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build-apk:
+  build:
+    name: Build Debug APK
     runs-on: ubuntu-latest
 
-    steps:
-      # Install required system packages
-      - name: Install basic dependencies
-        run: sudo apt-get update && sudo apt-get install -y openjdk-11-jdk wget unzip tar curl git
+    env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      PATH: ${{ github.workspace }}/android-sdk/platform-tools:${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:$PATH
 
-      # Checkout repository using v4
+    steps:
+      # 1. Checkout the repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Setup Android SDK
-      - name: Setup Android SDK
-        env:
-          ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      # 2. Install required tools
+      - name: Install dependencies
         run: |
-          mkdir -p $ANDROID_SDK_ROOT
-          cd $ANDROID_SDK_ROOT
+          sudo apt-get update
+          sudo apt-get install -y unzip wget curl openjdk-11-jdk git
+
+      # 3. Download and unzip Android cmdline-tools
+      - name: Download Android SDK cmdline-tools
+        run: |
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
           unzip cmdline-tools.zip
-          rm cmdline-tools.zip
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/
+          # Fix folder structure
+          mkdir -p latest
+          mv cmdline-tools/* latest/
+          rm -rf cmdline-tools.zip cmdline-tools
 
-      # Set environment variables for Android SDK and PATH
-      - name: Set Android environment variables
+      # 4. Accept licenses
+      - name: Accept SDK licenses
         run: |
-          echo "ANDROID_SDK_ROOT=${{ github.workspace }}/android-sdk" >> $GITHUB_ENV
-          echo "PATH=${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # Accept licenses
-      - name: Accept Android SDK licenses
-        run: yes | ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      # Install essential SDK packages
-      - name: Install SDK packages
+      # 5. Update SDK and install build tools & platform
+      - name: Install build tools and platform
         run: |
-          ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # Make Gradle wrapper executable
-      - name: Make Gradle wrapper executable
+      # 6. Give Gradle wrapper execute permission
+      - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      # Build APK
+      # 7. Build the debug APK
       - name: Build APK
         run: ./gradlew assembleDebug
 
-      # Upload APK as artifact
+      # 8. Upload the APK as artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
