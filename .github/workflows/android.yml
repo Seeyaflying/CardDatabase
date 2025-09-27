@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Android APK
 
 on:
   push:
@@ -14,59 +14,59 @@ jobs:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
 
     steps:
-      # Checkout the repo
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install Java
-      - name: Set up JDK
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 11
-
-      # Install required tools
-      - name: Install dependencies
+      # Step 2: Install dependencies
+      - name: Install required packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip wget zip tar
+          sudo apt-get install -y unzip wget openjdk-11-jdk gradle tar
 
-      # Download Android SDK Command Line Tools
-      - name: Download Android SDK Command-line Tools
+      # Step 3: Download Android SDK Command-line Tools
+      - name: Download Android SDK cmdline-tools
         run: |
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
           unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
-          mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+          rm cmdline-tools.zip
+          # Move into 'latest' folder for proper structure
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
+          mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/
 
-      # Set PATH for SDK tools
-      - name: Add Android SDK to PATH
+      # Step 4: Add Android SDK to PATH
+      - name: Add Android SDK tools to PATH
         run: |
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> $GITHUB_ENV
+          echo "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
 
-      # Accept licenses
-      - name: Accept SDK licenses
-        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+      # Step 5: Accept SDK licenses
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
 
-      # Install SDK packages
-      - name: Install SDK packages
+      # Step 6: Install necessary SDK packages
+      - name: Install SDK platforms and build tools
         run: |
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # Install Gradle
-      - name: Install Gradle
+      # Step 7: Make Gradle wrapper executable if it exists
+      - name: Make Gradle wrapper executable
         run: |
-          wget https://services.gradle.org/distributions/gradle-8.3-bin.zip
-          unzip -q gradle-8.3-bin.zip
-          export PATH=$PWD/gradle-8.3/bin:$PATH
-          gradle --version
+          if [ -f ./gradlew ]; then
+            chmod +x ./gradlew
+          else
+            echo "gradlew not found, installing Gradle globally"
+            gradle wrapper
+          fi
 
-      # Build the APK
+      # Step 8: Build APK
       - name: Build APK
-        run: gradle assembleDebug
+        run: |
+          ./gradlew assembleDebug
 
-      # Upload APK as artifact
+      # Step 9: Upload APK artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
