@@ -1,4 +1,4 @@
-name: Build APK
+name: Android Build
 
 on:
   push:
@@ -12,73 +12,52 @@ jobs:
 
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      # Checkout repository
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y unzip wget curl git python3 python3-pip openjdk-17-jdk tar
+      # Install dependencies
+      - name: Install required packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip wget zip tar openjdk-17-jdk
 
-    - name: Set up Java
-      run: java -version
+      # Install Android SDK Command Line Tools
+      - name: Setup Android SDK
+        run: |
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip
+          mv cmdline-tools latest
+          rm cmdline-tools.zip
+          yes | $ANDROID_SDK_ROOT/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-33"
 
-    # ------------------
-    # Cache Gradle
-    - name: Cache Gradle
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: gradle-cache-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
-        restore-keys: |
-          gradle-cache-
+      # Set Android environment variables
+      - name: Set environment variables
+        run: |
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}" >> $GITHUB_ENV
+          echo "${ANDROID_SDK_ROOT}/latest/bin" >> $GITHUB_PATH
+          echo "${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
 
-    # ------------------
-    # Cache Android SDK
-    - name: Cache Android SDK
-      uses: actions/cache@v3
-      with:
-        path: ${{ env.ANDROID_SDK_ROOT }}
-        key: android-sdk-${{ hashFiles('**/*.gradle*') }}
-        restore-keys: android-sdk-
+      # Install Gradle
+      - name: Install Gradle
+        run: |
+          wget https://services.gradle.org/distributions/gradle-8.3-bin.zip -O gradle.zip
+          unzip gradle.zip
+          export PATH=$PWD/gradle-8.3/bin:$PATH
+          gradle -v
 
-    - name: Download Android SDK Command-line Tools
-      run: |
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-        unzip -o cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
-        mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+      # Build the APK
+      - name: Build APK
+        run: |
+          gradle assembleDebug --no-daemon
 
-    - name: Set Android SDK paths
-      run: |
-        echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
-
-    - name: Accept Android licenses
-      run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
-
-    - name: Install essential SDK packages
-      run: |
-        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-    - name: Ensure Gradle wrapper is executable
-      run: |
-        if [ -f ./gradlew ]; then
-          chmod +x ./gradlew
-        else
-          echo "gradlew not found, ensure your project has it."
-          exit 1
-        fi
-
-    - name: Build APK
-      run: ./gradlew assembleDebug --no-daemon
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+      # Upload APK
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
