@@ -12,6 +12,7 @@ jobs:
 
     env:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
 
     steps:
     - name: Checkout repository
@@ -19,18 +20,38 @@ jobs:
 
     - name: Install dependencies
       run: |
-        apt-get update
-        apt-get install -y unzip wget curl git python3 python3-pip openjdk-17-jdk tar
+        sudo apt-get update
+        sudo apt-get install -y unzip wget curl git python3 python3-pip openjdk-17-jdk tar
 
     - name: Set up Java
-      run: |
-        java -version
+      run: java -version
+
+    # ------------------
+    # Cache Gradle
+    - name: Cache Gradle
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: gradle-cache-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
+        restore-keys: |
+          gradle-cache-
+
+    # ------------------
+    # Cache Android SDK
+    - name: Cache Android SDK
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.ANDROID_SDK_ROOT }}
+        key: android-sdk-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: android-sdk-
 
     - name: Download Android SDK Command-line Tools
       run: |
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
         wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-        unzip cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
+        unzip -o cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
         mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
 
     - name: Set Android SDK paths
@@ -38,8 +59,7 @@ jobs:
         echo "PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH" >> $GITHUB_ENV
 
     - name: Accept Android licenses
-      run: |
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+      run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
 
     - name: Install essential SDK packages
       run: |
@@ -55,12 +75,10 @@ jobs:
         fi
 
     - name: Build APK
-      run: |
-        ./gradlew assembleDebug
+      run: ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
-
