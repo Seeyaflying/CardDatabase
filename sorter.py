@@ -88,7 +88,6 @@ if not (source_folder and os.path.exists(source_folder)):
 # Default keys
 yes_key = load_setting("yes_key", "y")
 no_key = load_setting("no_key", "n")
-skip_key = load_setting("skip_key", "s")
 back_key = load_setting("back_key", "b")
 
 # ==========================
@@ -122,15 +121,16 @@ def move_image(destination_folder, status="yes"):
     if index > 0:
         img_path = images_list[index - 1]
         if os.path.exists(img_path):
-            rel_path = os.path.relpath(img_path, source_folder)
-            dest_path = os.path.join(destination_folder, rel_path)
-            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+            if status == "no":
+                # Flatten: just put the file directly in no_folder
+                dest_path = os.path.join(destination_folder, os.path.basename(img_path))
+            else:
+                # Preserve structure for 'yes' images
+                rel_path = os.path.relpath(img_path, source_folder)
+                dest_path = os.path.join(destination_folder, rel_path)
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             os.rename(img_path, dest_path)
         mark_processed(img_path, status)
-    next_image()
-
-def move_skip():
-    mark_processed(images_list[index-1], "skipped")
     next_image()
 
 # ==========================
@@ -184,8 +184,11 @@ def go_back():
         conn_main.commit()
 
         for folder in [yes_folder, no_folder]:
-            rel_path = os.path.relpath(last_image, source_folder)
-            moved_path = os.path.join(folder, rel_path)
+            if folder == no_folder:
+                moved_path = os.path.join(folder, os.path.basename(last_image))
+            else:
+                rel_path = os.path.relpath(last_image, source_folder)
+                moved_path = os.path.join(folder, rel_path)
             if os.path.exists(moved_path):
                 os.makedirs(os.path.dirname(last_image), exist_ok=True)
                 os.rename(moved_path, last_image)
@@ -222,7 +225,7 @@ def load_images():
     next_image()
 
 # ==========================
-# Buttons (Yes/No/Skip/Back/Settings)
+# Buttons (Yes/No/Back/Settings)
 # ==========================
 button_frame = tk.Frame(root)
 button_frame.pack(pady=10)
@@ -232,9 +235,6 @@ yes_button.pack(side="left", padx=5)
 
 no_button = tk.Button(button_frame, text="No", width=10, command=lambda: move_image(no_folder, "no"))
 no_button.pack(side="left", padx=5)
-
-skip_button = tk.Button(button_frame, text="Skip", width=10, command=lambda: move_skip())
-skip_button.pack(side="left", padx=5)
 
 back_button = tk.Button(button_frame, text="Go Back", width=10, command=lambda: go_back())
 back_button.pack(side="left", padx=5)
@@ -250,8 +250,6 @@ def key_press(event):
         move_image(yes_folder, "yes")
     elif event.char == no_key:
         move_image(no_folder, "no")
-    elif event.char == skip_key:
-        move_skip()
     elif event.char == back_key:
         go_back()
 
@@ -269,10 +267,8 @@ def open_settings():
     yes_label.grid(row=0, column=0, padx=5, pady=5)
     no_label = tk.Label(settings_win, text=f"No Key: {no_key}", width=20)
     no_label.grid(row=1, column=0, padx=5, pady=5)
-    skip_label = tk.Label(settings_win, text=f"Skip Key: {skip_key}", width=20)
-    skip_label.grid(row=2, column=0, padx=5, pady=5)
     back_label = tk.Label(settings_win, text=f"Back Key: {back_key}", width=20)
-    back_label.grid(row=3, column=0, padx=5, pady=5)
+    back_label.grid(row=2, column=0, padx=5, pady=5)
 
     def capture_key(label_widget, key_name):
         def inner(event):
@@ -285,8 +281,7 @@ def open_settings():
 
     tk.Button(settings_win, text="Set Yes Key", command=lambda: settings_win.bind("<Key>", capture_key(yes_label, "yes_key"))).grid(row=0, column=1)
     tk.Button(settings_win, text="Set No Key", command=lambda: settings_win.bind("<Key>", capture_key(no_label, "no_key"))).grid(row=1, column=1)
-    tk.Button(settings_win, text="Set Skip Key", command=lambda: settings_win.bind("<Key>", capture_key(skip_label, "skip_key"))).grid(row=2, column=1)
-    tk.Button(settings_win, text="Set Back Key", command=lambda: settings_win.bind("<Key>", capture_key(back_label, "back_key"))).grid(row=3, column=1)
+    tk.Button(settings_win, text="Set Back Key", command=lambda: settings_win.bind("<Key>", capture_key(back_label, "back_key"))).grid(row=2, column=1)
 
     # Folder settings
     def change_folder(folder_type):
@@ -306,23 +301,24 @@ def open_settings():
                 save_setting("no_folder", no_folder)
                 no_label_f.config(text=no_folder)
 
-    tk.Label(settings_win, text="Source Folder:").grid(row=4, column=0, sticky="e")
+    tk.Label(settings_win, text="Source Folder:").grid(row=3, column=0, sticky="e")
     source_label = tk.Label(settings_win, text=source_folder, width=40, anchor="w")
-    source_label.grid(row=4, column=1)
-    tk.Button(settings_win, text="Change", command=lambda: change_folder("Source")).grid(row=4, column=2)
+    source_label.grid(row=3, column=1)
+    tk.Button(settings_win, text="Change", command=lambda: change_folder("Source")).grid(row=3, column=2)
 
-    tk.Label(settings_win, text="'Yes' Folder:").grid(row=5, column=0, sticky="e")
+    tk.Label(settings_win, text="'Yes' Folder:").grid(row=4, column=0, sticky="e")
     yes_label_f = tk.Label(settings_win, text=yes_folder, width=40, anchor="w")
-    yes_label_f.grid(row=5, column=1)
-    tk.Button(settings_win, text="Change", command=lambda: change_folder("'Yes'")).grid(row=5, column=2)
+    yes_label_f.grid(row=4, column=1)
+    tk.Button(settings_win, text="Change", command=lambda: change_folder("'Yes'")).grid(row=4, column=2)
 
-    tk.Label(settings_win, text="'No' Folder:").grid(row=6, column=0, sticky="e")
+    tk.Label(settings_win, text="'No' Folder:").grid(row=5, column=0, sticky="e")
     no_label_f = tk.Label(settings_win, text=no_folder, width=40, anchor="w")
-    no_label_f.grid(row=6, column=1)
-    tk.Button(settings_win, text="Change", command=lambda: change_folder("'No'")).grid(row=6, column=2)
+    no_label_f.grid(row=5, column=1)
+    tk.Button(settings_win, text="Change", command=lambda: change_folder("'No'")).grid(row=5, column=2)
 
 # ==========================
 # Start App
 # ==========================
 load_images()
 root.mainloop()
+

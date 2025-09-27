@@ -10,8 +10,8 @@ from tqdm import tqdm
 # Configuration
 # ==============================
 JSON_FILE = "scryfall_all_cards.json"   # Path to your downloaded Scryfall bulk file
-OUTPUT_FOLDER = "foreign_cards"         # Folder to save new downloads
-CHECK_FOLDER = "check_folder"           # Folder with already existing images
+OUTPUT_FOLDER = "G:/My Drive/New Cards"         # Folder to save new downloads
+CHECK_FOLDER = "D:/Card Database"           # Folder with already existing images
 NUM_WORKERS = 10                        # Number of async download workers
 MAX_RETRIES = 3                          # Retry downloads
 
