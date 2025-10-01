@@ -7,10 +7,10 @@ from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
 
 # Create a directory to store images
-os.makedirs('G:/My Drive/Card Database/NeoPets Battledome', exist_ok=True)
+os.makedirs('"G:/My Drive/New Cards/NeoPets Battledome', exist_ok=True)
 
 # Function to download an image
-def download_image(url, folder='G:/My Drive/Card Database/NeoPets Battledome'):
+def download_image(url, folder='"G:/My Drive/New Cards/NeoPets Battledome'):
     try:
         # Extract the image name from the URL
         image_name = os.path.join(folder, url.split("/")[-1])

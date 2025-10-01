@@ -12,7 +12,7 @@ from tqdm import tqdm
 # ==============================
 JSON_FILE = "scryfall_all_cards.json"  # Path where the Scryfall bulk file will be saved
 SCYFALL_BULK_DATA_URL = "https://api.scryfall.com/bulk-data"  # Scryfall API endpoint
-OUTPUT_FOLDER = "G:/My Drive/New Cards"  # Folder to save new downloads
+OUTPUT_FOLDER = "G:/My Drive/New Cards/Magic the Gathering"  # Folder to save new downloads
 CHECK_FOLDER = "D:/Card Database"  # Folder with already existing images
 NUM_WORKERS = 10  # Number of async download workers
 MAX_RETRIES = 3  # Retry downloads

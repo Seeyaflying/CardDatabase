@@ -96,7 +96,7 @@ TCG_IDS = {
     "Kryptik": 76,
     "Lightseekers": 48,
     "Lorcana": 71,
-    "Magic the Gathering": 1,
+    #"Magic the Gathering": 1,
     "MetaX": 30,
     "MetaZoo": 66,
     "Munchkin": 53,
