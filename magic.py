@@ -14,7 +14,7 @@ JSON_FILE = "scryfall_all_cards.json"  # Path where the Scryfall bulk file will 
 SCYFALL_BULK_DATA_URL = "https://api.scryfall.com/bulk-data"  # Scryfall API endpoint
 OUTPUT_FOLDER = "G:/My Drive/New Cards/Magic the Gathering"  # Folder to save new downloads
 CHECK_FOLDER = "G:/My Drive/New Cards/Magic the Gathering"  # Folder with already existing images
-NUM_WORKERS = 10  # Number of async download workers
+NUM_WORKERS = 30  # Number of async download workers
 MAX_RETRIES = 3  # Retry downloads
 
 
