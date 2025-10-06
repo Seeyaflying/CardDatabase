@@ -16,6 +16,14 @@ SKIPPED_IMAGES = {
     "divider-sm.png",
 }
 
+# Folders
+save_folder = "G:/My Drive/New Cards/Altered"
+check_folder = "G:/My Drive/Card Database/Altered"  # Path to your check folder
+
+# Ensure folders exist
+os.makedirs(save_folder, exist_ok=True)
+os.makedirs(check_folder, exist_ok=True)
+
 # Setup WebDriver with headless mode
 def setup_driver():
     options = webdriver.FirefoxOptions()
@@ -25,11 +33,8 @@ def setup_driver():
     driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=options)
     return driver
 
-# Function to download all images
-def download_all_images(url, folder="G:/My Drive/New Cards/Altered"):
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-
+# Function to download images with check folder
+def download_all_images(url, folder=save_folder, check_folder=check_folder):
     driver = setup_driver()
     driver.get(url)
     time.sleep(3)
@@ -44,19 +49,25 @@ def download_all_images(url, folder="G:/My Drive/New Cards/Altered"):
 
         img_url = urljoin(url, img_url)
         img_filename = os.path.basename(img_url)
+        save_path = os.path.join(folder, img_filename)
+        check_path = os.path.join(check_folder, img_filename)
 
+        # Skip if image is in skipped list
         if img_filename in SKIPPED_IMAGES:
             print(f"Skipping {img_filename} (in skipped list)")
             continue
 
-        img_path = os.path.join(folder, img_filename)
+        # Skip if image already exists in save or check folder
+        if os.path.exists(save_path) or os.path.exists(check_path):
+            print(f"Skipping {img_filename} (already exists in save or check folder)")
+            continue
 
         try:
             print(f"Downloading {img_url}...")
             img_data = requests.get(img_url).content
-            with open(img_path, 'wb') as file:
+            with open(save_path, 'wb') as file:
                 file.write(img_data)
-            print(f"Downloaded {img_path}")
+            print(f"Downloaded {save_path}")
         except Exception as e:
             print(f"Error downloading {img_url}: {e}")
 
@@ -73,6 +84,7 @@ def scrape_paginated_site(base_url, start_page=1, max_pages=40):
 
 # Start the process with the given site URL
 scrape_paginated_site("https://www.altered.gg/en-us/cards", max_pages=40)
+
 
 
 
