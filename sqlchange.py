@@ -1,42 +1,50 @@
 import sqlite3
 import re
 import os
+import csv
+import time
 
 DB_PATH = "skipped_images.sqlite"
 JSON_PATH = "tcg_database.jap_skipped_images.json"
+5
+# Global debug flag
+DEBUG_MODE = False
 
 
 def connect_db(path=DB_PATH):
-    return sqlite3.connect(path)
+    abs_path = os.path.abspath(path)
+    print(f"[DB] Connecting to database at: {abs_path}")
+    conn = sqlite3.connect(path)
+    print("[DB] Connection successful.")
+    return conn
+
+
+def enable_debug(conn, enable=True):
+    """Turn SQL trace printing on or off."""
+    global DEBUG_MODE
+    DEBUG_MODE = enable
+    if enable:
+        conn.set_trace_callback(lambda stmt: print(f"[SQL TRACE] {stmt}"))
+        print("✅ Live Debug View ENABLED — all SQL statements will be shown.")
+    else:
+        conn.set_trace_callback(None)
+        print("🛑 Live Debug View DISABLED.")
 
 
 def create_default_tables(conn):
-    """Create default tables if they don't exist"""
     cursor = conn.cursor()
     cursor.execute("""
                    CREATE TABLE IF NOT EXISTS images
                    (
-                       id
-                       INTEGER
-                       PRIMARY
-                       KEY
-                       AUTOINCREMENT,
-                       image_name
-                       TEXT
-                       UNIQUE
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       image_name TEXT UNIQUE
                    );
                    """)
     cursor.execute("""
                    CREATE TABLE IF NOT EXISTS skipped_images
                    (
-                       id
-                       INTEGER
-                       PRIMARY
-                       KEY
-                       AUTOINCREMENT,
-                       image_name
-                       TEXT
-                       UNIQUE
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       image_name TEXT UNIQUE
                    );
                    """)
     conn.commit()
@@ -52,7 +60,6 @@ def import_images_to_table(conn):
         print("Invalid table name.")
         return
 
-    # Create table if it doesn't exist
     cursor = conn.cursor()
     cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
@@ -62,7 +69,6 @@ def import_images_to_table(conn):
     """)
     conn.commit()
 
-    # Read JSON and extract image names
     with open(JSON_PATH, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -126,19 +132,15 @@ def drop_table(conn, table_name):
 
 
 def add_skipped_image(conn):
-    """Manually move an image to skipped_images table"""
     image_name = input("Enter image name to mark as skipped: ").strip()
     cursor = conn.cursor()
-    # Insert into skipped_images
     cursor.execute("INSERT OR IGNORE INTO skipped_images (image_name) VALUES (?)", (image_name,))
-    # Remove from images table if exists
     cursor.execute("DELETE FROM images WHERE image_name = ?", (image_name,))
     conn.commit()
     print(f"Image '{image_name}' marked as skipped.")
 
 
 def add_manual_entry(conn):
-    """Manually add an entry into any table"""
     table_name = input("Enter table name to insert into: ").strip()
     if not table_name:
         print("Invalid table name.")
@@ -152,7 +154,7 @@ def add_manual_entry(conn):
             print(f"No table named '{table_name}' found.")
             return
 
-        col_names = [col[1] for col in columns if col[1] != "id"]  # skip autoincrement id
+        col_names = [col[1] for col in columns if col[1] != "id"]
         values = []
         for col in col_names:
             val = input(f"Enter value for '{col}': ").strip()
@@ -165,6 +167,70 @@ def add_manual_entry(conn):
     except sqlite3.Error as e:
         print(f"Error: {e}")
 
+
+def export_table_to_csv(conn):
+    table_name = input("Enter table name to export: ").strip()
+    if not table_name:
+        print("Invalid table name.")
+        return
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute(f"SELECT * FROM {table_name};")
+        rows = cursor.fetchall()
+        cursor.execute(f"PRAGMA table_info({table_name});")
+        columns = [col[1] for col in cursor.fetchall()]
+
+        if not rows:
+            print(f"No data found in table '{table_name}'. Nothing to export.")
+            return
+
+        csv_filename = f"{table_name}.csv"
+        with open(csv_filename, "w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(columns)
+            writer.writerows(rows)
+
+        print(f"✅ Table '{table_name}' exported to '{csv_filename}' successfully!")
+    except sqlite3.Error as e:
+        print(f"Error exporting table: {e}")
+
+def live_data_viewer(conn, refresh_interval=3):
+    """Continuously display data from a chosen table in real time"""
+    cursor = conn.cursor()
+    table_name = input("Enter the table name to watch live: ").strip()
+    if not table_name:
+        print("Invalid table name.")
+        return
+
+    try:
+        cursor.execute(f"SELECT * FROM {table_name} LIMIT 1;")
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+        return
+
+    print(f"\nWatching table '{table_name}' for changes. Press Ctrl+C to stop.\n")
+
+    last_rows = None
+    try:
+        while True:
+            cursor.execute(f"SELECT * FROM {table_name};")
+            rows = cursor.fetchall()
+            cursor.execute(f"PRAGMA table_info({table_name});")
+            columns = [col[1] for col in cursor.fetchall()]
+
+            if rows != last_rows:  # Only print when new data appears
+                os.system('cls' if os.name == 'nt' else 'clear')
+                print(f"--- Live View: {table_name} ---")
+                for row in rows[-10:]:  # Show only last 10 rows
+                    print(dict(zip(columns, row)))
+                print(f"\nRefreshing every {refresh_interval} seconds...")
+
+                last_rows = rows
+
+            time.sleep(refresh_interval)
+    except KeyboardInterrupt:
+        print("\nStopped live viewing.")
 
 def main():
     conn = connect_db()
@@ -179,8 +245,11 @@ def main():
         print("5. Delete a table")
         print("6. Mark an image as skipped")
         print("7. Add manual entry to a table")
-        print("8. Exit")
-        choice = input("Choose an option (1-8): ").strip()
+        print("8. Export table to CSV")
+        print("9. Live data viewer (watch tables in real time)")
+        print("10. Exit")
+
+        choice = input("Choose an option (1-10): ").strip()
 
         if choice == "1":
             import_images_to_table(conn)
@@ -200,12 +269,17 @@ def main():
         elif choice == "7":
             add_manual_entry(conn)
         elif choice == "8":
+            export_table_to_csv(conn)
+        elif choice == "9":
+            live_data_viewer(conn)
+        elif choice == "10":
             break
         else:
             print("Invalid choice. Try again.")
 
     conn.close()
     print("Goodbye!")
+
 
 
 if __name__ == "__main__":
