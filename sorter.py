@@ -116,11 +116,14 @@ label.pack(pady=5)
 # ==========================
 # Move Functions
 # ==========================
+# Move Functions
+# ==========================
 def move_image(destination_folder, status="yes"):
     global index
     if index > 0:
         img_path = images_list[index - 1]
         if os.path.exists(img_path):
+            # First, determine the destination path
             if status == "no":
                 # Flatten: just put the file directly in no_folder
                 dest_path = os.path.join(destination_folder, os.path.basename(img_path))
@@ -129,8 +132,20 @@ def move_image(destination_folder, status="yes"):
                 rel_path = os.path.relpath(img_path, source_folder)
                 dest_path = os.path.join(destination_folder, rel_path)
                 os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-            os.rename(img_path, dest_path)
+
+            # Now, check if the destination file exists before acting
+            if os.path.exists(dest_path):
+                # If it exists, skip the move and delete the source file
+                os.remove(img_path)
+                print(f"Destination exists for '{os.path.basename(img_path)}'. DELETED source file.")
+            else:
+                # If it does not exist, move the file normally
+                os.rename(img_path, dest_path)
+
+        # Mark as processed regardless of whether it was moved or deleted
         mark_processed(img_path, status)
+
+    # Proceed to the next image
     next_image()
 
 # ==========================

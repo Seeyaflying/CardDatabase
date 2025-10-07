@@ -17,13 +17,13 @@ from datetime import date
 
 # --- Paths ---
 DB_FILE = "skipped_images.sqlite"
-TABLE_NAME = "jap_skipped_images"
+TABLE_NAME = "skipped_images"
+LANGUAGE_TYPE = "japanese"
 LOG_DIR = "log"
 CSV_DIR = "json"
 BASE_SAVE_DIR = "G:/My Drive/New Cards"
 CHECK_FOLDER = "G:/My Drive/Card Database"
 
-# Ensure folders exist
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(CSV_DIR, exist_ok=True)
 os.makedirs(BASE_SAVE_DIR, exist_ok=True)
@@ -31,24 +31,40 @@ os.makedirs(CHECK_FOLDER, exist_ok=True)
 
 # --- Logging ---
 today = date.today()
-log_filename = os.path.join(LOG_DIR, f"{today.strftime('%Y-%m-%d')}_image_scraper.log")
+log_filename = os.path.join(LOG_DIR, f"{today.strftime('%Y-%m-%d')}_jap_image_scraper.log")
 
-logger = logging.getLogger("image_scraper")
+logger = logging.getLogger("japanese_downloader")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
     handler = logging.FileHandler(log_filename, encoding="utf-8")
     handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(handler)
 
-# --- SQL SETUP ---
-def read_skipped_image_ids():
-    """Read list of skipped images from DB without modifying it."""
+# --- SQL ---
+def ensure_table():
+    """Create table if it doesn't exist."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            language TEXT NOT NULL,
+            image_number TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def load_skipped_image_ids():
+    """Read Japanese skipped images from DB."""
+    ensure_table()
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        cursor.execute(f"SELECT image_name FROM {TABLE_NAME}")
-        result = {row[0] for row in cursor.fetchall()}
+        cursor.execute(f"SELECT image_number FROM {TABLE_NAME} WHERE language=?", (LANGUAGE_TYPE,))
+        result = {str(row[0]) for row in cursor.fetchall()}
         conn.close()
+        logger.info(f"Loaded {len(result)} skipped Japanese images from database.")
         return result
     except Exception as e:
         logger.error(f"Error reading skipped images: {e}")
@@ -84,15 +100,13 @@ def scrape_images(site_name, site_data):
 # --- Download ---
 def download_image(url, skipped_image_ids, existing_images, site_name, save_folder):
     image_name = url.split("/")[-1]
-
-    # Skip if already in skipped DB
-    if image_name in skipped_image_ids:
-        logger.info(f"[{site_name}] Skipped (In DB): {image_name}")
-        return
-
-    # Skip if already exists in either CHECK_FOLDER or site save folder
+    image_number = re.search(r'\d+', image_name)
+    if image_number:
+        if image_number.group(0) in skipped_image_ids:
+            logger.info(f"[{site_name}] Skipped (DB): {image_name}")
+            return
     if image_name in existing_images:
-        logger.info(f"[{site_name}] Skipped (Already Exists): {image_name}")
+        logger.info(f"[{site_name}] Skipped (Exists): {image_name}")
         return
 
     save_path = os.path.join(save_folder, image_name)
@@ -126,9 +140,9 @@ def save_csv(data, filename):
 
 # --- Main ---
 def main():
-    skipped_image_ids = read_skipped_image_ids()
+    skipped_image_ids = load_skipped_image_ids()
 
-    # --- SITES ---
+    # --- Sites ---
     SITES = {
         "Battle Spirits": {"id": 79, "total_pages": 145},
         "Buddy Fight": {"id": 71, "total_pages": 233},
@@ -175,31 +189,24 @@ def main():
         "Z-X Zillions over enemy X": {"id": 42, "total_pages": 441},
     }
 
-    # Get all images already in the CHECK_FOLDER
     existing_check_images = set(os.listdir(CHECK_FOLDER))
 
     for site_name, site_data in SITES.items():
         save_folder = os.path.join(BASE_SAVE_DIR, site_name)
         os.makedirs(save_folder, exist_ok=True)
-
-        # Get existing images in the site folder
         existing_site_images = set(os.listdir(save_folder))
-
-        # Combine both sets for skipping
         combined_existing_images = existing_check_images.union(existing_site_images)
 
-        # Scrape URLs
         urls = scrape_images(site_name, site_data)
 
-        # Download only what’s missing
         with ThreadPoolExecutor(max_workers=10) as executor:
             executor.map(
                 lambda u: download_image(u, skipped_image_ids, combined_existing_images, site_name, save_folder),
                 urls
             )
 
-        # Save URLs for reference
         save_csv(urls, f"{site_name}_image_links.csv")
 
 if __name__ == "__main__":
     main()
+

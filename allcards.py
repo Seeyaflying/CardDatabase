@@ -1,74 +1,76 @@
 import asyncio
 import aiohttp
+import aiofiles
 import logging
 import os
-import aiofiles
 import re
 from tqdm.asyncio import tqdm
 from datetime import datetime
 import json
-import sqlite3  # ✅ SQLite instead of MongoDB
+import sqlite3
 
-# Create a log folder if it doesn't exist
-log_folder = 'log'
-os.makedirs(log_folder, exist_ok=True)
-
-# Get today's date and time
-now = datetime.now()
-log_file_name = now.strftime('%Y-%m-%d_%H-%M-%S') + '.log'
-log_file_path = os.path.join(log_folder, log_file_name)
-
-# Set up logging
-new_download_logger = logging.getLogger('new_downloads')
-new_download_logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler(log_file_path)
-file_handler.setLevel(logging.INFO)
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(message)s')
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-new_download_logger.addHandler(file_handler)
-new_download_logger.addHandler(console_handler)
-logging.getLogger().setLevel(logging.CRITICAL)
-
-# SQLite database setup
+# ------------------------------
+# Config
+# ------------------------------
 DB_FILE = "skipped_images.sqlite"
 TABLE_NAME = "skipped_images"
+LANGUAGE_TYPE = "english"  # Only English images
+SAVE_ROOT = "G:/My Drive/New Cards"
+CHECK_FOLDER = "G:/My Drive/Card Database"
+LOG_FOLDER = "log"
 
-def init_db():
-    """Create the SQLite database and table if they don't exist."""
+os.makedirs(LOG_FOLDER, exist_ok=True)
+
+# ------------------------------
+# Logging
+# ------------------------------
+now = datetime.now()
+log_file_path = os.path.join(LOG_FOLDER, now.strftime('%Y-%m-%d_%H-%M-%S') + '.log')
+
+logger = logging.getLogger("english_downloader")
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler(log_file_path)
+file_handler.setFormatter(logging.Formatter('%(message)s'))
+logger.addHandler(file_handler)
+logger.addHandler(logging.StreamHandler())
+
+# ------------------------------
+# Database helpers
+# ------------------------------
+def ensure_table():
+    """Create table if it doesn't exist."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            image_name TEXT UNIQUE
+            language TEXT NOT NULL,
+            image_number TEXT NOT NULL
         )
     """)
     conn.commit()
     conn.close()
 
-def load_skipped_image_ids():
-    """Load skipped image IDs from SQLite and print how many were loaded."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(f"SELECT image_name FROM {TABLE_NAME}")
-    rows = cursor.fetchall()
-    conn.close()
+def load_skipped_image_ids(language_type):
+    """Read skipped images from DB for the given language."""
+    ensure_table()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT image_number FROM {TABLE_NAME} WHERE language=?", (language_type,))
+        result = {f"{row[0]}_200w" for row in cursor.fetchall()}  # Append _200w for English
+        conn.close()
+        logger.info(f"Loaded {len(result)} skipped {language_type} images from database.")
+        return result
+    except Exception as e:
+        logger.error(f"Failed to read skipped images: {e}")
+        return set()
 
-    skipped_image_ids = set()
-    for row in rows:
-        match = re.search(r'\d+', row[0])
-        if match:
-            skipped_image_ids.add(match.group(0))
-
-    print(f"Skipped image IDs loaded from database: {len(skipped_image_ids)}")
-    return skipped_image_ids
-
-# Base URLs and TCG IDs
+# ------------------------------
+# TCG URLs (default)
+# ------------------------------
 BASE_URL = 'https://tcgcsv.com/tcgplayer'
-TCG_IDS = {
+DEFAULT_TCG_IDS = {
     'Akora': 75,
     "Alpha Clash": 78,
     'Argent Saga': 61,
@@ -96,13 +98,11 @@ TCG_IDS = {
     "Kryptik": 76,
     "Lightseekers": 48,
     "Lorcana": 71,
-    #"Magic the Gathering": 1,
     "MetaX": 30,
     "MetaZoo": 66,
     "Munchkin": 53,
     "One Piece": 68,
     "Pokemon": 3,
-    "Pokemon Japan": 85,
     "Riftbound": 89,
     "Shadowverse Evolve": 73,
     "Sorcery Contested Realm": 77,
@@ -119,11 +119,7 @@ TCG_IDS = {
     "Zombie World Order": 36,
 }
 
-DEFAULT_TCG_URLS = {tcg: [f'{BASE_URL}/{tcg_id}/groups'] for tcg, tcg_id in TCG_IDS.items()}
-for key, value in list(DEFAULT_TCG_URLS.items()):
-    if key == "Pokemon Japan":
-        DEFAULT_TCG_URLS["Pokemon"].extend(value)
-        del DEFAULT_TCG_URLS["Pokemon Japan"]
+DEFAULT_TCG_URLS = {tcg: [f'{BASE_URL}/{tcg_id}/groups'] for tcg, tcg_id in DEFAULT_TCG_IDS.items()}
 
 def load_tcg_urls():
     try:
@@ -134,76 +130,76 @@ def load_tcg_urls():
 
 tcg_urls = load_tcg_urls()
 
-async def fetch_and_parse_data(session, url, tcg_name):
+# ------------------------------
+# Download helpers
+# ------------------------------
+async def fetch_json(session, url):
     try:
-        headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Connection': 'keep-alive'}
-        response = await session.get(url, headers=headers)
-        response.raise_for_status()
-        text = await response.text()
-        if 'json' in response.headers.get('Content-Type', '').lower():
-            return json.loads(text).get('results', [])
-        return []
-    except aiohttp.ClientError:
+        headers = {'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}
+        async with session.get(url, headers=headers) as resp:
+            resp.raise_for_status()
+            if 'json' in resp.headers.get('Content-Type', '').lower():
+                return (await resp.json()).get('results', [])
+    except Exception:
         return []
 
-async def fetch_group_details(session, tcg_name, category_id, group_id):
-    url = f'https://tcgcsv.com/tcgplayer/{category_id}/{group_id}/products'
-    return await fetch_and_parse_data(session, url, tcg_name)
-
-async def download_image(session, image_url, folder_path, image_name, skipped_image_ids, semaphore):
+async def download_image(session, image_url, folder_path, image_name, skipped_image_ids, existing_images, semaphore):
     async with semaphore:
         image_number = re.search(r'\d+', image_name)
-        if image_number and image_number.group(0) in skipped_image_ids:
-            return
+        if image_number:
+            check_number = f"{image_number.group(0)}_200w"
+            if check_number in skipped_image_ids:
+                logger.info(f"Skipped (DB): {image_name}")
+                return
+            if image_name in existing_images:
+                logger.info(f"Skipped (Exists): {image_name}")
+                return
 
         image_path = os.path.join(folder_path, image_name)
-        if os.path.exists(image_path):
-            return
-
         os.makedirs(folder_path, exist_ok=True)
         try:
             async with session.get(image_url) as response:
                 response.raise_for_status()
-                image_data = await response.read()
-                async with aiofiles.open(image_path, 'wb') as image_file:
-                    await image_file.write(image_data)
-                new_download_logger.info(f"Downloaded {image_name} to {folder_path}")
-        except Exception:
-            pass
+                data = await response.read()
+                async with aiofiles.open(image_path, 'wb') as f:
+                    await f.write(data)
+                logger.info(f"Downloaded: {image_name}")
+        except Exception as e:
+            logger.error(f"Error downloading {image_name}: {e}")
 
-async def process_tcg(session, tcg_name, urls):
+async def process_tcg(session, tcg_name, urls, skipped_image_ids):
     semaphore = asyncio.Semaphore(10)
-    skipped_image_ids = load_skipped_image_ids()
-
-    check_folder = os.path.join("D:/Card Database", tcg_name)
-    save_folder = os.path.join("G:/My Drive/New Cards", tcg_name)
+    check_folder = os.path.join(CHECK_FOLDER, tcg_name)
+    save_folder = os.path.join(SAVE_ROOT, tcg_name)
     os.makedirs(save_folder, exist_ok=True)
 
-    existing_image_names = set(os.listdir(check_folder)) if os.path.exists(check_folder) else set()
+    existing_check_images = set(os.listdir(check_folder)) if os.path.exists(check_folder) else set()
+    existing_save_images = set(os.listdir(save_folder)) if os.path.exists(save_folder) else set()
+    existing_images = existing_check_images.union(existing_save_images)
 
     for url in tqdm(urls, desc=f"{tcg_name}: URLs", unit="url"):
-        groups_data = await fetch_and_parse_data(session, url, tcg_name)
+        groups_data = await fetch_json(session, url)
         for group in tqdm(groups_data, desc=f"{tcg_name}: Groups", unit="group"):
             group_id = group.get('groupId')
             category_id = group.get('categoryId')
             if group_id and category_id:
-                group_details = await fetch_group_details(session, tcg_name, category_id, group_id)
-                if group_details:
-                    tasks = []
-                    for item in group_details:
-                        image_url = item.get('imageUrl')
-                        if image_url:
-                            image_name = image_url.split('/')[-1]
-                            if image_name in existing_image_names:
-                                continue
-                            tasks.append(download_image(session, image_url, save_folder, image_name, skipped_image_ids, semaphore))
-                    await asyncio.gather(*tasks)
+                group_details = await fetch_json(session, f'{BASE_URL}/{category_id}/{group_id}/products')
+                tasks = []
+                for item in group_details:
+                    image_url = item.get('imageUrl')
+                    if image_url:
+                        image_name = image_url.split('/')[-1]
+                        tasks.append(download_image(session, image_url, save_folder, image_name, skipped_image_ids, existing_images, semaphore))
+                await asyncio.gather(*tasks)
 
+# ------------------------------
+# Main
+# ------------------------------
 async def main():
-    init_db()  # ✅ Initialize SQLite
+    skipped_image_ids = load_skipped_image_ids(LANGUAGE_TYPE)
     async with aiohttp.ClientSession() as session:
         for tcg_name, urls in tqdm(tcg_urls.items(), desc="Processing TCGs", unit="tcg"):
-            await process_tcg(session, tcg_name, urls)
+            await process_tcg(session, tcg_name, urls, skipped_image_ids)
 
 if __name__ == '__main__':
     asyncio.run(main())

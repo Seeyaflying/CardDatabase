@@ -5,17 +5,18 @@ import sqlite3
 # ------------------------------
 # Paths
 # ------------------------------
-BASE_DIR = r"G:\My Drive\models\CardData"
-JSON_PATH = os.path.join(BASE_DIR, "values.json")
-DB_PATH = os.path.join(BASE_DIR, "skipped_images.sqlite")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # DB stays with script
+DB_PATH = os.path.join(SCRIPT_DIR, "skipped_images.sqlite")
 TABLE_NAME = "card_ai"
+
+# Hardcoded JSON path
+JSON_PATH = r"G:\My Drive\models\CardData\values.json"
 
 # ------------------------------
 # Ensure Database & Table
 # ------------------------------
 def ensure_database():
     """Ensure database and card_ai table exist."""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(f"""
@@ -35,7 +36,7 @@ def ensure_database():
 def upsert_json_to_db(conn):
     """Read JSON file and upsert values into card_ai table."""
     if not os.path.exists(JSON_PATH):
-        print(f"❌ JSON file not found at: {JSON_PATH}")
+        print(f"❌ JSON file not found at: {JSON_PATH} — skipping update")
         return
 
     try:
