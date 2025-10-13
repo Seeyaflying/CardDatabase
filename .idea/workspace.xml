@@ -11,20 +11,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/android.yml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/AI_gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/AI_gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai_headless.py" beforeDir="false" afterPath="$PROJECT_DIR$/ai_headless.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/allcards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/japallcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/japallcards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-09-30_csv_importer.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-10-06_image_scraper.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/magic.py" beforeDir="false" afterPath="$PROJECT_DIR$/magic.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sorter.py" beforeDir="false" afterPath="$PROJECT_DIR$/sorter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sqlchange.py" beforeDir="false" afterPath="$PROJECT_DIR$/sqlchange.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -274,6 +264,9 @@
       <workItem from="1759737375156" duration="14000" />
       <workItem from="1759738086001" duration="13000" />
       <workItem from="1759804386620" duration="94000" />
+      <workItem from="1759884818091" duration="369000" />
+      <workItem from="1759885353985" duration="920000" />
+      <workItem from="1759886570131" duration="550000" />
     </task>
     <servers />
   </component>
