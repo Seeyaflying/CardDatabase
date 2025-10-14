@@ -12,9 +12,6 @@
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sorter.py" beforeDir="false" afterPath="$PROJECT_DIR$/sorter.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -267,6 +264,7 @@
       <workItem from="1759884818091" duration="369000" />
       <workItem from="1759885353985" duration="920000" />
       <workItem from="1759886570131" duration="550000" />
+      <workItem from="1760394015152" duration="109000" />
     </task>
     <servers />
   </component>
