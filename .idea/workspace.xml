@@ -13,71 +13,6 @@
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/CardDatabase/CopilotIndices/17.14.1231.31060/CodeChunks.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/CardDatabase/CopilotIndices/17.14.1231.31060/SemanticSymbols.db" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/CardDatabase/FileContentIndex/merges/abfb125e-e7ab-47ef-9848-7c1a4094b8d1.vsidx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/CardDatabase/v17/.wsuo" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/CardDatabase/v17/DocumentLayout.backup.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/CardDatabase/v17/DocumentLayout.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/ProjectSettings.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/PythonSettings.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/VSWorkspaceState.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vs/slnx.sqlite" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/Analysis-00.toc" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/EXE-00.toc" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/PKG-00.toc" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/PYZ-00.pyz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/PYZ-00.toc" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/base_library.zip" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/sorter.pkg" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/warn-sorter.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/xref-sorter.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/card_ai_init.py" beforeDir="false" afterPath="$PROJECT_DIR$/card_ai_update.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Battle Spirits_image_links.csv" beforeDir="false" afterPath="$PROJECT_DIR$/sql_update.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Buddy Fight_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Build Divide_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Cardfight Vanguard_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Chaos_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/DB Heroes_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/DB Super Divers_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/DBZ Super Fusion World_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Detective Conan_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Digimon_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Duel Masters_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Fate-Grand Order Arcade_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Final Fantasy_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Fire Emblem Cipher_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Godzilla Card Game_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Gundam_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Hololive_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Kamen Rider Battle Ganba Legends_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Kamen Rider Battle Ganbarizing_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Kantai Collection Kancolle Arcade_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Love Live_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Lycee Over Ture_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/One Piece_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Osica_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Pokemon_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Precious Memories_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Prism Connect_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Rebirth for you_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Shadowverse Evolve_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Takashi Murakami Jellyfish Eyes_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/The Quintessential Quintuplets_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Trails Series_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Ultraman_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Union Arena_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Vividz_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Weiss Schwarz Blau_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Weiss Schwarz Rose_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Weiss Schwarz_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Wixoss_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Xross Stars_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Yugioh Rush Duel_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Yugioh_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/json/Z-X Zillions over enemy X_image_links.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-11-12_downloader_audit.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/skipped_images.json" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -122,67 +57,67 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Python.AI_gui.executor": "Run",
-    "Python.AI_run.executor": "Run",
-    "Python.Altered.executor": "Run",
-    "Python.Drivedownload.executor": "Run",
-    "Python.Pokemon database.executor": "Run",
-    "Python.addskipped.executor": "Run",
-    "Python.addskippedjap.executor": "Run",
-    "Python.ai_headless.executor": "Run",
-    "Python.allcards.executor": "Run",
-    "Python.card_ai_init.executor": "Run",
-    "Python.cards.executor": "Run",
-    "Python.database.executor": "Run",
-    "Python.digimonjap.executor": "Run",
-    "Python.japallcards.executor": "Run",
-    "Python.japmagic.executor": "Run",
-    "Python.magic.executor": "Run",
-    "Python.maybe.executor": "Run",
-    "Python.neopets.executor": "Run",
-    "Python.sorter.executor": "Run",
-    "Python.sql_update.executor": "Run",
-    "Python.sqlchange.executor": "Run",
-    "Python.sqlcheck.executor": "Run",
-    "Python.test.executor": "Run",
-    "Python.testall.executor": "Run",
-    "Python.testjap.executor": "Run",
-    "Python.testskipped.executor": "Run",
-    "Python.testsorter.executor": "Run",
-    "Python.testtest.executor": "Run",
-    "Python.testtransfer.executor": "Run",
-    "Python.theory.executor": "Run",
-    "RunOnceActivity.RadMigrateCodeStyle": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "C:/Users/seeya/Documents/CardDatabase",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "to.speed.mode.migration.done": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Python.AI_gui.executor&quot;: &quot;Run&quot;,
+    &quot;Python.AI_run.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Altered.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Drivedownload.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Pokemon database.executor&quot;: &quot;Run&quot;,
+    &quot;Python.addskipped.executor&quot;: &quot;Run&quot;,
+    &quot;Python.addskippedjap.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ai_headless.executor&quot;: &quot;Run&quot;,
+    &quot;Python.allcards.executor&quot;: &quot;Run&quot;,
+    &quot;Python.card_ai_init.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cards.executor&quot;: &quot;Run&quot;,
+    &quot;Python.database.executor&quot;: &quot;Run&quot;,
+    &quot;Python.digimonjap.executor&quot;: &quot;Run&quot;,
+    &quot;Python.japallcards.executor&quot;: &quot;Run&quot;,
+    &quot;Python.japmagic.executor&quot;: &quot;Run&quot;,
+    &quot;Python.magic.executor&quot;: &quot;Run&quot;,
+    &quot;Python.maybe.executor&quot;: &quot;Run&quot;,
+    &quot;Python.neopets.executor&quot;: &quot;Run&quot;,
+    &quot;Python.sorter.executor&quot;: &quot;Run&quot;,
+    &quot;Python.sql_update.executor&quot;: &quot;Run&quot;,
+    &quot;Python.sqlchange.executor&quot;: &quot;Run&quot;,
+    &quot;Python.sqlcheck.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testall.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testjap.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testskipped.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testsorter.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testtest.executor&quot;: &quot;Run&quot;,
+    &quot;Python.testtransfer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.theory.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/seeya/Documents/CardDatabase&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "sqlite"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;sqlite&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase" />
@@ -349,6 +284,8 @@
       <workItem from="1762914951865" duration="10782000" />
       <workItem from="1764029950302" duration="62000" />
       <workItem from="1764295720649" duration="2629000" />
+      <workItem from="1767816971679" duration="42000" />
+      <workItem from="1768008167985" duration="20000" />
     </task>
     <servers />
   </component>
