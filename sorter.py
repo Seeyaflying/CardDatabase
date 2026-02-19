@@ -13,12 +13,12 @@ import tkinter.ttk as ttk
 # ==========================
 # Performance knobs
 # ==========================
-MAX_SESSION_IMAGES = 500        # hard cap per run
-IMAGE_BATCH_SIZE = 100        # preload/queue batch size (<= MAX_SESSION_IMAGES)
+MAX_SESSION_IMAGES = 5000  # hard cap per run
+IMAGE_BATCH_SIZE = 100  # preload/queue batch size (<= MAX_SESSION_IMAGES)
 
 DISPLAY_W = 460
 DISPLAY_H = 680
-RESAMPLE = Image.BILINEAR        # faster than LANCZOS; change back if you prefer quality
+RESAMPLE = Image.BILINEAR  # faster than LANCZOS; change back if you prefer quality
 
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp")
 
@@ -136,6 +136,31 @@ def _safe_remove(path: str):
         print(f"Error deleting {path}: {e}")
 
 
+def _safe_rmdir_empty_parents(start_dir: str, stop_dir: str):
+    """
+    Remove empty directories from start_dir upwards until stop_dir (exclusive).
+    Never removes stop_dir itself.
+    """
+    try:
+        stop_dir = os.path.abspath(stop_dir)
+        cur = os.path.abspath(start_dir)
+
+        while True:
+            if cur == stop_dir:
+                break
+            if not os.path.isdir(cur):
+                break
+            if os.listdir(cur):
+                break
+            os.rmdir(cur)
+            parent = os.path.dirname(cur)
+            if parent == cur:
+                break
+            cur = parent
+    except Exception as e:
+        print(f"Error pruning empty dirs from {start_dir}: {e}")
+
+
 def sync_down_to_local(max_count: int, progress_cb=None) -> int:
     """
     Copy up to max_count images from Drive Source -> local inbox (preserve relpaths).
@@ -203,6 +228,97 @@ def sync_up_to_drive_and_delete_originals():
     delete_originals_from(local_yes)
     delete_originals_from(local_no)
 
+
+def sync_up_to_drive_delete_originals_and_cleanup_local():
+    """
+    "Sync Up + Cleanup" variant:
+    - copy local yes/no -> Drive yes/no
+    - verify destination exists + same file size
+    - delete original from Drive Source
+    - verify original is gone
+    - delete the local processed file (cleanup) + prune empty directories
+    """
+    if not (drive_source_folder and drive_yes_folder and drive_no_folder and local_cache_root):
+        return
+
+    _, local_yes, local_no = _compute_cache_paths(local_cache_root)
+
+    def _verify_same_size(a: str, b: str) -> bool:
+        try:
+            return os.path.getsize(a) == os.path.getsize(b)
+        except OSError:
+            return False
+
+    def _sync_one_tree(local_folder: str, drive_dest_root: str, label_name: str):
+        # Snapshot list so we can show an accurate "i/N" counter
+        items = list(_iter_images(local_folder))
+        total = len(items)
+
+        uploaded = 0
+        deleted_source = 0
+        deleted_local = 0
+        failed = 0
+
+        print(f"\n=== Sync Up + Cleanup ({label_name}) ===")
+        print(f"Items: {total}")
+        print(f"Local: {local_folder}")
+        print(f"Drive Dest: {drive_dest_root}")
+        print(f"Drive Source: {drive_source_folder}\n")
+
+        for i, local_src in enumerate(items, start=1):
+            rel = os.path.relpath(local_src, local_folder)
+            drive_dst = os.path.join(drive_dest_root, rel)
+            drive_original = os.path.join(drive_source_folder, rel)
+
+            prefix = f"[{label_name} {i}/{total}]"
+
+            try:
+                # 1) Upload (copy) to Drive Yes/No
+                print(f"{prefix} UPLOAD {rel}")
+                _safe_copy2(local_src, drive_dst)
+
+                # 2) Confirm upload
+                if not os.path.exists(drive_dst):
+                    raise RuntimeError(f"Upload verification failed (missing dest): {drive_dst}")
+                if not _verify_same_size(local_src, drive_dst):
+                    raise RuntimeError(f"Upload verification failed (size mismatch): {drive_dst}")
+                uploaded += 1
+                print(f"{prefix}   -> OK uploaded")
+
+                # 3) Delete original from Drive Source
+                print(f"{prefix} DELETE SOURCE {rel}")
+                _safe_remove(drive_original)
+
+                # 4) Confirm original delete
+                if os.path.exists(drive_original):
+                    raise RuntimeError(f"Original delete verification failed: {drive_original}")
+                deleted_source += 1
+                print(f"{prefix}   -> OK deleted source")
+
+                # 5) Cleanup local processed file (now safe)
+                print(f"{prefix} DELETE LOCAL {rel}")
+                _safe_remove(local_src)
+                if os.path.exists(local_src):
+                    raise RuntimeError(f"Local cleanup verification failed: {local_src}")
+                deleted_local += 1
+                print(f"{prefix}   -> OK deleted local")
+
+                _safe_rmdir_empty_parents(os.path.dirname(local_src), stop_dir=local_folder)
+
+            except Exception as e:
+                failed += 1
+                print(f"{prefix} FAILED {rel} :: {e}")
+
+        print(
+            f"\n=== Summary ({label_name}) ===\n"
+            f"Uploaded: {uploaded}/{total}\n"
+            f"Deleted from Drive Source: {deleted_source}/{total}\n"
+            f"Deleted local: {deleted_local}/{total}\n"
+            f"Failed: {failed}\n"
+        )
+
+    _sync_one_tree(local_yes, drive_yes_folder, "YES")
+    _sync_one_tree(local_no, drive_no_folder, "NO")
 
 # ==========================
 # Tk + load settings
@@ -282,7 +398,6 @@ BATCH_START_INDEX = 0
 SCANNING_FINISHED = False
 
 # Thread-safe-ish next image pipeline:
-# Thread-safe-ish next image pipeline:
 _next_pil = None
 _next_pil_lock = threading.Lock()
 _preload_in_progress = False
@@ -340,10 +455,10 @@ def _set_ui_busy(is_busy: bool, msg: str | None = None):
 
     sync_down_btn.config(state=("normal" if (not is_busy and use_local_cache) else "disabled"))
     sync_up_btn.config(state=("normal" if (not is_busy and use_local_cache) else "disabled"))
+    sync_up_cleanup_btn.config(state=("normal" if (not is_busy and use_local_cache) else "disabled"))
 
     if msg is not None:
         label.config(text=msg)
-
 
 
 # ==========================
@@ -467,6 +582,7 @@ def preload_next():
     finally:
         _preload_in_progress = False
 
+
 def _consume_preloaded_to_tk():
     global next_img_tk, _next_pil
     with _next_pil_lock:
@@ -506,7 +622,11 @@ def next_image():
             # If we're in cache mode and the bad file is in the local inbox, delete it
             # so a future Sync Down can re-copy it cleanly.
             try:
-                if use_local_cache and os.path.exists(bad_path) and os.path.commonpath([bad_path, source_folder]) == source_folder:
+                if (
+                    use_local_cache
+                    and os.path.exists(bad_path)
+                    and os.path.commonpath([bad_path, source_folder]) == source_folder
+                ):
                     os.remove(bad_path)
             except Exception as e:
                 print(f"Error deleting bad cached file {bad_path}: {e}")
@@ -538,7 +658,6 @@ def next_image():
 
     index += 1
     threading.Thread(target=preload_next, daemon=True).start()
-
 
 
 # ==========================
@@ -678,6 +797,7 @@ def on_sync_down():
             progress_bar.config(maximum=total)
             progress_bar["value"] = copied
             progress_text.config(text=f"Sync Down: {copied}/{total}")
+
         root.after(0, apply)
 
     def worker():
@@ -689,6 +809,7 @@ def on_sync_down():
                 progress_bar.pack(fill="x")
                 progress_text.config(text=f"Sync Down: 0/{MAX_SESSION_IMAGES}")
                 progress_text.pack()
+
             root.after(0, start_ui)
 
             copied = sync_down_to_local(MAX_SESSION_IMAGES, progress_cb=ui_progress)
@@ -712,10 +833,10 @@ def on_sync_down():
                 progress_bar.pack_forget()
                 progress_text.pack_forget()
                 _set_ui_busy(False, f"Sync Down failed: {e}")
+
             root.after(0, fail_ui)
 
     threading.Thread(target=worker, daemon=True).start()
-
 
 
 def on_sync_up():
@@ -736,15 +857,49 @@ def on_sync_up():
     threading.Thread(target=worker, daemon=True).start()
 
 
+def on_sync_up_cleanup():
+    if not use_local_cache:
+        return
+    if not (drive_source_folder and drive_yes_folder and drive_no_folder and local_cache_root):
+        label.config(text="Cache mode needs Drive Source/Yes/No + Local Cache Root (Settings).")
+        return
+
+    def worker():
+        try:
+            root.after(
+                0,
+                lambda: _set_ui_busy(
+                    True,
+                    "Sync Up + Cleanup: uploading + deleting originals + deleting local...",
+                ),
+            )
+            sync_up_to_drive_delete_originals_and_cleanup_local()
+            root.after(
+                0,
+                lambda: _set_ui_busy(
+                    False,
+                    "Sync Up + Cleanup done. (Uploaded + deleted originals + cleaned local)",
+                ),
+            )
+        except Exception as e:
+            root.after(0, lambda: _set_ui_busy(False, f"Sync Up + Cleanup failed: {e}"))
+
+    threading.Thread(target=worker, daemon=True).start()
+
+
 sync_down_btn = tk.Button(sync_bar, text="Sync Down", width=10, command=on_sync_down)
 sync_down_btn.pack(side="left", padx=5)
 
 sync_up_btn = tk.Button(sync_bar, text="Sync Up", width=10, command=on_sync_up)
 sync_up_btn.pack(side="left", padx=5)
 
+sync_up_cleanup_btn = tk.Button(sync_bar, text="Sync Up + Cleanup", width=16, command=on_sync_up_cleanup)
+sync_up_cleanup_btn.pack(side="left", padx=5)
+
 if not use_local_cache:
     sync_down_btn.config(state="disabled")
     sync_up_btn.config(state="disabled")
+    sync_up_cleanup_btn.config(state="disabled")
 
 
 # ==========================
@@ -814,6 +969,7 @@ def open_settings():
         bind_mouse_actions()
         sync_down_btn.config(state="normal" if use_local_cache else "disabled")
         sync_up_btn.config(state="normal" if use_local_cache else "disabled")
+        sync_up_cleanup_btn.config(state="normal" if use_local_cache else "disabled")
 
     # --- KEY BINDINGS ---
     tk.Label(settings_win, text="Keyboard Bindings", font=("Helvetica", 12, "bold")).grid(
@@ -850,9 +1006,7 @@ def open_settings():
         row=3, column=2, padx=5, sticky="w"
     )
 
-    tk.Frame(settings_win, height=2, bd=1, relief="sunken").grid(
-        row=4, columnspan=3, sticky="ew", padx=5, pady=10
-    )
+    tk.Frame(settings_win, height=2, bd=1, relief="sunken").grid(row=4, columnspan=3, sticky="ew", padx=5, pady=10)
 
     # --- MOUSE BINDINGS ---
     tk.Label(settings_win, text="Mouse Bindings", font=("Helvetica", 12, "bold")).grid(
@@ -889,9 +1043,7 @@ def open_settings():
         row=7, column=2, padx=5, sticky="w"
     )
 
-    tk.Frame(settings_win, height=2, bd=1, relief="sunken").grid(
-        row=8, columnspan=3, sticky="ew", padx=5, pady=10
-    )
+    tk.Frame(settings_win, height=2, bd=1, relief="sunken").grid(row=8, columnspan=3, sticky="ew", padx=5, pady=10)
 
     # --- NORMAL MODE FOLDERS ---
     tk.Label(settings_win, text="Folder Paths", font=("Helvetica", 12, "bold")).grid(
@@ -1059,11 +1211,13 @@ def open_settings():
         row=19, column=2, padx=5, sticky="w"
     )
 
+
 # ==========================
 # Start App
 # ==========================
 bind_mouse_actions()
 reset_scan_and_restart()
+
 
 def _auto_sync_down_on_start():
     """
@@ -1080,6 +1234,7 @@ def _auto_sync_down_on_start():
     # Only auto-sync if inbox is empty (avoid re-copying every launch)
     if not os.path.exists(inbox) or not any(_iter_images(inbox)):
         on_sync_down()
+
 
 root.after(250, _auto_sync_down_on_start)
 

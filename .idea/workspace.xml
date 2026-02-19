@@ -11,10 +11,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/8197d8ec-89cc-4a57-b7b5-0a6bfec56772.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/8197d8ec-89cc-4a57-b7b5-0a6bfec56772.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/sorter.exe" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/Analysis-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/Analysis-00.toc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/EXE-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/EXE-00.toc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/PKG-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/PKG-00.toc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/base_library.zip" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/base_library.zip" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/sorter.pkg" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/sorter.pkg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/dist/skipped_images.sqlite" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/sorter.exe" beforeDir="false" afterPath="$PROJECT_DIR$/dist/sorter.exe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-40-57_db_utility.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-41-39_db_utility.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-43-43_db_utility.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-50-25_db_utility.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-51-41_db_utility.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-52-00_db_utility.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-52-12_db_utility.log" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sorter.py" beforeDir="false" afterPath="$PROJECT_DIR$/sorter.py" afterDir="false" />
     </list>
@@ -304,7 +315,8 @@
       <workItem from="1771466472422" duration="835000" />
       <workItem from="1771467523565" duration="32000" />
       <workItem from="1771467680438" duration="4569000" />
-      <workItem from="1771472663341" duration="332000" />
+      <workItem from="1771472663341" duration="2589000" />
+      <workItem from="1771527967390" duration="5925000" />
     </task>
     <servers />
   </component>
@@ -324,7 +336,7 @@
     <SUITE FILE_PATH="coverage/test_py$AI_run.coverage" NAME="AI_run Coverage Results" MODIFIED="1744578990920" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/database_py$database.coverage" NAME="database Coverage Results" MODIFIED="1746939383739" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/testsorter_py$sorter.coverage" NAME="sorter Coverage Results" MODIFIED="1758688354168" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/magic_py$sorter.coverage" NAME="sorter Coverage Results" MODIFIED="1771470723095" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/magic_py$sorter.coverage" NAME="sorter Coverage Results" MODIFIED="1771531130279" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/sorter_py$ai_headless.coverage" NAME="ai_headless Coverage Results" MODIFIED="1759729045237" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/AI_run_py$AI_gui.coverage" NAME="AI_gui Coverage Results" MODIFIED="1746495952891" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/AI_run_py$Altered.coverage" NAME="Altered Coverage Results" MODIFIED="1743535210372" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
