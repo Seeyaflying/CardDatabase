@@ -11,22 +11,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/8197d8ec-89cc-4a57-b7b5-0a6bfec56772.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/Analysis-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/Analysis-00.toc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/EXE-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/EXE-00.toc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/PKG-00.toc" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/PKG-00.toc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/base_library.zip" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/base_library.zip" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/sorter/sorter.pkg" beforeDir="false" afterPath="$PROJECT_DIR$/build/sorter/sorter.pkg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/dist/skipped_images.sqlite" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dist/sorter.exe" beforeDir="false" afterPath="$PROJECT_DIR$/dist/sorter.exe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-40-57_db_utility.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-41-39_db_utility.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-43-43_db_utility.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-50-25_db_utility.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-51-41_db_utility.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-52-00_db_utility.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/log/2025-11-27_21-52-12_db_utility.log" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sorter.py" beforeDir="false" afterPath="$PROJECT_DIR$/sorter.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -58,12 +45,12 @@
     &quot;assignee&quot;: &quot;Seeyaflying&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Seeyaflying/CardDatabase.git&quot;,
-    &quot;accountId&quot;: &quot;cbaa751b-cd1b-4405-8052-4b5d69b5200c&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Seeyaflying/CardDatabase.git",
+    "accountId": "4e84d0a5-723c-4292-b9c3-b267efa71fb1"
   }
-}</component>
+}]]></component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
@@ -156,8 +143,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PY-253.30387.173" />
-        <option value="bundled-python-sdk-4762d8aabb82-6d6dccd035ac-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.30387.173" />
+        <option value="bundled-js-predefined-d6986cc7102b-3aa1da707db6-JavaScript-PY-252.26830.99" />
+        <option value="bundled-python-sdk-164cda30dcd9-0af03a5fa574-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.26830.99" />
       </set>
     </attachedChunks>
   </component>
@@ -317,6 +304,7 @@
       <workItem from="1771467680438" duration="4569000" />
       <workItem from="1771472663341" duration="2589000" />
       <workItem from="1771527967390" duration="5925000" />
+      <workItem from="1771542430874" duration="2023000" />
     </task>
     <servers />
   </component>

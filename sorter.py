@@ -13,7 +13,7 @@ import tkinter.ttk as ttk
 # ==========================
 # Performance knobs
 # ==========================
-MAX_SESSION_IMAGES = 5000  # hard cap per run
+MAX_SESSION_IMAGES = 3000  # hard cap per run
 IMAGE_BATCH_SIZE = 100  # preload/queue batch size (<= MAX_SESSION_IMAGES)
 
 DISPLAY_W = 460
