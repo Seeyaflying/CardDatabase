@@ -227,41 +227,65 @@ def sync_down_to_local(max_count: int, progress_cb=None) -> int:
     return copied
 
 
-def sync_up_to_drive_and_delete_originals():
+def sync_up_to_drive_and_delete_originals(progress_cb=None):
     """
     Upload local yes/no -> Drive yes/no, then delete originals from Drive source.
     Cache mode expects YES and NO preserve relpaths.
     Runs in a worker thread.
+
+    progress_cb(phase: str, done: int, total: int, rel: str | None) is called as work proceeds.
     """
     if not (drive_source_folder and drive_yes_folder and drive_no_folder and local_cache_root):
         return
 
     _, local_yes, local_no = _compute_cache_paths(local_cache_root)
 
+    yes_items = list(_iter_images(local_yes))
+    no_items = list(_iter_images(local_no))
+
+    total_steps = (len(yes_items) + len(no_items)) * 2  # upload + delete source
+    done = 0
+
+    if progress_cb:
+        progress_cb("Sync Up", done, max(total_steps, 1), None)
+
     # 1) Upload YES
-    for src in _iter_images(local_yes):
+    for src in yes_items:
         rel = os.path.relpath(src, local_yes)
         dst = os.path.join(drive_yes_folder, rel)
         _safe_copy2(src, dst)
+        done += 1
+        if progress_cb:
+            progress_cb("Uploading YES", done, max(total_steps, 1), rel)
 
     # 2) Upload NO
-    for src in _iter_images(local_no):
+    for src in no_items:
         rel = os.path.relpath(src, local_no)
         dst = os.path.join(drive_no_folder, rel)
         _safe_copy2(src, dst)
+        done += 1
+        if progress_cb:
+            progress_cb("Uploading NO", done, max(total_steps, 1), rel)
 
-    # 3) Delete originals from Drive Source based on relpaths present in YES/NO
-    def delete_originals_from(local_folder: str):
-        for processed_local in _iter_images(local_folder):
-            rel = os.path.relpath(processed_local, local_folder)
-            original = os.path.join(drive_source_folder, rel)
-            _safe_remove(original)
+    # 3) Delete originals from Drive Source (based on relpaths present in YES/NO)
+    for processed_local in yes_items:
+        rel = os.path.relpath(processed_local, local_yes)
+        original = os.path.join(drive_source_folder, rel)
+        _safe_remove(original)
+        done += 1
+        if progress_cb:
+            progress_cb("Deleting originals (YES)", done, max(total_steps, 1), rel)
 
-    delete_originals_from(local_yes)
-    delete_originals_from(local_no)
+    for processed_local in no_items:
+        rel = os.path.relpath(processed_local, local_no)
+        original = os.path.join(drive_source_folder, rel)
+        _safe_remove(original)
+        done += 1
+        if progress_cb:
+            progress_cb("Deleting originals (NO)", done, max(total_steps, 1), rel)
 
 
-def sync_up_to_drive_delete_originals_and_cleanup_local():
+def sync_up_to_drive_delete_originals_and_cleanup_local(progress_cb=None):
     """
     "Sync Up + Cleanup" variant:
     - copy local yes/no -> Drive yes/no
@@ -269,6 +293,8 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
     - delete original from Drive Source
     - verify original is gone
     - delete the local processed file (cleanup) + prune empty directories
+
+    progress_cb(phase: str, done: int, total: int, rel: str | None) is called as work proceeds.
     """
     if not (drive_source_folder and drive_yes_folder and drive_no_folder and local_cache_root):
         return
@@ -281,10 +307,19 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
         except OSError:
             return False
 
-    def _sync_one_tree(local_folder: str, drive_dest_root: str, label_name: str):
-        items = list(_iter_images(local_folder))
-        total = len(items)
+    # Precompute totals so the UI bar is determinate and reassuring.
+    yes_items = list(_iter_images(local_yes))
+    no_items = list(_iter_images(local_no))
+    total_steps = (len(yes_items) + len(no_items)) * 3  # upload + delete source + delete local
+    done = 0
 
+    if progress_cb:
+        progress_cb("Sync Up + Cleanup", done, max(total_steps, 1), None)
+
+    def _sync_one_tree(items: list[str], local_folder: str, drive_dest_root: str, label_name: str):
+        nonlocal done
+
+        total = len(items)
         uploaded = 0
         deleted_source = 0
         deleted_local = 0
@@ -312,6 +347,9 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
                 if not _verify_same_size(local_src, drive_dst):
                     raise RuntimeError(f"Upload verification failed (size mismatch): {drive_dst}")
                 uploaded += 1
+                done += 1
+                if progress_cb:
+                    progress_cb(f"Uploading {label_name}", done, max(total_steps, 1), rel)
                 print(f"{prefix}   -> OK uploaded")
 
                 print(f"{prefix} DELETE SOURCE {rel}")
@@ -320,6 +358,9 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
                 if os.path.exists(drive_original):
                     raise RuntimeError(f"Original delete verification failed: {drive_original}")
                 deleted_source += 1
+                done += 1
+                if progress_cb:
+                    progress_cb(f"Deleting originals ({label_name})", done, max(total_steps, 1), rel)
                 print(f"{prefix}   -> OK deleted source")
 
                 print(f"{prefix} DELETE LOCAL {rel}")
@@ -327,6 +368,9 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
                 if os.path.exists(local_src):
                     raise RuntimeError(f"Local cleanup verification failed: {local_src}")
                 deleted_local += 1
+                done += 1
+                if progress_cb:
+                    progress_cb(f"Cleaning local ({label_name})", done, max(total_steps, 1), rel)
                 print(f"{prefix}   -> OK deleted local")
 
                 _safe_rmdir_empty_parents(os.path.dirname(local_src), stop_dir=local_folder)
@@ -343,8 +387,8 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
             f"Failed: {failed}\n"
         )
 
-    _sync_one_tree(local_yes, drive_yes_folder, "YES")
-    _sync_one_tree(local_no, drive_no_folder, "NO")
+    _sync_one_tree(yes_items, local_yes, drive_yes_folder, "YES")
+    _sync_one_tree(no_items, local_no, drive_no_folder, "NO")
 
 
 # ==========================
@@ -469,6 +513,25 @@ progress_bar.pack_forget()  # hidden by default
 progress_text = tk.Label(progress_frame, text="")
 progress_text.pack()
 progress_text.pack_forget()  # hidden by default
+
+
+def _show_progress(total: int, initial_text: str):
+    progress_bar.config(maximum=max(int(total), 1))
+    progress_bar["value"] = 0
+    progress_text.config(text=initial_text)
+    progress_bar.pack(fill="x")
+    progress_text.pack()
+
+
+def _update_progress(done: int, total: int, text: str):
+    progress_bar.config(maximum=max(int(total), 1))
+    progress_bar["value"] = int(done)
+    progress_text.config(text=text)
+
+
+def _hide_progress():
+    progress_bar.pack_forget()
+    progress_text.pack_forget()
 
 
 # ==========================
@@ -634,19 +697,32 @@ def next_image():
     if not got_image:
         if (not _preload_in_progress) and (_next_error_path == images_list[index]):
             bad_path = images_list[index]
-            print(f"[SKIP BAD IMAGE] {bad_path} ({_next_error_msg})")
+            print(f"[SKIP BAD IMAGE] Moving to NO: {bad_path} ({_next_error_msg})")
 
-            mark_processed(bad_path, "bad")
+            if os.path.exists(bad_path):
+                if use_local_cache:
+                    rel_path = os.path.relpath(bad_path, source_folder)
+                    dest_path = os.path.join(no_folder, rel_path)
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                else:
+                    # Standard behavior for NO is flat structure
+                    dest_path = os.path.join(no_folder, os.path.basename(bad_path))
 
-            try:
-                if (
-                    use_local_cache
-                    and os.path.exists(bad_path)
-                    and os.path.commonpath([bad_path, source_folder]) == source_folder
-                ):
-                    os.remove(bad_path)
-            except Exception as e:
-                print(f"Error deleting bad cached file {bad_path}: {e}")
+                if os.path.exists(dest_path):
+                    try:
+                        os.remove(bad_path)
+                        print(f"Destination exists for '{os.path.basename(bad_path)}'. DELETED source file.")
+                    except Exception as e:
+                        print(f"Error deleting source file {bad_path}: {e}")
+                else:
+                    try:
+                        os.rename(bad_path, dest_path)
+                    except PermissionError as e:
+                        print(f"Permission Error: Could not move file {bad_path}. {e}")
+                    except Exception as e:
+                        print(f"Error moving bad file {bad_path}: {e}")
+
+            mark_processed(bad_path, "no")
 
             index += 1
             threading.Thread(target=preload_next, daemon=True).start()
@@ -841,8 +917,7 @@ def on_sync_down():
                 os.makedirs(yes_folder, exist_ok=True)
                 os.makedirs(no_folder, exist_ok=True)
 
-                progress_bar.pack_forget()
-                progress_text.pack_forget()
+                _hide_progress()
                 _set_ui_busy(False, f"Sync Down done. Copied {copied} images. Scanning local cache...")
                 reset_scan_and_restart()
 
@@ -850,8 +925,7 @@ def on_sync_down():
 
         except Exception as e:
             def fail_ui():
-                progress_bar.pack_forget()
-                progress_text.pack_forget()
+                _hide_progress()
                 _set_ui_busy(False, f"Sync Down failed: {e}")
 
             root.after(0, fail_ui)
@@ -866,13 +940,35 @@ def on_sync_up():
         label.config(text="Cache mode needs Drive Source/Yes/No + Local Cache Root (Settings).")
         return
 
+    def ui_progress(phase: str, done: int, total: int, rel: str | None):
+        def apply():
+            tail = f" | {rel}" if rel else ""
+            _update_progress(done, total, f"{phase}: {done}/{total}{tail}")
+
+        root.after(0, apply)
+
     def worker():
         try:
-            root.after(0, lambda: _set_ui_busy(True, "Sync Up: uploading Yes/No to Drive + deleting originals..."))
-            sync_up_to_drive_and_delete_originals()
-            root.after(0, lambda: _set_ui_busy(False, "Sync Up done. (Uploaded + deleted originals)"))
+            def start_ui():
+                _set_ui_busy(True, "Sync Up: uploading Yes/No to Drive + deleting originals...")
+                _show_progress(1, "Sync Up: starting...")
+
+            root.after(0, start_ui)
+
+            sync_up_to_drive_and_delete_originals(progress_cb=ui_progress)
+
+            def done_ui():
+                _hide_progress()
+                _set_ui_busy(False, "Sync Up done. (Uploaded + deleted originals)")
+
+            root.after(0, done_ui)
+
         except Exception as e:
-            root.after(0, lambda: _set_ui_busy(False, f"Sync Up failed: {e}"))
+            def fail_ui():
+                _hide_progress()
+                _set_ui_busy(False, f"Sync Up failed: {e}")
+
+            root.after(0, fail_ui)
 
     threading.Thread(target=worker, daemon=True).start()
 
@@ -884,25 +980,35 @@ def on_sync_up_cleanup():
         label.config(text="Cache mode needs Drive Source/Yes/No + Local Cache Root (Settings).")
         return
 
+    def ui_progress(phase: str, done: int, total: int, rel: str | None):
+        def apply():
+            tail = f" | {rel}" if rel else ""
+            _update_progress(done, total, f"{phase}: {done}/{total}{tail}")
+
+        root.after(0, apply)
+
     def worker():
         try:
-            root.after(
-                0,
-                lambda: _set_ui_busy(
-                    True,
-                    "Sync Up + Cleanup: uploading + deleting originals + deleting local...",
-                ),
-            )
-            sync_up_to_drive_delete_originals_and_cleanup_local()
-            root.after(
-                0,
-                lambda: _set_ui_busy(
-                    False,
-                    "Sync Up + Cleanup done. (Uploaded + deleted originals + cleaned local)",
-                ),
-            )
+            def start_ui():
+                _set_ui_busy(True, "Sync Up + Cleanup: uploading + deleting originals + deleting local...")
+                _show_progress(1, "Sync Up + Cleanup: starting...")
+
+            root.after(0, start_ui)
+
+            sync_up_to_drive_delete_originals_and_cleanup_local(progress_cb=ui_progress)
+
+            def done_ui():
+                _hide_progress()
+                _set_ui_busy(False, "Sync Up + Cleanup done. (Uploaded + deleted originals + cleaned local)")
+
+            root.after(0, done_ui)
+
         except Exception as e:
-            root.after(0, lambda: _set_ui_busy(False, f"Sync Up + Cleanup failed: {e}"))
+            def fail_ui():
+                _hide_progress()
+                _set_ui_busy(False, f"Sync Up + Cleanup failed: {e}")
+
+            root.after(0, fail_ui)
 
     threading.Thread(target=worker, daemon=True).start()
 
