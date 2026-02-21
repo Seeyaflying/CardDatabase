@@ -27,11 +27,21 @@ IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp")
 # ==========================
 if getattr(sys, "frozen", False):
     exe_folder = os.path.dirname(sys.executable)
-    main_folder = exe_folder  # DB next to the exe (writable)
+
+    # Prefer project-root DB (parent of dist/) if present
+    project_root = os.path.abspath(os.path.join(exe_folder, os.pardir))
+    preferred_db = os.path.join(project_root, "skipped_images.sqlite")
+
+    if os.path.exists(preferred_db):
+        main_folder = project_root
+    else:
+        # Fallback: keep DB next to exe if project-root DB isn't found
+        main_folder = exe_folder
 else:
     main_folder = os.path.dirname(os.path.abspath(__file__))
 
 DB_FILE = os.path.join(main_folder, "skipped_images.sqlite")
+print(f"[DB] Using: {DB_FILE}")
 
 conn_main = sqlite3.connect(DB_FILE, check_same_thread=False)
 cursor_main = conn_main.cursor()
@@ -57,6 +67,7 @@ cursor_main.execute(
 """
 )
 conn_main.commit()
+
 
 # ==========================
 # Helper Functions (settings/progress)
@@ -99,6 +110,27 @@ def unmark_processed(img_path):
 def is_processed(img_path):
     cursor_main.execute("SELECT 1 FROM progress WHERE img_path=?", (img_path,))
     return cursor_main.fetchone() is not None
+
+
+def clear_progress_under(folder_path: str) -> int:
+    """
+    Cache-mode safety:
+    When local inbox is re-filled, paths can match old `progress.img_path` rows.
+    Clearing those rows prevents 'unprocessed = 0' due to stale cache-path progress.
+    """
+    if not folder_path:
+        return 0
+
+    folder_abs = os.path.abspath(folder_path)
+    prefix = folder_abs + os.sep
+
+    cursor_main.execute(
+        "DELETE FROM progress WHERE img_path = ? OR img_path LIKE ?",
+        (folder_abs, prefix + "%"),
+    )
+    deleted = cursor_main.rowcount if cursor_main.rowcount is not None else 0
+    conn_main.commit()
+    return deleted
 
 
 # ==========================
@@ -250,7 +282,6 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
             return False
 
     def _sync_one_tree(local_folder: str, drive_dest_root: str, label_name: str):
-        # Snapshot list so we can show an accurate "i/N" counter
         items = list(_iter_images(local_folder))
         total = len(items)
 
@@ -273,11 +304,9 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
             prefix = f"[{label_name} {i}/{total}]"
 
             try:
-                # 1) Upload (copy) to Drive Yes/No
                 print(f"{prefix} UPLOAD {rel}")
                 _safe_copy2(local_src, drive_dst)
 
-                # 2) Confirm upload
                 if not os.path.exists(drive_dst):
                     raise RuntimeError(f"Upload verification failed (missing dest): {drive_dst}")
                 if not _verify_same_size(local_src, drive_dst):
@@ -285,17 +314,14 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
                 uploaded += 1
                 print(f"{prefix}   -> OK uploaded")
 
-                # 3) Delete original from Drive Source
                 print(f"{prefix} DELETE SOURCE {rel}")
                 _safe_remove(drive_original)
 
-                # 4) Confirm original delete
                 if os.path.exists(drive_original):
                     raise RuntimeError(f"Original delete verification failed: {drive_original}")
                 deleted_source += 1
                 print(f"{prefix}   -> OK deleted source")
 
-                # 5) Cleanup local processed file (now safe)
                 print(f"{prefix} DELETE LOCAL {rel}")
                 _safe_remove(local_src)
                 if os.path.exists(local_src):
@@ -319,6 +345,7 @@ def sync_up_to_drive_delete_originals_and_cleanup_local():
 
     _sync_one_tree(local_yes, drive_yes_folder, "YES")
     _sync_one_tree(local_no, drive_no_folder, "NO")
+
 
 # ==========================
 # Tk + load settings
@@ -443,6 +470,7 @@ progress_text = tk.Label(progress_frame, text="")
 progress_text.pack()
 progress_text.pack_forget()  # hidden by default
 
+
 # ==========================
 # UI busy helper
 # ==========================
@@ -471,7 +499,6 @@ def move_image(destination_folder, status="yes"):
 
         if os.path.exists(img_path):
             if use_local_cache:
-                # Preserve relpaths for BOTH yes/no in cache mode
                 rel_path = os.path.relpath(img_path, source_folder)
                 dest_path = os.path.join(destination_folder, rel_path)
                 os.makedirs(os.path.dirname(dest_path), exist_ok=True)
@@ -513,7 +540,6 @@ def go_back():
     yes_moved_path = os.path.join(yes_folder, rel_path)
 
     if use_local_cache:
-        # In cache mode, NO also preserves relpaths
         no_moved_path = os.path.join(no_folder, rel_path)
     else:
         no_moved_path = os.path.join(no_folder, os.path.basename(last_image_path))
@@ -534,7 +560,7 @@ def go_back():
             unmark_processed(last_image_path)
 
     index -= 2
-    preload_next()  # refresh pipeline
+    preload_next()
     next_image()
 
 
@@ -544,7 +570,6 @@ def go_back():
 def _prepare_pil_for_display(img_path: str) -> Image.Image:
     with Image.open(img_path) as pil_img:
         pil_img.load()
-        # Keep aspect ratio; fit into DISPLAY_W x DISPLAY_H
         pil_img.thumbnail((DISPLAY_W, DISPLAY_H), RESAMPLE)
         if pil_img.mode not in ("RGB", "RGBA"):
             pil_img = pil_img.convert("RGB")
@@ -552,10 +577,6 @@ def _prepare_pil_for_display(img_path: str) -> Image.Image:
 
 
 def preload_next():
-    """
-    Background thread: load+decode+resize into PIL Image ONLY.
-    Main thread will convert to ImageTk.PhotoImage (Tk objects are not thread-safe).
-    """
     global _next_pil, _preload_in_progress, _next_error_path, _next_error_msg
 
     _preload_in_progress = True
@@ -611,16 +632,12 @@ def next_image():
 
     got_image = _consume_preloaded_to_tk()
     if not got_image:
-        # If preload failed for this specific file, skip it so we don't loop forever.
         if (not _preload_in_progress) and (_next_error_path == images_list[index]):
             bad_path = images_list[index]
             print(f"[SKIP BAD IMAGE] {bad_path} ({_next_error_msg})")
 
-            # Mark as processed so it won't be picked again this run
             mark_processed(bad_path, "bad")
 
-            # If we're in cache mode and the bad file is in the local inbox, delete it
-            # so a future Sync Down can re-copy it cleanly.
             try:
                 if (
                     use_local_cache
@@ -641,7 +658,6 @@ def next_image():
         root.after(15, next_image)
         return
 
-    # Now safe to record history + display + advance index
     if index > 0 and index - 1 < len(images_list):
         history_stack.append(images_list[index - 1])
 
@@ -725,7 +741,6 @@ def load_next_batch():
 
     print(f"Loaded batch: {start + 1} to {min(end, len(ALL_UNPROCESSED_IMAGES))}")
 
-    # Prime preload for index 0, then let next_image wait until it's ready
     threading.Thread(target=preload_next, daemon=True).start()
     root.after(1, next_image)
 
@@ -783,6 +798,7 @@ back_button.pack(side="left", padx=5)
 settings_btn = tk.Button(button_frame, text="Settings", width=10, command=lambda: open_settings())
 settings_btn.pack(side="left", padx=5)
 
+
 # Sync buttons
 def on_sync_down():
     if not use_local_cache:
@@ -792,7 +808,6 @@ def on_sync_down():
         return
 
     def ui_progress(copied: int, total: int):
-        # Always update Tk widgets on main thread
         def apply():
             progress_bar.config(maximum=total)
             progress_bar["value"] = copied
@@ -811,6 +826,11 @@ def on_sync_down():
                 progress_text.pack()
 
             root.after(0, start_ui)
+
+            # Key fix: clear stale progress for inbox paths before re-filling the inbox
+            local_inbox, _, _ = _compute_cache_paths(local_cache_root)
+            cleared = clear_progress_under(local_inbox)
+            print(f"[Cache Mode] Cleared {cleared} progress rows under inbox: {local_inbox}")
 
             copied = sync_down_to_local(MAX_SESSION_IMAGES, progress_cb=ui_progress)
 
@@ -1231,7 +1251,6 @@ def _auto_sync_down_on_start():
 
     inbox, _, _ = _compute_cache_paths(local_cache_root)
 
-    # Only auto-sync if inbox is empty (avoid re-copying every launch)
     if not os.path.exists(inbox) or not any(_iter_images(inbox)):
         on_sync_down()
 
