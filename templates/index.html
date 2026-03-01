@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Swipe Reviewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <style>
+        :root { --yes-color: #4CAF50; --no-color: #F44336; --bg-color: #121212; --card-bg: #1e1e1e; }
+        body { margin: 0; background: var(--bg-color); color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; touch-action: none; }
+        #header { text-align: center; padding: 10px; font-size: 0.8em; color: #666; }
+        #viewport { flex-grow: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 10px; margin-bottom: 100px; }
+        #card { width: 95%; max-width: 400px; height: 100%; max-height: 600px; background: var(--card-bg); border-radius: 20px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #card img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
+        .status-label { position: absolute; top: 40px; padding: 10px 20px; border: 5px solid; border-radius: 10px; font-size: 2rem; font-weight: 900; opacity: 0; z-index: 10; }
+        #label-yes { right: 30px; color: var(--yes-color); border-color: var(--yes-color); transform: rotate(15deg); }
+        #label-no { left: 30px; color: var(--no-color); border-color: var(--no-color); transform: rotate(-15deg); }
+        #controls { position: fixed; bottom: 40px; left: 0; right: 0; display: flex; justify-content: center; gap: 10px; padding-bottom: env(safe-area-inset-bottom); }
+        .btn { background: #2c3e50; color: white; border: none; padding: 12px 25px; border-radius: 50px; font-size: 0.9em; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+    <div id="header"><span id="filename">Checking G: Drive...</span></div>
+    <div id="viewport">
+        <div id="card">
+            <div id="label-yes" class="status-label">KEEP</div>
+            <div id="label-no" class="status-label">NO</div>
+            <img id="main-img" src="">
+        </div>
+    </div>
+    <div id="controls">
+        <button id="undo-btn" class="btn">↺ UNDO</button>
+        <button id="sync-drive-btn" class="btn" style="background: #27ae60;">☁ SYNC DRIVE</button>
+    </div>
+
+    <script>
+        let currentPath = "";
+        const card = document.getElementById('card'), img = document.getElementById('main-img'), filenameDisplay = document.getElementById('filename');
+        const labelYes = document.getElementById('label-yes'), labelNo = document.getElementById('label-no'), mc = new Hammer(card);
+
+        async function loadNext() {
+            const resp = await fetch('/api/next');
+            const data = await resp.json();
+            if (data.url) {
+                img.src = data.url; currentPath = data.path;
+                filenameDisplay.innerText = data.path.split(/[\\/]/).pop();
+                card.style.transition = 'none'; card.style.transform = "translateX(0) rotate(0deg)";
+            } else { img.src = ""; filenameDisplay.innerText = "Empty Queue"; }
+        }
+
+        async function sendDecision(decision) {
+            await fetch('/api/decision', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: currentPath, decision: decision})
+            });
+            loadNext();
+        }
+
+        document.getElementById('undo-btn').addEventListener('click', async () => {
+            const resp = await fetch('/api/undo', { method: 'POST' });
+            if (resp.ok) {
+                const data = await resp.json();
+                img.src = data.url; currentPath = data.path;
+                filenameDisplay.innerText = data.path.split(/[\\/]/).pop();
+                card.style.transform = "translateX(0) rotate(0deg)";
+            }
+        });
+
+        document.getElementById('sync-drive-btn').addEventListener('click', async () => {
+            if (!confirm("Push sorted work to Google Drive?")) return;
+            const b = document.getElementById('sync-drive-btn');
+            b.innerText = "Pushing..."; b.disabled = true;
+            try {
+                const r = await fetch('/api/sync_to_drive', { method: 'POST' });
+                const d = await r.json(); alert(d.message); loadNext();
+            } finally { b.innerText = "☁ SYNC DRIVE"; b.disabled = false; }
+        });
+
+        mc.on("pan", (ev) => {
+            card.style.transform = `translateX(${ev.deltaX}px) rotate(${ev.deltaX / 20}deg)`;
+            labelYes.style.opacity = Math.min(ev.deltaX / 100, 1);
+            labelNo.style.opacity = Math.min(-ev.deltaX / 100, 1);
+        });
+
+        mc.on("panend", (ev) => {
+            card.style.transition = 'transform 0.3s ease-out';
+            if (ev.deltaX > 150) { card.style.transform = "translateX(1000px) rotate(30deg)"; sendDecision('yes'); }
+            else if (ev.deltaX < -150) { card.style.transform = "translateX(-1000px) rotate(-30deg)"; sendDecision('no'); }
+            else { card.style.transform = "translateX(0) rotate(0deg)"; }
+            labelYes.style.opacity = 0; labelNo.style.opacity = 0;
+        });
+
+        loadNext();
+    </script>
+</body>
+</html>

@@ -11,7 +11,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/sorter.py.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sorter.py.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/Analysis-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/EXE-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/PKG-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/PYZ-00.pyz" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/PYZ-00.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/base_library.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/sorter.pkg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/warn-sorter.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/sorter/xref-sorter.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/dist/sorter.exe" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -130,6 +140,13 @@
     ]
   }
 }</component>
+  <component name="RecapSpentCounter">
+    <option name="endsOfQuotaMs" value="1774483217917" />
+    <option name="spentUsd" value="0.00335" />
+  </component>
+  <component name="RecapUselessUpdatesCounter">
+    <option name="suspendCountdown" value="6" />
+  </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase" />
@@ -319,6 +336,9 @@
       <workItem from="1771645521565" duration="130000" />
       <workItem from="1771645682595" duration="1929000" />
       <workItem from="1772255378249" duration="107000" />
+      <workItem from="1772268084108" duration="478000" />
+      <workItem from="1772326068852" duration="712000" />
+      <workItem from="1772339880134" duration="67000" />
     </task>
     <servers />
   </component>
