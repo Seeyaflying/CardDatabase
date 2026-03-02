@@ -3,96 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Swipe Reviewer</title>
+    <title>Card Sorter Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <style>
         :root { --yes-color: #4CAF50; --no-color: #F44336; --bg-color: #121212; --card-bg: #1e1e1e; }
         body { margin: 0; background: var(--bg-color); color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; touch-action: none; }
-        #header { text-align: center; padding: 10px; font-size: 0.8em; color: #666; }
-        #viewport { flex-grow: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 10px; margin-bottom: 100px; }
-        #card { width: 95%; max-width: 400px; height: 100%; max-height: 600px; background: var(--card-bg); border-radius: 20px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+
+        #header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; font-size: 0.8em; color: #888; background: #1a1a1a; border-bottom: 1px solid #333; }
+        .stat-badge { background: #333; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: bold; }
+
+        #viewport { flex-grow: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 5px; }
+        #card { width: 95%; max-width: 400px; height: 68%; background: var(--card-bg); border-radius: 20px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; overflow: hidden; z-index: 2; transition: transform 0.1s ease-out; }
         #card img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
-        .status-label { position: absolute; top: 40px; padding: 10px 20px; border: 5px solid; border-radius: 10px; font-size: 2rem; font-weight: 900; opacity: 0; z-index: 10; }
+
+        .status-label { position: absolute; top: 40px; padding: 10px 20px; border: 5px solid; border-radius: 10px; font-size: 2rem; font-weight: 900; opacity: 0; z-index: 10; pointer-events: none;}
         #label-yes { right: 30px; color: var(--yes-color); border-color: var(--yes-color); transform: rotate(15deg); }
         #label-no { left: 30px; color: var(--no-color); border-color: var(--no-color); transform: rotate(-15deg); }
-        #controls { position: fixed; bottom: 40px; left: 0; right: 0; display: flex; justify-content: center; gap: 10px; padding-bottom: env(safe-area-inset-bottom); }
-        .btn { background: #2c3e50; color: white; border: none; padding: 12px 25px; border-radius: 50px; font-size: 0.9em; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
-        .btn:active { transform: scale(0.95); }
+
+        #controls { background: rgba(26, 26, 26, 0.95); padding: 15px 0 10px 0; border-top: 1px solid #333; }
+        #util-row { display: flex; justify-content: center; gap: 10px; padding: 5px; }
+        .btn-u { background: #2c3e50; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #btn-row { display: flex; justify-content: space-evenly; padding: 10px 0; }
+        .btn-act { width: 70px; height: 70px; border-radius: 50%; border: none; font-size: 1.6rem; color: white; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .btn-y { background: var(--yes-color); } .btn-n { background: var(--no-color); }
+
+        #status-bar { background: #000; color: #4CAF50; text-align: center; padding: 8px; font-size: 0.7rem; font-family: monospace; border-top: 1px solid #222; }
     </style>
 </head>
 <body>
-    <div id="header"><span id="filename">Checking G: Drive...</span></div>
+    <div id="header">
+        <span id="filename">Loading...</span>
+        <span>Inbox: <span id="inbox-count" class="stat-badge">0</span></span>
+    </div>
+
     <div id="viewport">
         <div id="card">
             <div id="label-yes" class="status-label">KEEP</div>
-            <div id="label-no" class="status-label">NO</div>
+            <div id="label-no" class="status-label">SKIP</div>
             <img id="main-img" src="">
         </div>
     </div>
+
     <div id="controls">
-        <button id="undo-btn" class="btn">↺ UNDO</button>
-        <button id="sync-drive-btn" class="btn" style="background: #27ae60;">☁ SYNC DRIVE</button>
+        <div id="util-row">
+            <button id="undo-btn" class="btn-u">↺ UNDO</button>
+            <button id="sync-btn" class="btn-u" style="background: #27ae60;">☁ SYNC DRIVE</button>
+        </div>
+        <div id="btn-row">
+            <button id="manual-no" class="btn-act btn-n">✕</button>
+            <button id="manual-yes" class="btn-act btn-y">✓</button>
+        </div>
+    </div>
+
+    <div id="status-bar">
+        LIFETIME PROCESSED: <span id="total-count">0</span>
     </div>
 
     <script>
-        let currentPath = "";
-        const card = document.getElementById('card'), img = document.getElementById('main-img'), filenameDisplay = document.getElementById('filename');
-        const labelYes = document.getElementById('label-yes'), labelNo = document.getElementById('label-no'), mc = new Hammer(card);
+        let cur = "";
+        const card = document.getElementById('card'), img = document.getElementById('main-img'), fname = document.getElementById('filename');
+        const inboxBadge = document.getElementById('inbox-count'), totalBadge = document.getElementById('total-count');
+        const ly = document.getElementById('label-yes'), ln = document.getElementById('label-no'), mc = new Hammer(card);
 
-        async function loadNext() {
-            const resp = await fetch('/api/next');
-            const data = await resp.json();
-            if (data.url) {
-                img.src = data.url; currentPath = data.path;
-                filenameDisplay.innerText = data.path.split(/[\\/]/).pop();
-                card.style.transition = 'none'; card.style.transform = "translateX(0) rotate(0deg)";
-            } else { img.src = ""; filenameDisplay.innerText = "Empty Queue"; }
-        }
-
-        async function sendDecision(decision) {
-            await fetch('/api/decision', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: currentPath, decision: decision})
-            });
-            loadNext();
-        }
-
-        document.getElementById('undo-btn').addEventListener('click', async () => {
-            const resp = await fetch('/api/undo', { method: 'POST' });
-            if (resp.ok) {
-                const data = await resp.json();
-                img.src = data.url; currentPath = data.path;
-                filenameDisplay.innerText = data.path.split(/[\\/]/).pop();
-                card.style.transform = "translateX(0) rotate(0deg)";
-            }
-        });
-
-        document.getElementById('sync-drive-btn').addEventListener('click', async () => {
-            if (!confirm("Push sorted work to Google Drive?")) return;
-            const b = document.getElementById('sync-drive-btn');
-            b.innerText = "Pushing..."; b.disabled = true;
+        async function updateStats() {
             try {
-                const r = await fetch('/api/sync_to_drive', { method: 'POST' });
-                const d = await r.json(); alert(d.message); loadNext();
-            } finally { b.innerText = "☁ SYNC DRIVE"; b.disabled = false; }
+                const r = await fetch('/api/stats');
+                const d = await r.json();
+                inboxBadge.innerText = d.inbox;
+                totalBadge.innerText = d.total.toLocaleString();
+            } catch (e) { console.error(e); }
+        }
+
+        async function load() {
+            const r = await fetch('/api/next');
+            const d = await r.json();
+            if (d.url) {
+                img.src = d.url; cur = d.path; fname.innerText = d.path.split(/[\\/]/).pop();
+                card.style.transition = 'none'; card.style.transform = "translateX(0) rotate(0deg)";
+            } else {
+                img.src = ""; fname.innerText = "Queue Empty";
+            }
+            updateStats();
+        }
+
+        async function dec(res) {
+            if (!cur) return;
+            card.style.transition = 'transform 0.3s ease-out';
+            card.style.transform = res === 'yes' ? "translateX(1000px) rotate(30deg)" : "translateX(-1000px) rotate(-30deg)";
+            await fetch('/api/decision', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({path: cur, decision: res})});
+            setTimeout(load, 200);
+        }
+
+        document.getElementById('manual-yes').onclick = () => dec('yes');
+        document.getElementById('manual-no').onclick = () => dec('no');
+        document.getElementById('undo-btn').onclick = async () => {
+            const r = await fetch('/api/undo', {method: 'POST'});
+            if (r.ok) { const d = await r.json(); img.src = d.url; cur = d.path; fname.innerText = d.path.split(/[\\/]/).pop(); card.style.transform = "translateX(0) rotate(0deg)"; updateStats(); }
+        };
+
+        document.getElementById('sync-btn').onclick = async () => {
+            if (!confirm("Start Sync to G: Drive?")) return;
+            const b = document.getElementById('sync-btn'); b.innerText = "SYNCING...";
+            const r = await fetch('/api/sync_to_drive', {method: 'POST'});
+            const d = await r.json(); alert(d.message); b.innerText = "☁ SYNC DRIVE"; load();
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "ArrowRight") dec('yes');
+            if (e.key === "ArrowLeft") dec('no');
+            if ((e.ctrlKey || e.metaKey) && e.key === "z") document.getElementById('undo-btn').click();
         });
 
         mc.on("pan", (ev) => {
+            card.style.transition = 'none';
             card.style.transform = `translateX(${ev.deltaX}px) rotate(${ev.deltaX / 20}deg)`;
-            labelYes.style.opacity = Math.min(ev.deltaX / 100, 1);
-            labelNo.style.opacity = Math.min(-ev.deltaX / 100, 1);
+            ly.style.opacity = Math.min(ev.deltaX / 100, 1); ln.style.opacity = Math.min(-ev.deltaX / 100, 1);
         });
 
         mc.on("panend", (ev) => {
-            card.style.transition = 'transform 0.3s ease-out';
-            if (ev.deltaX > 150) { card.style.transform = "translateX(1000px) rotate(30deg)"; sendDecision('yes'); }
-            else if (ev.deltaX < -150) { card.style.transform = "translateX(-1000px) rotate(-30deg)"; sendDecision('no'); }
-            else { card.style.transform = "translateX(0) rotate(0deg)"; }
-            labelYes.style.opacity = 0; labelNo.style.opacity = 0;
+            if (ev.deltaX > 150) dec('yes'); else if (ev.deltaX < -150) dec('no');
+            else { card.style.transition = 'transform 0.2s'; card.style.transform = "translateX(0) rotate(0deg)"; }
+            ly.style.opacity = 0; ln.style.opacity = 0;
         });
 
-        loadNext();
+        setInterval(updateStats, 4000);
+        load();
     </script>
 </body>
 </html>
