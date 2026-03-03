@@ -1,3 +1,0 @@
-2026-03-02 02:57:38,157 - ERROR - japanese_downloader - Failed to fetch latest geckodriver info from GitHub API: 401 Client Error: Unauthorized for url: https://api.github.com/repos/mozilla/geckodriver/releases/latest
-2026-03-02 02:57:38,159 - CRITICAL - japanese_downloader - Could not get latest Geckodriver info. Cannot proceed.
-2026-03-02 02:57:38,159 - CRITICAL - japanese_downloader - Failed to install/verify Geckodriver. Exiting script.

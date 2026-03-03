@@ -5,6 +5,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from urllib.parse import unquote
 from flask import Flask, render_template, send_from_directory, jsonify, request
 from flask_cors import CORS
 
@@ -23,110 +24,121 @@ LOCAL_YES = r"C:\Users\seeya\OneDrive\Desktop\Cards\yes"
 LOCAL_NO = r"C:\Users\seeya\OneDrive\Desktop\Cards\no"
 
 SKIPPED_DB = "skipped_images.sqlite"
-
-# Background Sync Limits
-SYNC_BATCH_SIZE = 100
-MIN_THRESHOLD = 80
+SELECTED_FOLDER = None
+IS_WAITING_FOR_INPUT = False
+SYNC_BATCH_SIZE = 1000
+MIN_THRESHOLD = 300
 MAX_DOWNLOAD_THREADS = 15
 
 download_lock = threading.Lock()
 history_stack = []
 
 
-def init_system():
-    for folder in [LOCAL_REVIEW_SOURCE, LOCAL_YES, LOCAL_NO]:
-        os.makedirs(folder, exist_ok=True)
+# ==========================
+# CORE LOGIC
+# ==========================
 
+def get_inbox_image_count():
+    count = 0
+    if not os.path.exists(LOCAL_REVIEW_SOURCE): return 0
+    for root, _, files in os.walk(LOCAL_REVIEW_SOURCE):
+        for f in files:
+            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                count += 1
+    return count
+
+
+def terminal_selection_logic():
+    global SELECTED_FOLDER, IS_WAITING_FOR_INPUT
+    IS_WAITING_FOR_INPUT = True
+    print("\n" + "=" * 45 + "\n      CARD DATABASE MANAGER\n" + "=" * 45)
+    print(" [1] PROCESS ALL FOLDERS\n [2] LIST SPECIFIC FOLDERS")
+    try:
+        mode = input("Select (1/2) or Enter for ALL: ").strip()
+        if mode == "2":
+            subfolders = [d for d in os.listdir(DRIVE_SOURCE) if os.path.isdir(os.path.join(DRIVE_SOURCE, d))]
+            subfolders.sort(key=str.lower)
+            for i, fld in enumerate(subfolders, 1): print(f" [{i:02d}] {fld}")
+            choice = input("\nType Number or Name: ").strip()
+            if choice.isdigit() and 0 < int(choice) <= len(subfolders):
+                SELECTED_FOLDER = subfolders[int(choice) - 1]
+            else:
+                SELECTED_FOLDER = choice if choice else None
+        else:
+            SELECTED_FOLDER = None
+        IS_WAITING_FOR_INPUT = False
+    except:
+        IS_WAITING_FOR_INPUT = False
+
+
+def init_system():
+    for folder in [LOCAL_REVIEW_SOURCE, LOCAL_YES, LOCAL_NO]: os.makedirs(folder, exist_ok=True)
     conn = sqlite3.connect(SKIPPED_DB)
-    conn.execute('''
-                 CREATE TABLE IF NOT EXISTS progress
-                 (
-                     img_path
-                     TEXT
-                     PRIMARY
-                     KEY,
-                     processed_at
-                     TEXT,
-                     status
-                     TEXT
-                 )
-                 ''')
-    conn.commit()
+    conn.execute('CREATE TABLE IF NOT EXISTS progress (img_path TEXT PRIMARY KEY, processed_at TEXT, status TEXT)')
+    conn.commit();
     conn.close()
 
 
 def is_processed(file_path):
     conn = sqlite3.connect(SKIPPED_DB)
-    cursor = conn.execute('SELECT 1 FROM progress WHERE img_path = ? LIMIT 1', (file_path,))
-    res = cursor.fetchone()
-    conn.close()
+    res = conn.execute('SELECT 1 FROM progress WHERE img_path = ?', (file_path,)).fetchone()
+    conn.close();
     return res is not None
 
 
-def fast_copy(src, dst):
-    try:
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-        shutil.copy2(src, dst)
-        return True
-    except:
-        return False
-
-
 def auto_sync_worker():
+    global IS_WAITING_FOR_INPUT, SELECTED_FOLDER
     while True:
-        if not download_lock.locked():
+        if not download_lock.locked() and not IS_WAITING_FOR_INPUT:
             try:
-                count = 0
-                for root, _, files in os.walk(LOCAL_REVIEW_SOURCE):
-                    count += len([f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))])
-
-                if count < MIN_THRESHOLD:
+                if get_inbox_image_count() < MIN_THRESHOLD:
                     with download_lock:
                         to_copy = []
-                        for root, _, files in os.walk(DRIVE_SOURCE):
-                            if len(to_copy) >= SYNC_BATCH_SIZE: break
-                            for f in files:
-                                if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                                    drive_path = os.path.join(root, f)
-                                    rel_path = os.path.relpath(drive_path, DRIVE_SOURCE)
-                                    local_path = os.path.join(LOCAL_REVIEW_SOURCE, rel_path)
-
-                                    if not os.path.exists(local_path) and not is_processed(drive_path):
-                                        to_copy.append((drive_path, local_path))
-                                        if len(to_copy) >= SYNC_BATCH_SIZE: break
-
+                        scan_root = os.path.join(DRIVE_SOURCE, SELECTED_FOLDER) if SELECTED_FOLDER else DRIVE_SOURCE
+                        if os.path.exists(scan_root):
+                            for root, _, files in os.walk(scan_root):
+                                for f in files:
+                                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                                        drive_p = os.path.join(root, f)
+                                        if not is_processed(drive_p):
+                                            rel_p = os.path.relpath(drive_p, DRIVE_SOURCE)
+                                            loc_p = os.path.join(LOCAL_REVIEW_SOURCE, rel_p)
+                                            if not os.path.exists(loc_p):
+                                                to_copy.append((drive_p, loc_p))
+                                                if len(to_copy) >= SYNC_BATCH_SIZE: break
+                                if len(to_copy) >= SYNC_BATCH_SIZE: break
                         if to_copy:
-                            with ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_THREADS) as executor:
-                                executor.map(lambda p: fast_copy(*p), to_copy)
+                            with ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_THREADS) as ex:
+                                ex.map(lambda p: (os.makedirs(os.path.dirname(p[1]), exist_ok=True),
+                                                  shutil.copy2(p[0], p[1])), to_copy)
             except Exception as e:
-                print(f"Worker Error: {e}")
-        time.sleep(10)
+                print(f"Sync Worker Error: {e}")
+        time.sleep(5)
 
+
+# ==========================
+# FLASK ROUTES
+# ==========================
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def index(): return render_template('index.html')
 
 
 @app.route('/api/stats')
 def api_stats():
-    inbox_count = 0
-    for root, _, files in os.walk(LOCAL_REVIEW_SOURCE):
-        inbox_count += len([f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))])
-
-    conn = sqlite3.connect(SKIPPED_DB)
-    res = conn.execute("SELECT COUNT(*) FROM progress").fetchone()
+    inbox_c = get_inbox_image_count()
+    conn = sqlite3.connect(SKIPPED_DB);
+    total = conn.execute("SELECT COUNT(*) FROM progress").fetchone()[0];
     conn.close()
-
-    return jsonify({
-        "inbox": inbox_count,
-        "total": res[0]
-    })
+    return jsonify(
+        {"inbox": inbox_c, "total": total, "waiting": IS_WAITING_FOR_INPUT, "folder": SELECTED_FOLDER or "ALL"})
 
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
-    return send_from_directory(LOCAL_REVIEW_SOURCE, filename)
+    full_path = os.path.join(LOCAL_REVIEW_SOURCE, unquote(filename))
+    if os.path.exists(full_path): return send_from_directory(os.path.dirname(full_path), os.path.basename(full_path))
+    return "Not Found", 404
 
 
 @app.route('/api/next')
@@ -134,34 +146,34 @@ def api_next():
     for root, _, files in os.walk(LOCAL_REVIEW_SOURCE):
         for f in files:
             if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                rel_path = os.path.relpath(os.path.join(root, f), LOCAL_REVIEW_SOURCE)
-                return jsonify({"url": f"/images/{rel_path.replace('\\', '/')}", "path": rel_path})
-    return jsonify({"url": None, "path": None})
+                full_local = os.path.join(root, f)
+                rel = os.path.relpath(full_local, LOCAL_REVIEW_SOURCE)
+                # We return the path for the UI display and the URL for the image source
+                return jsonify({
+                    "url": f"/images/{rel.replace(os.sep, '/')}",
+                    "path": rel,
+                    "display_name": rel.replace(os.sep, ' / ')
+                })
+    return jsonify({"url": None})
 
 
 @app.route('/api/decision', methods=['POST'])
 def api_decision():
     data = request.json
-    rel_path, decision = data['path'], data['decision']
-    full_drive_path = os.path.join(DRIVE_SOURCE, rel_path)
-    src = os.path.join(LOCAL_REVIEW_SOURCE, rel_path)
-
-    hourly_folder = datetime.now().strftime("%Y-%m-%d_%Hh")
-    base_dest_dir = LOCAL_YES if decision == 'yes' else LOCAL_NO
-    dest = os.path.join(base_dest_dir, hourly_folder, rel_path)
+    rel, dec = data['path'], data['decision']
+    full_drive_source = os.path.join(DRIVE_SOURCE, rel)
+    src = os.path.join(LOCAL_REVIEW_SOURCE, rel)
+    # NO TIMESTAMP HERE - goes straight to Category/Folder/File
+    dest = os.path.join(LOCAL_YES if dec == 'yes' else LOCAL_NO, rel)
 
     if os.path.exists(src):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.move(src, dest)
-        history_stack.append({"rel_path": rel_path, "actual_dest": dest, "drive_path": full_drive_path})
-
-        now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        history_stack.append({"rel_path": rel, "local_dest": dest, "drive_source": full_drive_source})
         conn = sqlite3.connect(SKIPPED_DB)
-        conn.execute('''
-            INSERT OR REPLACE INTO progress (img_path, processed_at, status) 
-            VALUES (?, ?, ?)
-        ''', (full_drive_path, now_ts, decision))
-        conn.commit()
+        conn.execute('INSERT OR REPLACE INTO progress VALUES (?, ?, ?)',
+                     (full_drive_source, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), dec))
+        conn.commit();
         conn.close()
     return jsonify({"status": "success"})
 
@@ -170,51 +182,61 @@ def api_decision():
 def api_undo():
     if not history_stack: return jsonify({"status": "error"}), 400
     last = history_stack.pop()
-    src, rel_path, drive_path = last["actual_dest"], last["rel_path"], last["drive_path"]
-    dest = os.path.join(LOCAL_REVIEW_SOURCE, rel_path)
+    src, rel, drive = last["local_dest"], last["rel_path"], last["drive_source"]
+    dest = os.path.join(LOCAL_REVIEW_SOURCE, rel)
     if os.path.exists(src):
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        os.makedirs(os.path.dirname(dest), exist_ok=True);
         shutil.move(src, dest)
-        conn = sqlite3.connect(SKIPPED_DB)
-        conn.execute('DELETE FROM progress WHERE img_path = ?', (drive_path,))
-        conn.commit()
+        conn = sqlite3.connect(SKIPPED_DB);
+        conn.execute('DELETE FROM progress WHERE img_path = ?', (drive,));
+        conn.commit();
         conn.close()
-        return jsonify({"url": f"/images/{rel_path.replace('\\', '/')}", "path": rel_path})
+        return jsonify({"url": f"/images/{rel.replace(os.sep, '/')}", "path": rel})
     return jsonify({"status": "error"}), 404
 
 
 @app.route('/api/sync_to_drive', methods=['POST'])
 def sync_to_drive():
-    counts = {"yes": 0, "no": 0, "deleted": 0}
-    mapping = {'yes': (LOCAL_YES, DRIVE_YES_DIR), 'no': (LOCAL_NO, DRIVE_NO_DIR)}
-    for cat, (local_root, drive_root) in mapping.items():
-        if not os.path.exists(local_root): continue
-        for hour_folder in os.listdir(local_root):
-            hour_path = os.path.join(local_root, hour_folder)
-            for root, _, files in os.walk(hour_path):
+    with download_lock:
+        print("\n" + "-" * 35 + "\n>>> SYNCING TO GOOGLE DRIVE <<<")
+        files_moved = 0
+        mapping = {'yes': (LOCAL_YES, DRIVE_YES_DIR), 'no': (LOCAL_NO, DRIVE_NO_DIR)}
+
+        for cat, (loc_root, dr_root) in mapping.items():
+            for root, _, files in os.walk(loc_root):
                 for f in files:
-                    local_file = os.path.join(root, f)
-                    rel_to_hour = os.path.relpath(local_file, hour_path)
-                    final_dest = os.path.join(drive_root, rel_to_hour)
-                    os.makedirs(os.path.dirname(final_dest), exist_ok=True)
-                    try:
-                        shutil.move(local_file, final_dest)
-                        counts[cat] += 1
-                        orig = os.path.join(DRIVE_SOURCE, rel_to_hour)
-                        if os.path.exists(orig):
-                            os.remove(orig);
-                            counts["deleted"] += 1
-                    except:
-                        pass
-            try:
-                shutil.rmtree(hour_path)
-            except:
-                pass
-    return jsonify({"status": "success",
-                    "message": f"Sync Complete!\n✅ {counts['yes']} Yes\n❌ {counts['no']} No\n🧹 {counts['deleted']} Deleted"})
+                    local_f = os.path.join(root, f)
+                    rel = os.path.relpath(local_f, loc_root)
+                    final_drive_path = os.path.join(dr_root, rel)
+                    original_drive_source = os.path.join(DRIVE_SOURCE, rel)
+
+                    # 1. Move to final destination on Drive
+                    os.makedirs(os.path.dirname(final_drive_path), exist_ok=True)
+                    shutil.move(local_f, final_drive_path)
+
+                    # 2. Delete from original "New Cards" source
+                    if os.path.exists(original_drive_source):
+                        try:
+                            os.remove(original_drive_source)
+                        except Exception as e:
+                            print(f"Error deleting original: {e}")
+
+                    files_moved += 1
+
+        # Cleanup empty folders in New Cards
+        for root, dirs, _ in os.walk(DRIVE_SOURCE, topdown=False):
+            for name in dirs:
+                try:
+                    os.rmdir(os.path.join(root, name))
+                except:
+                    pass
+
+        print(f" - Completed: {files_moved} cards moved and cleared.\n>>> SYNC DONE <<<\n" + "-" * 35)
+    return jsonify({"status": "success"})
 
 
 if __name__ == '__main__':
     init_system()
+    terminal_selection_logic()
     threading.Thread(target=auto_sync_worker, daemon=True).start()
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)

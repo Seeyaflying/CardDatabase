@@ -3,11 +3,15 @@ import time
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.service import Service
-from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from urllib.parse import urljoin
 
-# Define skipped images (add more to this list as needed)
+# --- CONFIGURATION ---
+# Path to your local chromedriver
+chromedriver_path = './utils/chromedriver.exe'
+
+# Define skipped images
 SKIPPED_IMAGES = {
     "empty.png",
     "altered_applestore_en_us-1.png",
@@ -18,72 +22,82 @@ SKIPPED_IMAGES = {
 
 # Folders
 save_folder = "G:/My Drive/New Cards/Altered"
-check_folder = "G:/My Drive/Card Database/Altered"  # Path to your check folder
+check_folder = "G:/My Drive/Card Database/Altered"
 
 # Ensure folders exist
 os.makedirs(save_folder, exist_ok=True)
 os.makedirs(check_folder, exist_ok=True)
 
-# Setup WebDriver with headless mode
+
+# Setup Chrome WebDriver
 def setup_driver():
-    options = webdriver.FirefoxOptions()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=options)
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # Run in background
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    # Point to your local executable
+    service = Service(executable_path=chromedriver_path)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
-# Function to download images with check folder
-def download_all_images(url, folder=save_folder, check_folder=check_folder):
+
+# Function to download images with check folder logic
+def download_images_from_page(url, folder=save_folder, check_folder=check_folder):
     driver = setup_driver()
-    driver.get(url)
-    time.sleep(3)
+    try:
+        driver.get(url)
+        time.sleep(4)  # Altered.gg can be slow to load card assets
 
-    img_tags = driver.find_elements(By.TAG_NAME, 'img')
-    print(f"Found {len(img_tags)} images on {url}")
+        img_tags = driver.find_elements(By.TAG_NAME, 'img')
+        print(f"Found {len(img_tags)} image tags on {url}")
 
-    for img_tag in img_tags:
-        img_url = img_tag.get_attribute('src') or img_tag.get_attribute('data-src')
-        if not img_url:
-            continue
+        for img_tag in img_tags:
+            # Check src and data-src for lazy-loading
+            img_url = img_tag.get_attribute('src') or img_tag.get_attribute('data-src')
+            if not img_url:
+                continue
 
-        img_url = urljoin(url, img_url)
-        img_filename = os.path.basename(img_url)
-        save_path = os.path.join(folder, img_filename)
-        check_path = os.path.join(check_folder, img_filename)
+            img_url = urljoin(url, img_url)
+            img_filename = os.path.basename(img_url).split("?")[0]  # Clean URL params
 
-        # Skip if image is in skipped list
-        if img_filename in SKIPPED_IMAGES:
-            print(f"Skipping {img_filename} (in skipped list)")
-            continue
+            save_path = os.path.join(folder, img_filename)
+            check_path = os.path.join(check_folder, img_filename)
 
-        # Skip if image already exists in save or check folder
-        if os.path.exists(save_path) or os.path.exists(check_path):
-            print(f"Skipping {img_filename} (already exists in save or check folder)")
-            continue
+            # 1. Skip if in global skip list
+            if img_filename in SKIPPED_IMAGES:
+                continue
 
-        try:
-            print(f"Downloading {img_url}...")
-            img_data = requests.get(img_url).content
-            with open(save_path, 'wb') as file:
-                file.write(img_data)
-            print(f"Downloaded {save_path}")
-        except Exception as e:
-            print(f"Error downloading {img_url}: {e}")
+            # 2. Skip if already exists in either location
+            if os.path.exists(save_path) or os.path.exists(check_path):
+                print(f"Skipping {img_filename} (already exists)")
+                continue
 
-    driver.quit()
+            try:
+                print(f"Downloading {img_url}...")
+                response = requests.get(img_url, timeout=10)
+                if response.status_code == 200:
+                    with open(save_path, 'wb') as file:
+                        file.write(response.content)
+            except Exception as e:
+                print(f"Error downloading {img_url}: {e}")
+    finally:
+        driver.quit()
+
 
 # Function to handle URL-based pagination
 def scrape_paginated_site(base_url, start_page=1, max_pages=40):
     current_page = start_page
     while current_page <= max_pages:
-        print(f"Scraping page {current_page}...")
+        print(f"\n--- Scraping page {current_page} ---")
         page_url = f"{base_url}?page={current_page}"
-        download_all_images(page_url)
+        download_images_from_page(page_url)
         current_page += 1
 
-# Start the process with the given site URL
-scrape_paginated_site("https://www.altered.gg/en-us/cards", max_pages=40)
+
+if __name__ == "__main__":
+    scrape_paginated_site("https://www.altered.gg/en-us/cards", max_pages=40)
 
 
 

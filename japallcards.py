@@ -1,212 +1,211 @@
 import os
-import csv
-import re
-import time
 import requests
+import platform
 import sqlite3
-from selenium.webdriver.common.by import By
-from selenium import webdriver
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from webdriver_manager.firefox import GeckoDriverManager
-from concurrent.futures import ThreadPoolExecutor
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-from tqdm import tqdm
 import logging
-from datetime import date
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
 
-# --- Paths ---
-DB_FILE = "skipped_images.sqlite"
-TABLE_NAME = "skipped_images"
-LANGUAGE_TYPE = "japanese"
-LOG_DIR = "log"
-CSV_DIR = "json"
+# Selenium Imports
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# --- CONFIGURATION: Paths ---
+UTILS_DIR = "utils"
+CHROME_DRIVER_PATH = os.path.join(UTILS_DIR, "chromedriver.exe" if platform.system() == "Windows" else "chromedriver")
+
+# --- USER CONFIGURATION ---
 BASE_SAVE_DIR = "G:/My Drive/New Cards"
 CHECK_FOLDER = "G:/My Drive/Card Database"
+DB_FILE = "skipped_images.sqlite"
 
+# --- SETTINGS ---
+MAX_DOWNLOAD_WORKERS = 40
+PAGE_LOAD_TIMEOUT = 15
+TARGET_CHROME_VERSION = "145.0.7632.117"
+
+# --- LOGGING SETUP ---
+LOG_DIR = "log"
 os.makedirs(LOG_DIR, exist_ok=True)
-os.makedirs(CSV_DIR, exist_ok=True)
-os.makedirs(BASE_SAVE_DIR, exist_ok=True)
-os.makedirs(CHECK_FOLDER, exist_ok=True)
+now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+log_filename = os.path.join(LOG_DIR, f"{now}.log")
 
-# --- Logging ---
-today = date.today()
-log_filename = os.path.join(LOG_DIR, f"{today.strftime('%Y-%m-%d')}_jap_image_scraper.log")
+logging.basicConfig(
+    filename=log_filename,
+    level=logging.INFO,
+    format='%(message)s',
+    encoding='utf-8'
+)
 
-logger = logging.getLogger("japanese_downloader")
-logger.setLevel(logging.INFO)
-if not logger.handlers:
-    handler = logging.FileHandler(log_filename, encoding="utf-8")
-    handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-    logger.addHandler(handler)
 
-# --- SQL ---
-def ensure_table():
-    """Create table if it doesn't exist."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(f"""
-        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            language TEXT NOT NULL,
-            image_number TEXT NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-def load_skipped_image_ids():
-    """Read Japanese skipped images from DB."""
-    ensure_table()
+# --- DATABASE LOGIC ---
+def load_db_skips():
+    if not os.path.exists(DB_FILE):
+        return set()
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        cursor.execute(f"SELECT image_number FROM {TABLE_NAME} WHERE language=?", (LANGUAGE_TYPE,))
-        result = {str(row[0]) for row in cursor.fetchall()}
+        cursor.execute("SELECT image_name FROM skipped_images WHERE language='japanese'")
+        results = {str(row[0]) for row in cursor.fetchall()}
         conn.close()
-        logger.info(f"Loaded {len(result)} skipped Japanese images from database.")
-        return result
+        return results
     except Exception as e:
-        logger.error(f"Error reading skipped images: {e}")
+        tqdm.write(f"⚠️ Database Error: {e}")
         return set()
 
-# --- Selenium ---
+
+# --- FILE SYSTEM SCAN ---
+def get_all_files_recursive(directory):
+    file_set = set()
+    if not os.path.exists(directory):
+        return file_set
+    pbar = tqdm(desc=f"🔍 Scanning {os.path.basename(directory)}", unit=" folders")
+    for root, _, files in os.walk(directory):
+        for file in files:
+            file_set.add(file)
+        pbar.update(1)
+    pbar.close()
+    return file_set
+
+
+# --- SELENIUM ENGINE ---
 def setup_driver():
-    options = webdriver.FirefoxOptions()
-    options.add_argument("--headless")
-    return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-gpu")
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    service = ChromeService(executable_path=CHROME_DRIVER_PATH)
+    return webdriver.Chrome(service=service, options=options)
 
-# --- Scraping ---
-def scrape_page(driver, site_name, site_id, page):
-    url = f"https://tcgrepublic.com/category/category_page_{site_id}.html?p={page}"
-    driver.get(url)
-    time.sleep(1.5)
-    image_urls = set()
-    for img in driver.find_elements(By.TAG_NAME, "img"):
-        src = img.get_attribute("src")
-        if src and re.match(r"https://tcgrepublic\.com/media/binary/\d+/\d+/\d+/\d+\.jpg\.l2_thumbnail\.jpg", src):
-            image_urls.add(src.replace(".l2_thumbnail.jpg", ""))
-    return image_urls
 
-def scrape_images(site_name, site_data):
-    driver = setup_driver()
+def scrape_site(site_name, site_data):
     all_urls = set()
-    for page in tqdm(range(1, site_data["total_pages"] + 1), desc=f"Scraping {site_name}", unit="page"):
-        urls = scrape_page(driver, site_name, site_data["id"], page)
-        all_urls.update(urls)
-    driver.quit()
+    driver = None
+    try:
+        driver = setup_driver()
+        # Clean progress bar only - no extra text during scrape
+        for page in tqdm(range(1, site_data["total_pages"] + 1), desc=f"🌐 Scraping {site_name}"):
+            url = f"https://tcgrepublic.com/category/category_page_{site_data['id']}.html?p={page}"
+            driver.get(url)
+            WebDriverWait(driver, PAGE_LOAD_TIMEOUT).until(EC.presence_of_element_located((By.TAG_NAME, "img")))
+
+            for img in driver.find_elements(By.TAG_NAME, "img"):
+                src = img.get_attribute("src")
+                if src and "l2_thumbnail" in src:
+                    clean_url = src.replace(".l2_thumbnail.jpg", "")
+                    all_urls.add(clean_url)
+    except Exception as e:
+        tqdm.write(f"❌ Scrape Error: {e}")
+    finally:
+        if driver: driver.quit()
     return all_urls
 
-# --- Download ---
-def download_image(url, skipped_image_ids, existing_images, site_name, save_folder):
+
+# --- DOWNLOAD LOGIC ---
+def download_logic(url, skip_list, site_name, save_folder):
     image_name = url.split("/")[-1]
-    image_number = re.search(r'\d+', image_name)
-    if image_number:
-        if image_number.group(0) in skipped_image_ids:
-            logger.info(f"[{site_name}] Skipped (DB): {image_name}")
-            return
-    if image_name in existing_images:
-        logger.info(f"[{site_name}] Skipped (Exists): {image_name}")
+
+    if image_name in skip_list:
+        tqdm.write(f"  [-] SKIP: {image_name}")
         return
 
     save_path = os.path.join(save_folder, image_name)
-
-    session = requests.Session()
-    retry = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-
     try:
-        response = session.get(url, headers={"User-Agent": "Mozilla/5.0"}, stream=True, timeout=5)
-        if response.status_code == 200:
+        r = requests.get(url, stream=True, timeout=10)
+        if r.status_code == 200:
             with open(save_path, "wb") as f:
-                for chunk in response.iter_content(1024):
-                    f.write(chunk)
-            logger.info(f"[{site_name}] Downloaded: {image_name}")
+                for chunk in r.iter_content(1024): f.write(chunk)
+            tqdm.write(f"  [+] NEW: {image_name}")
+            logging.info(f"Downloaded: {image_name}")
         else:
-            logger.warning(f"[{site_name}] Failed ({response.status_code}): {url}")
-    except Exception as e:
-        logger.error(f"[{site_name}] Error downloading {url}: {e}")
+            tqdm.write(f"  [!] FAIL: {image_name} ({r.status_code})")
+    except Exception:
+        tqdm.write(f"  [!] ERROR: {image_name}")
 
-# --- Save CSV ---
-def save_csv(data, filename):
-    filepath = os.path.join(CSV_DIR, filename)
-    with open(filepath, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        for url in data:
-            writer.writerow([url])
-    logger.info(f"CSV saved: {filepath}")
 
-# --- Main ---
+# --- MAIN SITES LIST ---
+SITES = {
+    "Battle Spirits": {"id": 79, "total_pages": 145},
+    "Buddy Fight": {"id": 71, "total_pages": 233},
+    "Build Divide": {"id": 61, "total_pages": 176},
+    "Cardfight Vanguard": {"id": 44, "total_pages": 554},
+    "Chaos": {"id": 50, "total_pages": 433},
+    "Detective Conan": {"id": 84, "total_pages": 26},
+    "DB Heroes": {"id": 73, "total_pages": 202},
+    "DB Super Divers": {"id": 93, "total_pages": 13},
+    "DBZ Super Fusion World": {"id": 82, "total_pages": 29},
+    "Digimon": {"id": 37, "total_pages": 118},
+    "Duel Masters": {"id": 36, "total_pages": 464},
+    "Fate-Grand Order Arcade": {"id": 39, "total_pages": 42},
+    "Final Fantasy": {"id": 56, "total_pages": 233},
+    "Fire Emblem Cipher": {"id": 33, "total_pages": 74},
+    "Godzilla Card Game": {"id": 99, "total_pages": 5},
+    "Gundam": {"id": 94, "total_pages": 10},
+    "Hololive": {"id": 88, "total_pages": 29},
+    "Kamen Rider Battle Ganba Legends": {"id": 86, "total_pages": 28},
+    "Kamen Rider Battle Ganbarizing": {"id": 85, "total_pages": 99},
+    "Kantai Collection Kancolle Arcade": {"id": 60, "total_pages": 1},
+    "Love Live": {"id": 95, "total_pages": 23},
+    "Lycee Over Ture": {"id": 48, "total_pages": 185},
+    "One Piece": {"id": 67, "total_pages": 88},
+    "Osica": {"id": 68, "total_pages": 68},
+    "Pokemon": {"id": 35, "total_pages": 629},
+    "Precious Memories": {"id": 41, "total_pages": 416},
+    "Prism Connect": {"id": 59, "total_pages": 89},
+    "Rebirth for you": {"id": 38, "total_pages": 402},
+    "Shadowverse Evolve": {"id": 62, "total_pages": 110},
+    "Takashi Murakami Jellyfish Eyes": {"id": 91, "total_pages": 3},
+    "The Quintessential Quintuplets": {"id": 87, "total_pages": 20},
+    "Trails Series": {"id": 92, "total_pages": 8},
+    "Ultraman": {"id": 90, "total_pages": 14},
+    "Union Arena": {"id": 74, "total_pages": 166},
+    "Vividz": {"id": 70, "total_pages": 12},
+    "Weiss Schwarz": {"id": 31, "total_pages": 1324},
+    "Weiss Schwarz Blau": {"id": 72, "total_pages": 97},
+    "Weiss Schwarz Rose": {"id": 96, "total_pages": 22},
+    "Wixoss": {"id": 43, "total_pages": 344},
+    "Xross Stars": {"id": 98, "total_pages": 5},
+    "Yugioh": {"id": 34, "total_pages": 797},
+    "Yugioh Rush Duel": {"id": 49, "total_pages": 116},
+    "Z-X Zillions over enemy X": {"id": 42, "total_pages": 441},
+}
+
+
 def main():
-    skipped_image_ids = load_skipped_image_ids()
+    print("🚀 Initializing Scraper...")
+    os.makedirs(BASE_SAVE_DIR, exist_ok=True)
 
-    # --- Sites ---
-    SITES = {
-        "Battle Spirits": {"id": 79, "total_pages": 145},
-        "Buddy Fight": {"id": 71, "total_pages": 233},
-        "Build Divide": {"id": 61, "total_pages": 176},
-        "Cardfight Vanguard": {"id": 44, "total_pages": 554},
-        "Chaos": {"id": 50, "total_pages": 433},
-        "Detective Conan": {"id": 84, "total_pages": 26},
-        "DB Heroes": {"id": 73, "total_pages": 202},
-        "DB Super Divers": {"id": 93, "total_pages": 13},
-        "DBZ Super Fusion World": {"id": 82, "total_pages": 29},
-        "Digimon": {"id": 37, "total_pages": 118},
-        "Duel Masters": {"id": 36, "total_pages": 464},
-        "Fate-Grand Order Arcade": {"id": 39, "total_pages": 42},
-        "Final Fantasy": {"id": 56, "total_pages": 233},
-        "Fire Emblem Cipher": {"id": 33, "total_pages": 74},
-        "Godzilla Card Game": {"id": 99, "total_pages": 5},
-        "Gundam": {"id": 94, "total_pages": 10},
-        "Hololive": {"id": 88, "total_pages": 29},
-        "Kamen Rider Battle Ganba Legends": {"id": 86, "total_pages": 28},
-        "Kamen Rider Battle Ganbarizing": {"id": 85, "total_pages": 99},
-        "Kantai Collection Kancolle Arcade": {"id": 60, "total_pages": 1},
-        "Love Live": {"id": 95, "total_pages": 23},
-        "Lycee Over Ture": {"id": 48, "total_pages": 185},
-        "One Piece": {"id": 67, "total_pages": 88},
-        "Osica": {"id": 68, "total_pages": 68},
-        "Pokemon": {"id": 35, "total_pages": 629},
-        "Precious Memories": {"id": 41, "total_pages": 416},
-        "Prism Connect": {"id": 59, "total_pages": 89},
-        "Rebirth for you": {"id": 38, "total_pages": 402},
-        "Shadowverse Evolve": {"id": 62, "total_pages": 110},
-        "Takashi Murakami Jellyfish Eyes": {"id": 91, "total_pages": 3},
-        "The Quintessential Quintuplets": {"id": 87, "total_pages": 20},
-        "Trails Series": {"id": 92, "total_pages": 8},
-        "Ultraman": {"id": 90, "total_pages": 14},
-        "Union Arena": {"id": 74, "total_pages": 166},
-        "Vividz": {"id": 70, "total_pages": 12},
-        "Weiss Schwarz": {"id": 31, "total_pages": 1324},
-        "Weiss Schwarz Blau": {"id": 72, "total_pages": 97},
-        "Weiss Schwarz Rose": {"id": 96, "total_pages": 22},
-        "Wixoss": {"id": 43, "total_pages": 344},
-        "Xross Stars": {"id": 98, "total_pages": 5},
-        "Yugioh": {"id": 34, "total_pages": 797},
-        "Yugioh Rush Duel": {"id": 49, "total_pages": 116},
-        "Z-X Zillions over enemy X": {"id": 42, "total_pages": 441},
-    }
-
-    existing_check_images = set(os.listdir(CHECK_FOLDER))
+    print("📂 Syncing Database and Folders...")
+    db_skips = load_db_skips()
+    database_files = get_all_files_recursive(CHECK_FOLDER)
+    new_cards_files = get_all_files_recursive(BASE_SAVE_DIR)
+    master_skip_list = db_skips.union(database_files).union(new_cards_files)
+    print(f"✅ Total collection size: {len(master_skip_list)} (Skipping duplicates)")
 
     for site_name, site_data in SITES.items():
-        save_folder = os.path.join(BASE_SAVE_DIR, site_name)
-        os.makedirs(save_folder, exist_ok=True)
-        existing_site_images = set(os.listdir(save_folder))
-        combined_existing_images = existing_check_images.union(existing_site_images)
+        print(f"\n--- {site_name.upper()} ---")
+        scraped_urls = scrape_site(site_name, site_data)
+        if not scraped_urls: continue
 
-        urls = scrape_images(site_name, site_data)
+        site_save_dir = os.path.join(BASE_SAVE_DIR, site_name)
+        os.makedirs(site_save_dir, exist_ok=True)
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            executor.map(
-                lambda u: download_image(u, skipped_image_ids, combined_existing_images, site_name, save_folder),
-                urls
-            )
+        download_tasks = [(u, master_skip_list, site_name, site_save_dir) for u in scraped_urls]
 
-        save_csv(urls, f"{site_name}_image_links.csv")
+        with ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_WORKERS) as executor:
+            list(tqdm(executor.map(lambda p: download_logic(*p), download_tasks),
+                      total=len(download_tasks), desc=f"📥 {site_name}"))
+
+        master_skip_list.update(set(os.listdir(site_save_dir)))
+
+    print("\n✨ Finished. Check your 'log' folder for results.")
+
 
 if __name__ == "__main__":
+    input("Please have your vpn running for this. Press Enter to continue: ")
     main()
-
