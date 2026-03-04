@@ -10,11 +10,7 @@
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexRemoved" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_base.py" afterDir="false" />
-    </list>
+    <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -355,7 +351,7 @@
       <workItem from="1772506550194" duration="760000" />
       <workItem from="1772507743165" duration="1596000" />
       <workItem from="1772572279276" duration="779000" />
-      <workItem from="1772574401917" duration="2599000" />
+      <workItem from="1772574401917" duration="7540000" />
     </task>
     <servers />
   </component>
