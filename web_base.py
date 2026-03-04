@@ -26,7 +26,7 @@ LOCAL_NO = r"C:\Users\seeya\OneDrive\Desktop\Cards\no"
 SKIPPED_DB = "skipped_images.sqlite"
 SELECTED_FOLDER = None
 IS_WAITING_FOR_INPUT = False
-SYNC_BATCH_SIZE = 18000
+SYNC_BATCH_SIZE = 1800
 MIN_THRESHOLD = 300
 MAX_DOWNLOAD_THREADS = 10
 
