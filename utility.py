@@ -1,33 +1,21 @@
 import os
-import time
 import json
 import csv
 import sqlite3
-import requests
-import io
-import sys
+import subprocess
 from datetime import datetime
-from urllib.parse import urljoin
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
 
-# ------------------------------
-# 1. CONFIGURATION & PATHS
-# ------------------------------
+# ==============================================================
+# CONFIGURATION SECTION
+# ==============================================================
+JSON_FILE_PATH = r"skipped_output.json"
 DB_FILE = "skipped_images.sqlite"
-CHROMEDRIVER_PATH = './utils/chromedriver.exe'
 BACKUP_FOLDER = "backups"
-LOG_FOLDER = "log"
+# ==============================================================
 
 os.makedirs(BACKUP_FOLDER, exist_ok=True)
-os.makedirs(LOG_FOLDER, exist_ok=True)
 
 
-# ------------------------------
-# 2. DATABASE MANAGER CLASS
-# ------------------------------
 class CardDBManager:
     def __init__(self, db_path=DB_FILE):
         self.db_path = db_path
@@ -39,7 +27,6 @@ class CardDBManager:
         return conn
 
     def _ensure_core_tables(self):
-        """Ensures fundamental tables exist without overwriting others."""
         with self.get_conn() as conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS progress (img_path TEXT PRIMARY KEY, processed_at TEXT, status TEXT, game_name TEXT)")
@@ -48,72 +35,116 @@ class CardDBManager:
             conn.commit()
 
     def get_tables(self):
-        """Dynamically fetch all non-system tables."""
         with self.get_conn() as conn:
             cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
             return [row[0] for row in cursor.fetchall()]
 
     def get_columns(self, table):
-        """Get column names for any table."""
         with self.get_conn() as conn:
             cursor = conn.execute(f"PRAGMA table_info({table})")
             return [row[1] for row in cursor.fetchall()]
 
-    # --- Step-by-Step Manual Add ---
-    def manual_add(self):
+    def import_scanner_json(self):
+        target_path = JSON_FILE_PATH
+        if not target_path:
+            target_path = input("\nNo path found. Enter path to JSON file: ").strip().replace('"', '')
+
+        if not os.path.exists(target_path):
+            print(f"❌ File not found at: {target_path}");
+            return
+
+        print(f"\n>>> Loading data from: {target_path}")
+        try:
+            with open(target_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception as e:
+            print(f"❌ Read Error: {e}");
+            return
+
         tables = self.get_tables()
         for i, t in enumerate(tables, 1): print(f"{i}. {t}")
-        table_idx = input("\nSelect table number: ")
-        if not table_idx.isdigit(): return
-
-        table = tables[int(table_idx) - 1]
+        table = tables[int(input("\nSelect destination table: ")) - 1]
         cols = self.get_columns(table)
 
-        values = []
-        print(f"\n[Adding to {table}] Enter values for each column:")
+        mapping = {}
+        print(f"\n[Target: {table}] Map JSON keys to columns:")
+        for j_key in ["image_name", "language"]:
+            for i, col_name in enumerate(cols, 1): print(f" {i}. {col_name}")
+            idx = input(f"Select column for '{j_key}': ")
+            if idx.isdigit(): mapping[j_key] = cols[int(idx) - 1]
+
+        defaults = {}
         for col in cols:
-            # Auto-timestamp for date/time columns
-            if any(x in col.lower() for x in ["date", "at", "timestamp"]):
-                auto_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                val = input(f" -> {col} (Enter for '{auto_now}'): ") or auto_now
-            else:
-                val = input(f" -> {col}: ")
-            values.append(val)
+            if col not in mapping.values():
+                val = input(f"Default value for '{col}' (Enter to skip): ")
+                if val: defaults[col] = val
 
-        try:
-            with self.get_conn() as conn:
-                conn.execute(f"INSERT INTO {table} VALUES ({','.join(['?'] * len(values))})", values)
-                conn.commit()
-            print("✅ Record successfully added.")
-        except Exception as e:
-            print(f"❌ SQL Error: {e}")
+        print("\n" + "!" * 15 + " PRE-IMPORT PREVIEW " + "!" * 15)
+        for entry in data[:3]:
+            row = {db_col: entry.get(j_key) for j_key, db_col in mapping.items()}
+            row.update(defaults)
+            for col in cols:
+                if col not in row and any(x in col.lower() for x in ["date", "at", "timestamp"]):
+                    row[col] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"Preview: {row}")
 
-    # --- Step-by-Step Edit/Delete ---
-    def modify_record(self):
+        if input("\nProceed with import? (y/n): ").lower() != 'y': return
+
+        success, errors = 0, 0
+        with self.get_conn() as conn:
+            for entry in data:
+                row_data = {db_col: entry.get(j_key) for j_key, db_col in mapping.items()}
+                row_data.update(defaults)
+                for col in cols:
+                    if col not in row_data and any(x in col.lower() for x in ["date", "at", "timestamp"]):
+                        row_data[col] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                keys = list(row_data.keys())
+                sql = f"INSERT OR IGNORE INTO {table} ({', '.join(keys)}) VALUES ({', '.join(['?'] * len(keys))})"
+                try:
+                    conn.execute(sql, list(row_data.values()))
+                    success += 1
+                except:
+                    errors += 1
+            conn.commit()
+        print(f"✅ Finished: {success} added, {errors} ignored.")
+
+    def manual_add(self):
         tables = self.get_tables()
         for i, t in enumerate(tables, 1): print(f"{i}. {t}")
         table = tables[int(input("\nSelect table: ")) - 1]
         cols = self.get_columns(table)
+        vals = []
+        for c in cols:
+            if any(x in c.lower() for x in ["date", "at", "timestamp"]):
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                vals.append(input(f"{c} [{now}]: ") or now)
+            else:
+                vals.append(input(f"{c}: "))
+        with self.get_conn() as conn:
+            conn.execute(f"INSERT INTO {table} VALUES ({','.join(['?'] * len(vals))})", vals)
+            conn.commit()
 
-        print("\nWhich column should we use to find the record?")
+    def modify_record(self):
+        tables = self.get_tables()
+        for i, t in enumerate(tables, 1): print(f"{i}. {t}")
+        table = tables[int(input("\nTable: ")) - 1]
+        cols = self.get_columns(table)
         for i, c in enumerate(cols, 1): print(f"{i}. {c}")
-        look_col = cols[int(input("Column index: ")) - 1]
-        look_val = input(f"Enter the search value for {look_col}: ")
-
-        action = input("\n[E]dit or [D]elete? ").upper()
-        if action == 'D':
+        col = cols[int(input("Search column index: ")) - 1]
+        val = input("Value: ")
+        act = input("[E]dit or [D]elete? ").upper()
+        if act == 'D':
             with self.get_conn() as conn:
-                conn.execute(f"DELETE FROM {table} WHERE {look_col} = ?", (look_val,))
-            print("✅ Deleted.")
-        elif action == 'E':
+                conn.execute(f"DELETE FROM {table} WHERE {col} = ?", (val,))
+        elif act == 'E':
             for i, c in enumerate(cols, 1): print(f"{i}. {c}")
             up_col = cols[int(input("Column to update: ")) - 1]
-            new_v = input(f"Enter new value for {up_col}: ")
+            new_v = input("New value: ")
             with self.get_conn() as conn:
-                conn.execute(f"UPDATE {table} SET {up_col} = ? WHERE {look_col} = ?", (new_v, look_val))
-            print("✅ Record updated.")
+                conn.execute(f"UPDATE {table} SET {up_col} = ? WHERE {col} = ?", (new_v, val))
 
-    # --- Robust Backup System ---
+    # --- UPDATED BACKUP WITH ONE-LINE JSON ---
     def backup(self, format="json"):
         ts = datetime.now().strftime("%Y%m%d_%H%M")
         for t in self.get_tables():
@@ -121,83 +152,64 @@ class CardDBManager:
                 rows = [dict(r) for r in conn.execute(f"SELECT * FROM {t}").fetchall()]
             if not rows: continue
 
-            f_path = os.path.join(BACKUP_FOLDER, f"{t}_{ts}.{format}")
-            try:
+            path = os.path.join(BACKUP_FOLDER, f"{t}_{ts}.{format}")
+            with open(path, 'w', encoding='utf-8') as f:
                 if format == "json":
-                    with open(f_path, 'w', encoding='utf-8') as f:
-                        json.dump(rows, f, indent=4, ensure_ascii=False)
+                    f.write("[\n")
+                    for i, row in enumerate(rows):
+                        comma = "," if i < len(rows) - 1 else ""
+                        f.write(f"  {json.dumps(row)}{comma}\n")
+                    f.write("]")
                 else:
-                    with open(f_path, 'w', newline='', encoding='utf-8') as f:
-                        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-                        writer.writeheader()
-                        writer.writerows(rows)
-                print(f"📦 Backup created: {f_path}")
-            except Exception as e:
-                print(f"❌ Backup failed for {t}: {e}")
+                    writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+                    writer.writeheader()
+                    writer.writerows(rows)
+            print(f"📦 Backup: {path}")
 
 
-# ------------------------------
-# 3. SCRAPER HELPER
-# ------------------------------
-def setup_chrome():
-    """Returns a pre-configured headless Chrome driver."""
-    opts = Options()
-    opts.add_argument("--headless")
-    opts.add_argument("--disable-gpu")
-    service = Service(executable_path=CHROMEDRIVER_PATH)
-    return webdriver.Chrome(service=service, options=opts)
+def make_skipped_images_json():
+    """Triggers the external skipped_json_maker.py script."""
+    script_name = "skipped_json_maker.py"
+    if os.path.exists(script_name):
+        print(f"\n--- Running {script_name} ---")
+        subprocess.run(["python", script_name])
+    else:
+        print(f"❌ Error: {script_name} not found in the current directory.")
 
 
-# ------------------------------
-# 4. MAIN INTERFACE
-# ------------------------------
 def main():
     mgr = CardDBManager()
-
     while True:
-        print("\n" + "=" * 40)
-        print("  CARD DATABASE & SCRAPER UTILITY ")
-        print("=" * 40)
-        print("1. View Tables & Row Counts")
-        print("2. Search All Tables (Universal)")
-        print("3. Manual Add (Step-by-Step)")
-        print("4. Edit/Delete Record")
-        print("5. Export All Backups (JSON/CSV)")
-        print("6. Exit")
+        print("\n" + "=" * 40 + "\n  DATABASE MANAGER\n" + "=" * 40)
+        print("1. Statistics\n2. Search\n3. Manual Add\n4. Edit/Delete\n5. Backup")
+        print("6. IMPORT FROM JSON PATH\n7. Make Skipped Images JSON\n8. Exit")
 
         cmd = input("\nSelect Option: ")
-
         if cmd == '1':
-            print("\nDatabase Statistics:")
             for t in mgr.get_tables():
                 count = mgr.get_conn().execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
                 print(f" -> [{t}]: {count} records")
-
         elif cmd == '2':
-            term = input("Search term (Filename, Path, ID): ")
-            found = False
+            term = input("Search term: ")
             for t in mgr.get_tables():
                 cols = mgr.get_columns(t)
                 where = " OR ".join([f"{c} LIKE ?" for c in cols])
                 with mgr.get_conn() as conn:
                     res = conn.execute(f"SELECT * FROM {t} WHERE {where}", [f"%{term}%"] * len(cols)).fetchall()
                     if res:
-                        found = True
-                        print(f"\nMatches in [{t}]:")
+                        print(f"\n[{t}]:")
                         for r in res: print(f"  {dict(r)}")
-            if not found: print("No results found.")
-
         elif cmd == '3':
             mgr.manual_add()
         elif cmd == '4':
             mgr.modify_record()
         elif cmd == '5':
-            fmt = input("Export format (json/csv): ").lower()
-            if fmt in ['json', 'csv']:
-                mgr.backup(fmt)
-            else:
-                print("Invalid format.")
+            mgr.backup(input("json/csv: ").lower())
         elif cmd == '6':
+            mgr.import_scanner_json()
+        elif cmd == '7':
+            make_skipped_images_json()
+        elif cmd == '8':
             break
 
 

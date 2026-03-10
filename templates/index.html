@@ -9,23 +9,8 @@
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: sans-serif; user-select: none; }
         body { display: flex; flex-direction: column; }
 
-        #status-bar { height: 40px; background: #000; display: flex; justify-content: space-around; align-items: center; font-size: 0.8rem; border-bottom: 1px solid #222; flex-shrink: 0; }
-
-        /* New File Info Bar */
-        #file-info {
-            height: 30px;
-            background: #1a1a1a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            color: var(--primary);
-            border-bottom: 1px solid #333;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            padding: 0 10px;
-        }
+        #status-bar { height: 40px; background: #000; display: flex; justify-content: space-around; align-items: center; font-size: 0.8rem; border-bottom: 1px solid #222; flex-shrink: 0; cursor: pointer; }
+        #file-info { height: 30px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--primary); border-bottom: 1px solid #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 10px; }
 
         #stage { flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; background: #111; overflow: hidden; }
         #current-card { max-width: 92%; max-height: 92%; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); touch-action: none; will-change: transform; pointer-events: auto; }
@@ -36,12 +21,16 @@
         #btn-no { background-color: var(--no); } #btn-undo { background-color: #333; } #btn-yes { background-color: var(--yes); }
         #btn-sync { grid-column: span 3; background-color: var(--primary); color: #000; height: 48px; font-size: 0.9rem; }
         .label { font-size: 0.65rem; margin-top: 5px; opacity: 0.7; }
+
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        #folder-list { overflow-y: auto; margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .folder-btn { background: #222; border: 1px solid #444; padding: 18px; color: white; text-align: left; border-radius: 8px; font-size: 1rem; }
     </style>
 </head>
 <body>
-    <div id="status-bar">
+    <div id="status-bar" onclick="openModal()">
         <span>INBOX: <b id="stat-inbox">0</b></span>
-        <span>SET: <b id="stat-folder">...</b></span>
+        <span>SET: <b id="stat-folder">...</b> ⚙️</span>
         <span>DONE: <b id="stat-total">0</b></span>
     </div>
 
@@ -49,15 +38,24 @@
 
     <div id="stage">
         <div id="wait-msg">
-            <p>Inbox Empty.<br>Check PC Terminal or Sync.</p>
+            <p>Inbox Empty.<br>Tap SET to Switch or Sync.</p>
         </div>
         <img id="current-card" src="" style="display:none;">
     </div>
+
     <div id="controls">
         <button id="btn-no"><span>✖</span><span class="label">NO</span></button>
         <button id="btn-undo"><span>⟲</span><span class="label">UNDO</span></button>
         <button id="btn-yes"><span>✔</span><span class="label">YES</span></button>
         <button id="btn-sync">SYNC TO GOOGLE DRIVE</button>
+    </div>
+
+    <div id="modal">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Switch TCG Set</h3>
+            <span style="font-size: 2.5rem; cursor:pointer;" onclick="closeModal()">&times;</span>
+        </div>
+        <div id="folder-list"></div>
     </div>
 
     <script>
@@ -74,7 +72,7 @@
                 document.getElementById('stat-inbox').innerText = data.inbox;
                 document.getElementById('stat-total').innerText = data.total;
                 document.getElementById('stat-folder').innerText = data.folder;
-                document.getElementById('wait-msg').style.display = (data.waiting && data.inbox === 0) ? 'block' : 'none';
+                document.getElementById('wait-msg').style.display = (data.inbox === 0) ? 'block' : 'none';
             } catch(e){}
         }
 
@@ -83,7 +81,7 @@
             const data = await res.json();
             if (data.url) {
                 img.src = data.url + "?t=" + Date.now();
-                fileInfo.innerText = data.display_name || data.path; // Show the name/path
+                fileInfo.innerText = data.display_name;
                 img.style.display = 'block';
                 img.style.transition = "none";
                 img.style.transform = "translateX(0) rotate(0deg)";
@@ -91,7 +89,7 @@
                 currentPath = data.path;
             } else {
                 img.style.display = 'none';
-                fileInfo.innerText = "No cards remaining in inbox.";
+                fileInfo.innerText = "Inbox empty.";
                 updateStats();
             }
         }
@@ -112,7 +110,6 @@
             updateStats();
         }
 
-        // Swipe Logic
         img.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; isDragging = true; img.style.transition = "none"; }, {passive: false});
         img.addEventListener('touchmove', (e) => {
             if (!isDragging) return; e.preventDefault();
@@ -126,16 +123,46 @@
             else { img.style.transition = "transform 0.2s ease-out"; img.style.transform = "translateX(0) rotate(0deg)"; }
         });
 
+        async function openModal() {
+            const list = document.getElementById('folder-list');
+            list.innerHTML = "Scanning Drive...";
+            document.getElementById('modal').style.display = 'flex';
+            const res = await fetch('/api/list_folders');
+            const data = await res.json();
+            list.innerHTML = `<button class="folder-btn" onclick="selectFolder('ALL')">📂 ALL FOLDERS</button>`;
+            data.folders.forEach(f => {
+                list.innerHTML += `<button class="folder-btn" onclick="selectFolder('${f.replace(/'/g, "\\'")}')">📁 ${f}</button>`;
+            });
+        }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        async function selectFolder(name) {
+            await fetch('/api/set_folder', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({folder: name})
+            });
+            closeModal();
+            loadNext();
+            updateStats();
+        }
+
         document.getElementById('btn-yes').onclick = () => handleDecision('yes');
         document.getElementById('btn-no').onclick = () => handleDecision('no');
         document.getElementById('btn-undo').onclick = async () => {
             const res = await fetch('/api/undo', {method: 'POST'});
             if (res.ok) { loadNext(); updateStats(); }
         };
+
         document.getElementById('btn-sync').onclick = async () => {
-            const btn = document.getElementById('btn-sync'); btn.innerText = "SYNCING...";
-            await fetch('/api/sync_to_drive', {method: 'POST'});
-            btn.innerText = "SYNC TO GOOGLE DRIVE"; updateStats(); loadNext();
+            if (!confirm("Start Google Drive Sync? This moves sorted files and clears source folders.")) return;
+            const btn = document.getElementById('btn-sync');
+            btn.innerText = "SYNCING...";
+            const res = await fetch('/api/sync_to_drive', {method: 'POST'});
+            const data = await res.json();
+            btn.innerText = "SYNC TO GOOGLE DRIVE";
+            alert(`Sync Finished!\nMoved: ${data.moved} files\nFolders Cleared: ${data.folders_removed}`);
+            updateStats();
+            loadNext();
         };
 
         document.addEventListener('keydown', (e) => {

@@ -113,10 +113,8 @@ def draw_menu():
         ("1", "AI_gui.py"), ("5", "magic.py"),
         ("2", "ai_headless.py"), ("6", "neopets.py"),
         ("3", "web_base.py"), ("7", "Altered.py"),
-        ("4", "ResizeTool.py"), ("8", "sorter.py"),
-        ("9", "sql_update.py"), ("0", "card_ai_update.py"),
-        ("J", "japallcards.py"), ("A", "allcards.py"),
-        ("T", "test.py"), ("Q", "Quit Manager")
+        ("4", "japallcards.py"), ("8", "allcards.py"),
+        ("U", "utility.py"), ("Q", "Quit Manager")
     ]
 
     # Print in two columns
@@ -142,11 +140,9 @@ def main():
     keyboard.add_hotkey('ctrl+shift+k', kill_active_process)
 
     mapping = {
-        "1": "AI_gui.py", "2": "ai_headless.py", "3": "web_base.py",
-        "4": "ResizeTool.py", "5": "magic.py", "6": "neopets.py",
-        "7": "Altered.py", "8": "sorter.py", "9": "sql_update.py",
-        "0": "card_ai_update.py", "j": "japallcards.py", "a": "allcards.py",
-        "t": "test.py"
+        "1": "AI_gui.py", "2": "ai_headless.py", "3": "web_base.py", "5": "magic.py", "6": "neopets.py",
+        "7": "Altered.py", "4": "japallcards.py", "8": "allcards.py",
+        "u": "utility.py"
     }
 
     while True:
