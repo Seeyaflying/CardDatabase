@@ -1,15 +1,11 @@
-import os
-import sqlite3
-import shutil
-import threading
-import time
+import os, sqlite3, shutil, threading, time, random
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from urllib.parse import unquote
 from flask import Flask, render_template, send_from_directory, jsonify, request
 from flask_cors import CORS
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='utils')
 CORS(app)
 
 # ==========================
@@ -18,68 +14,51 @@ CORS(app)
 DRIVE_SOURCE = r"G:\My Drive\New Cards"
 DRIVE_YES_DIR = r"G:\My Drive\Card Database"
 DRIVE_NO_DIR = r"G:\My Drive\Skipped Cards"
-
-LOCAL_REVIEW_SOURCE = r"C:\Users\seeya\OneDrive\Desktop\Cards\inbox"
-LOCAL_YES = r"C:\Users\seeya\OneDrive\Desktop\Cards\yes"
-LOCAL_NO = r"C:\Users\seeya\OneDrive\Desktop\Cards\no"
-
+BASE_LOCAL_PATH = r"C:\Users\seeya\OneDrive\Desktop\Cards"
 SKIPPED_DB = "skipped_images.sqlite"
-SELECTED_FOLDER = None
-IS_WAITING_FOR_INPUT = False
-SYNC_BATCH_SIZE = 6000
+
+active_users = {"seeya", "riverleaf"}
+user_prefs = {"seeya": "WAITING", "riverleaf": "WAITING"}
+user_history = {"seeya": [], "riverleaf": []}
+
+SYNC_BATCH_SIZE = 1500
 MIN_THRESHOLD = 300
 MAX_DOWNLOAD_THREADS = 10
-
 download_lock = threading.Lock()
-history_stack = []
-
-
-# ==========================
-# CORE LOGIC
-# ==========================
-
-def get_inbox_image_count():
-    count = 0
-    if not os.path.exists(LOCAL_REVIEW_SOURCE): return 0
-    for root, _, files in os.walk(LOCAL_REVIEW_SOURCE):
-        for f in files:
-            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                count += 1
-    return count
-
-
-def terminal_selection_logic():
-    global SELECTED_FOLDER, IS_WAITING_FOR_INPUT
-    IS_WAITING_FOR_INPUT = True
-    print("\n" + "=" * 45 + "\n      CARD DATABASE MANAGER\n" + "=" * 45)
-    print(" [1] PROCESS ALL FOLDERS\n [2] LIST SPECIFIC FOLDERS")
-    try:
-        mode = input("Select (1/2) or Enter for ALL: ").strip()
-        if mode == "2":
-            subfolders = [d for d in os.listdir(DRIVE_SOURCE) if os.path.isdir(os.path.join(DRIVE_SOURCE, d))]
-            subfolders.sort(key=str.lower)
-            for i, fld in enumerate(subfolders, 1): print(f" [{i:02d}] {fld}")
-            choice = input("\nType Number or Name: ").strip()
-            if choice.isdigit() and 0 < int(choice) <= len(subfolders):
-                SELECTED_FOLDER = subfolders[int(choice) - 1]
-            else:
-                SELECTED_FOLDER = choice if choice else None
-        else:
-            SELECTED_FOLDER = None
-        IS_WAITING_FOR_INPUT = False
-    except:
-        IS_WAITING_FOR_INPUT = False
 
 
 def init_system():
-    for folder in [LOCAL_REVIEW_SOURCE, LOCAL_YES, LOCAL_NO]: os.makedirs(folder, exist_ok=True)
+    if not os.path.exists(BASE_LOCAL_PATH): os.makedirs(BASE_LOCAL_PATH)
     conn = sqlite3.connect(SKIPPED_DB)
-    conn.execute('CREATE TABLE IF NOT EXISTS progress (img_path TEXT PRIMARY KEY, processed_at TEXT, status TEXT)')
-    conn.commit()
+    conn.execute('''CREATE TABLE IF NOT EXISTS progress
+    (
+        img_path
+        TEXT,
+        username
+        TEXT,
+        processed_at
+        TEXT,
+        status
+        TEXT,
+        PRIMARY
+        KEY
+                    (
+        img_path,
+        username
+                    ))''')
+    conn.commit();
     conn.close()
 
 
-def is_processed(file_path):
+def get_user_paths(username):
+    user_dir = os.path.join(BASE_LOCAL_PATH, "users", username)
+    paths = {"inbox": os.path.join(user_dir, "inbox"), "yes": os.path.join(user_dir, "yes"),
+             "no": os.path.join(user_dir, "no")}
+    for p in paths.values(): os.makedirs(p, exist_ok=True)
+    return paths
+
+
+def is_processed_by_anyone(file_path):
     conn = sqlite3.connect(SKIPPED_DB)
     res = conn.execute('SELECT 1 FROM progress WHERE img_path = ?', (file_path,)).fetchone()
     conn.close()
@@ -87,39 +66,43 @@ def is_processed(file_path):
 
 
 def auto_sync_worker():
-    global IS_WAITING_FOR_INPUT, SELECTED_FOLDER
     while True:
-        if not download_lock.locked() and not IS_WAITING_FOR_INPUT:
-            try:
-                if get_inbox_image_count() < MIN_THRESHOLD:
+        if not download_lock.locked():
+            for user in list(active_users):
+                if user_prefs[user] == "WAITING": continue
+                paths = get_user_paths(user)
+                inbox_count = sum([len(files) for r, d, files in os.walk(paths['inbox'])])
+                if inbox_count < MIN_THRESHOLD:
                     with download_lock:
                         to_copy = []
-                        scan_root = os.path.join(DRIVE_SOURCE, SELECTED_FOLDER) if SELECTED_FOLDER else DRIVE_SOURCE
-                        if os.path.exists(scan_root):
+                        target = user_prefs.get(user)
+                        scan_paths = [os.path.join(DRIVE_SOURCE, target)] if (target and target != "ALL") else [
+                            os.path.join(DRIVE_SOURCE, d) for d in os.listdir(DRIVE_SOURCE) if
+                            os.path.isdir(os.path.join(DRIVE_SOURCE, d))]
+                        if target == "ALL": random.shuffle(scan_paths)
+
+                        for scan_root in scan_paths:
+                            if not os.path.exists(scan_root) or len(to_copy) >= SYNC_BATCH_SIZE: continue
                             for root, _, files in os.walk(scan_root):
+                                if len(to_copy) >= SYNC_BATCH_SIZE: break
                                 for f in files:
                                     if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
                                         drive_p = os.path.join(root, f)
-                                        if not is_processed(drive_p):
+                                        if not is_processed_by_anyone(drive_p):
                                             rel_p = os.path.relpath(drive_p, DRIVE_SOURCE)
-                                            loc_p = os.path.join(LOCAL_REVIEW_SOURCE, rel_p)
-                                            if not os.path.exists(loc_p):
-                                                to_copy.append((drive_p, loc_p))
+                                            in_use = any(
+                                                os.path.exists(os.path.join(get_user_paths(u)['inbox'], rel_p)) for u in
+                                                active_users)
+                                            if not in_use:
+                                                to_copy.append((drive_p, os.path.join(paths['inbox'], rel_p)))
                                                 if len(to_copy) >= SYNC_BATCH_SIZE: break
-                                if len(to_copy) >= SYNC_BATCH_SIZE: break
                         if to_copy:
                             with ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_THREADS) as ex:
                                 for dp, lp in to_copy:
                                     os.makedirs(os.path.dirname(lp), exist_ok=True)
                                     shutil.copy2(dp, lp)
-            except Exception as e:
-                print(f"Sync Worker Error: {e}")
-        time.sleep(5)
+        time.sleep(10)
 
-
-# ==========================
-# FLASK ROUTES
-# ==========================
 
 @app.route('/')
 def index(): return render_template('index.html')
@@ -127,87 +110,96 @@ def index(): return render_template('index.html')
 
 @app.route('/api/stats')
 def api_stats():
-    inbox_c = get_inbox_image_count()
-    conn = sqlite3.connect(SKIPPED_DB)
-    total = conn.execute("SELECT COUNT(*) FROM progress").fetchone()[0]
-    conn.close()
-    return jsonify(
-        {"inbox": inbox_c, "total": total, "waiting": IS_WAITING_FOR_INPUT, "folder": SELECTED_FOLDER or "ALL"})
+    user = request.args.get('user')
+    if user not in active_users: return jsonify({"error": "invalid"}), 403
 
+    paths = get_user_paths(user)
+
+    # 1. Count files waiting to be sorted
+    inbox_c = sum([len(files) for r, d, files in os.walk(paths['inbox'])])
+
+    # 2. Count files ALREADY sorted but NOT YET synced (The Yes/No folders)
+    yes_c = sum([len(files) for r, d, files in os.walk(paths['yes'])])
+    no_c = sum([len(files) for r, d, files in os.walk(paths['no'])])
+    pending_sync = yes_c + no_c
+
+    # 3. Count total historical progress from DB
+    conn = sqlite3.connect(SKIPPED_DB)
+    total_done = conn.execute("SELECT COUNT(*) FROM progress").fetchone()[0]
+    conn.close()
+
+    return jsonify({
+        "inbox": inbox_c,
+        "pending": pending_sync,
+        "total": total_done,
+        "folder": user_prefs.get(user, "WAITING")
+    })
 
 @app.route('/api/list_folders')
 def list_folders():
-    try:
-        subfolders = [d for d in os.listdir(DRIVE_SOURCE) if os.path.isdir(os.path.join(DRIVE_SOURCE, d))]
-        subfolders.sort(key=str.lower)
-        return jsonify({"folders": subfolders})
-    except:
-        return jsonify({"folders": []})
+    flds = [d for d in os.listdir(DRIVE_SOURCE) if os.path.isdir(os.path.join(DRIVE_SOURCE, d))]
+    flds.sort(key=str.lower);
+    return jsonify({"folders": flds})
 
 
 @app.route('/api/set_folder', methods=['POST'])
 def set_folder():
-    global SELECTED_FOLDER
-    SELECTED_FOLDER = request.json.get('folder')
-    if SELECTED_FOLDER == "ALL": SELECTED_FOLDER = None
-    print(f"\n[SET SWITCH] Now processing: {SELECTED_FOLDER or 'ALL'}")
+    data = request.json
+    user, folder = data.get('user'), data.get('folder')
+    if user in active_users: user_prefs[user] = None if folder == "ALL" else folder
     return jsonify({"status": "success"})
 
 
-@app.route('/images/<path:filename>')
-def serve_image(filename):
-    full_path = os.path.join(LOCAL_REVIEW_SOURCE, unquote(filename))
-    if os.path.exists(full_path):
-        return send_from_directory(os.path.dirname(full_path), os.path.basename(full_path))
-    return "Not Found", 404
+@app.route('/images/<user>/<path:filename>')
+def serve_image(user, filename):
+    return send_from_directory(get_user_paths(user)['inbox'], unquote(filename))
 
 
 @app.route('/api/next')
 def api_next():
-    for root, _, files in os.walk(LOCAL_REVIEW_SOURCE):
+    user = request.args.get('user')
+    paths = get_user_paths(user)
+    for root, _, files in os.walk(paths['inbox']):
         for f in files:
             if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                full_local = os.path.join(root, f)
-                rel = os.path.relpath(full_local, LOCAL_REVIEW_SOURCE)
-                return jsonify({
-                    "url": f"/images/{rel.replace(os.sep, '/')}",
-                    "path": rel,
-                    "display_name": rel.replace(os.sep, ' / ')
-                })
+                rel = os.path.relpath(os.path.join(root, f), paths['inbox'])
+                return jsonify({"url": f"/images/{user}/{rel.replace(os.sep, '/')}", "path": rel})
     return jsonify({"url": None})
 
 
 @app.route('/api/decision', methods=['POST'])
 def api_decision():
     data = request.json
-    rel, dec = data['path'], data['decision']
-    src = os.path.join(LOCAL_REVIEW_SOURCE, rel)
-    dest = os.path.join(LOCAL_YES if dec == 'yes' else LOCAL_NO, rel)
+    user, rel, dec = data['user'], data['path'], data['decision']
+    paths = get_user_paths(user)
+    src = os.path.join(paths['inbox'], rel)
+    dest = os.path.join(paths['yes'] if dec == 'yes' else paths['no'], rel)
     drive_orig = os.path.join(DRIVE_SOURCE, rel)
     if os.path.exists(src):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.move(src, dest)
         conn = sqlite3.connect(SKIPPED_DB)
-        conn.execute('INSERT OR REPLACE INTO progress VALUES (?, ?, ?)',
-                     (drive_orig, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), dec))
-        conn.commit()
+        conn.execute('INSERT OR REPLACE INTO progress VALUES (?, ?, ?, ?)',
+                     (drive_orig, user, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), dec))
+        conn.commit();
         conn.close()
-        history_stack.append({"rel": rel, "dest": dest, "orig": drive_orig})
+        user_history[user].append({"rel": rel, "dest": dest, "drive_orig": drive_orig})
     return jsonify({"status": "success"})
 
 
 @app.route('/api/undo', methods=['POST'])
 def api_undo():
-    if not history_stack: return jsonify({"status": "error"}), 400
-    last = history_stack.pop()
-    rel, src, drive_orig = last["rel"], last["dest"], last["orig"]
-    dest = os.path.join(LOCAL_REVIEW_SOURCE, rel)
+    user = request.json.get('user')
+    if not user_history.get(user): return jsonify({"status": "error"}), 400
+    last = user_history[user].pop()
+    rel, src, drive_orig = last["rel"], last["dest"], last["drive_orig"]
+    dest = os.path.join(get_user_paths(user)['inbox'], rel)
     if os.path.exists(src):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.move(src, dest)
         conn = sqlite3.connect(SKIPPED_DB)
-        conn.execute('DELETE FROM progress WHERE img_path = ?', (drive_orig,))
-        conn.commit()
+        conn.execute('DELETE FROM progress WHERE img_path = ? AND username = ?', (drive_orig, user))
+        conn.commit();
         conn.close()
         return jsonify({"status": "success"})
     return jsonify({"status": "error"}), 404
@@ -215,65 +207,66 @@ def api_undo():
 
 @app.route('/api/sync_to_drive', methods=['POST'])
 def sync_to_drive():
+    user = request.json.get('user')
+    paths = get_user_paths(user)
+    moved_count = 0
+    drive_folders_removed = 0
+    local_folders_removed = 0
+
     with download_lock:
-        print("\n" + "-" * 35)
-        print(">>> STARTING DRIVE SYNC & CLEANUP")
-        moved_count = 0
-        deleted_folders_count = 0
+        print("\n" + "=" * 40)
+        print(f">>> SYNC & DEEP CLEAN: [{user.upper()}]")
+        print("=" * 40)
 
-        mapping = [('yes', DRIVE_YES_DIR, LOCAL_YES), ('no', DRIVE_NO_DIR, LOCAL_NO)]
-
-        for dec, dr_root, loc_root in mapping:
+        # 1. Move Local Files to Drive
+        mapping = [('YES', DRIVE_YES_DIR, paths['yes']), ('NO', DRIVE_NO_DIR, paths['no'])]
+        for label, dr_root, loc_root in mapping:
             if not os.path.exists(loc_root): continue
             for root, _, files in os.walk(loc_root):
                 for f in files:
                     l_path = os.path.join(root, f)
                     rel = os.path.relpath(l_path, loc_root)
                     d_path = os.path.join(dr_root, rel)
-                    orig_drive = os.path.join(DRIVE_SOURCE, rel)
-
-                    # 1. Move to Final Drive Destination
                     os.makedirs(os.path.dirname(d_path), exist_ok=True)
                     shutil.move(l_path, d_path)
 
-                    # 2. Delete original source from New Cards
-                    if os.path.exists(orig_drive):
+                    orig = os.path.join(DRIVE_SOURCE, rel)
+                    if os.path.exists(orig):
                         try:
-                            os.remove(orig_drive)
-                        except Exception as e:
-                            print(f"Error removing original: {e}")
-                    moved_count += 1
+                            os.remove(orig); moved_count += 1
+                        except:
+                            pass
 
-        # 3. Cleanup empty folders in all relevant roots
-        target_roots = [LOCAL_YES, LOCAL_NO, LOCAL_REVIEW_SOURCE, DRIVE_SOURCE]
-        for clean_root in target_roots:
-            if not os.path.exists(clean_root): continue
-            # Walk bottom-up so we can delete a folder after its subfolders are gone
-            for root, dirs, _ in os.walk(clean_root, topdown=False):
-                for d in dirs:
-                    d_full = os.path.join(root, d)
+        # 2. Clean DRIVE_SOURCE (ignoring hidden junk)
+        for root, dirs, _ in os.walk(DRIVE_SOURCE, topdown=False):
+            for d in dirs:
+                d_full = os.path.join(root, d)
+                if not any(f for f in os.listdir(d_full) if f not in ['.DS_Store', 'desktop.ini', 'Thumbs.db']):
                     try:
-                        if not os.listdir(d_full):
-                            os.rmdir(d_full)
-                            if clean_root == DRIVE_SOURCE:
-                                deleted_folders_count += 1
+                        os.rmdir(d_full); drive_folders_removed += 1
                     except:
                         pass
 
-        print(f">>> SYNC COMPLETE")
-        print(f" - Files moved/cleared: {moved_count}")
-        print(f" - Empty folders removed from Source: {deleted_folders_count}")
-        print("-" * 35 + "\n")
+        # 3. Clean LOCAL FOLDERS
+        local_user_root = os.path.dirname(paths['inbox'])
+        for root, dirs, _ in os.walk(local_user_root, topdown=False):
+            for d in dirs:
+                d_full = os.path.join(root, d)
+                if not any(f for f in os.listdir(d_full) if f not in ['.DS_Store', 'desktop.ini', 'Thumbs.db']):
+                    try:
+                        os.rmdir(d_full); local_folders_removed += 1
+                    except:
+                        pass
 
-    return jsonify({
-        "status": "success",
-        "moved": moved_count,
-        "folders_removed": deleted_folders_count
-    })
+        print(f" - Files moved: {moved_count}")
+        print(f" - Drive folders purged: {drive_folders_removed}")
+        print(f" - Local folders purged: {local_folders_removed}")
+        print("=" * 40 + "\n")
+
+    return jsonify({"status": "success", "moved": moved_count})
 
 
 if __name__ == '__main__':
     init_system()
-    terminal_selection_logic()
     threading.Thread(target=auto_sync_worker, daemon=True).start()
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)

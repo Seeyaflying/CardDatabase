@@ -33,11 +33,9 @@ def get_time_ago(script_name):
     history = load_history()
     if script_name not in history:
         return "Never"
-
     try:
         last_run = datetime.fromisoformat(history[script_name])
         diff = datetime.now() - last_run
-
         if diff.days > 0:
             return f"{diff.days}d ago"
         seconds = diff.total_seconds()
@@ -51,34 +49,29 @@ def get_time_ago(script_name):
 
 
 def kill_active_process():
-    """Stops the running script and returns control to the menu prompt."""
     global active_process
     if active_process and active_process.poll() is None:
         print("\n" + "!" * 50)
         print(" [!] KILL SIGNAL DETECTED: Stopping Script...")
-        print(" [!] Returning to Menu Input...")
         print("!" * 50)
-
         if os.name == 'nt':
             active_process.terminate()
         else:
             os.killpg(os.getpgid(active_process.pid), signal.SIGTERM)
-    else:
-        pass
 
 
 def run_script(script_name):
     global active_process
     if not os.path.exists(script_name):
         print(f"\n[!] Error: {script_name} not found.")
-        input("Press Enter to continue...")
+        time.sleep(1.5)
         return
 
     os.system('cls' if os.name == 'nt' else 'clear')
-    print("=" * 50)
+    print("=" * 60)
     print(f" RUNNING: {script_name}")
     print(f" EMERGENCY STOP: [Ctrl + Shift + K]")
-    print("=" * 50)
+    print("=" * 60)
 
     try:
         if os.name == 'nt':
@@ -91,63 +84,70 @@ def run_script(script_name):
                 [sys.executable, script_name],
                 preexec_fn=os.setsid
             )
-
         active_process.wait()
         save_history(script_name)
-
     except Exception as e:
         print(f"Error: {e}")
     finally:
         active_process = None
-        print("\n>>> Script execution finished.")
+        print("\n>>> Returning to Menu...")
         time.sleep(1)
+
+
+def print_menu_line(key, filename):
+    time_ago = get_time_ago(filename)
+    print(f" [{key.upper()}] {filename:<20} | Last Run: {time_ago:>9}")
 
 
 def draw_menu():
     os.system('cls' if os.name == 'nt' else 'clear')
-    print("=" * 78)
-    print("                        AI PROJECT MASTER MANAGER                        ")
-    print("=" * 78)
+    print("=" * 60)
+    print("                 AI PROJECT MASTER MANAGER                 ")
+    print("=" * 60)
 
-    menu_items = [
-        ("1", "AI_gui.py"), ("5", "magic.py"),
-        ("2", "ai_headless.py"), ("6", "neopets.py"),
-        ("3", "web_base.py"), ("7", "Altered.py"),
-        ("4", "japallcards.py"), ("8", "allcards.py"),
-        ("U", "utility.py"), ("Q", "Quit Manager")
-    ]
+    # Section 1: Core AI & Web
+    print("\n--- CORE SYSTEMS ---")
+    print_menu_line("1", "AI GUI")
+    print_menu_line("2", "AI Text")
+    print_menu_line("3", "Sorter")
 
-    # Print in two columns
-    for i in range(0, len(menu_items), 2):
-        k1, f1 = menu_items[i]
-        t1 = get_time_ago(f1) if f1 != "Quit Manager" else ""
+    # Section 2: Automation & Cards
+    print("\n--- AUTOMATION & TOOLS ---")
+    print_menu_line("4", "All Jap Cards")
+    print_menu_line("5", "Magic: The Gathering")
+    print_menu_line("6", "Neopets")
+    print_menu_line("7", "Altered")
+    print_menu_line("8", "All TCGPlayer")
 
-        if i + 1 < len(menu_items):
-            k2, f2 = menu_items[i + 1]
-            t2 = get_time_ago(f2) if f2 != "Quit Manager" else ""
-            line = f" [{k1}] {f1:<18} ({t1:>9})    |    [{k2}] {f2:<18} ({t2:>9})"
-        else:
-            line = f" [{k1}] {f1:<18} ({t1:>9})"
-        print(line)
+    # Section 3: System
+    print("\n--- SYSTEM ---")
+    print_menu_line("U", "Utility")
+    print(" [Q] Quit Manager")
 
-    print("-" * 78)
-    print(" STOP RUNNING SCRIPT: [Ctrl + Shift + K]")
-    print("=" * 78)
+    print("\n" + "=" * 60)
+    print(" STOP ACTIVE SCRIPT: [Ctrl + Shift + K]")
+    print("=" * 60)
 
 
 def main():
-    # Keep the global kill listener active in the background
     keyboard.add_hotkey('ctrl+shift+k', kill_active_process)
 
+    # Ensure these keys match the filenames exactly
     mapping = {
-        "1": "AI_gui.py", "2": "ai_headless.py", "3": "web_base.py", "5": "magic.py", "6": "neopets.py",
-        "7": "Altered.py", "4": "japallcards.py", "8": "allcards.py",
+        "1": "AI_gui.py",
+        "2": "ai_headless.py",
+        "3": "web_base.py",
+        "4": "jap_cards_main.py",
+        "5": "magic.py",
+        "6": "neopets.py",
+        "7": "Altered.py",
+        "8": "allcards.py",
         "u": "utility.py"
     }
 
     while True:
         draw_menu()
-        choice = input("\nEnter selection and press Enter: ").strip().lower()
+        choice = input("\nSelection > ").strip().lower()
 
         if choice in mapping:
             run_script(mapping[choice])
@@ -155,8 +155,8 @@ def main():
             print("Shutting down...")
             break
         else:
-            print("Invalid selection. Try again.")
-            time.sleep(0.8)
+            print("Invalid selection.")
+            time.sleep(0.5)
 
 
 if __name__ == "__main__":

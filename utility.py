@@ -4,6 +4,7 @@ import csv
 import sqlite3
 import subprocess
 from datetime import datetime
+import audit_database
 
 # ==============================================================
 # CONFIGURATION SECTION
@@ -32,6 +33,26 @@ class CardDBManager:
                 "CREATE TABLE IF NOT EXISTS progress (img_path TEXT PRIMARY KEY, processed_at TEXT, status TEXT, game_name TEXT)")
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS global_skips (filename TEXT PRIMARY KEY, game_name TEXT, reason TEXT)")
+            # Ensure the Japanese TCG table exists for the update utility
+            conn.execute("""CREATE TABLE IF NOT EXISTS jap_tcgs
+                            (
+                                tcg_name
+                                TEXT
+                                PRIMARY
+                                KEY,
+                                site_id
+                                INTEGER,
+                                total_pages
+                                INTEGER,
+                                last_run
+                                TEXT,
+                                last_duration
+                                TEXT,
+                                lifetime_dl
+                                INTEGER
+                                DEFAULT
+                                0
+                            )""")
             conn.commit()
 
     def get_tables(self):
@@ -43,6 +64,52 @@ class CardDBManager:
         with self.get_conn() as conn:
             cursor = conn.execute(f"PRAGMA table_info({table})")
             return [row[1] for row in cursor.fetchall()]
+
+    # ==============================================================
+    # JAP_UPDATE UTILITY
+    # ==============================================================
+    def jap_update(self):
+        """Utility to modify Site IDs and Page counts for Japanese TCGs."""
+        print("\n" + "═" * 30)
+        print("  JAPANESE TCG SETTINGS")
+        print("═" * 30)
+
+        with self.get_conn() as conn:
+            rows = conn.execute("SELECT tcg_name, site_id, total_pages FROM jap_tcgs ORDER BY tcg_name").fetchall()
+
+        if not rows:
+            print("⚠️ No Japanese TCGs found in database.")
+            name = input("Enter new TCG name to add (e.g., Nivel Arena): ")
+            if not name: return
+            sid = input("Enter Site ID: ")
+            pgs = input("Enter Page Count: ")
+            with self.get_conn() as conn:
+                conn.execute("INSERT INTO jap_tcgs (tcg_name, site_id, total_pages) VALUES (?,?,?)", (name, sid, pgs))
+            return
+
+        for i, row in enumerate(rows, 1):
+            print(f"{i}. {row['tcg_name']:<15} [ID: {row['site_id']}] [Pages: {row['total_pages']}]")
+
+        choice = input("\nSelect TCG # to edit (or 'n' for new, 'Enter' to cancel): ")
+
+        if choice.lower() == 'n':
+            name = input("New TCG Name: ")
+            sid = input("Site ID: ")
+            pgs = input("Pages: ")
+            with self.get_conn() as conn:
+                conn.execute("INSERT INTO jap_tcgs (tcg_name, site_id, total_pages) VALUES (?,?,?)", (name, sid, pgs))
+            print("✅ Added.")
+
+        elif choice.isdigit() and int(choice) <= len(rows):
+            target = rows[int(choice) - 1]
+            print(f"\nEditing: {target['tcg_name']}")
+            new_id = input(f"New Site ID [{target['site_id']}] (Enter to keep): ") or target['site_id']
+            new_pgs = input(f"New Page Count [{target['total_pages']}] (Enter to keep): ") or target['total_pages']
+
+            with self.get_conn() as conn:
+                conn.execute("UPDATE jap_tcgs SET site_id = ?, total_pages = ? WHERE tcg_name = ?",
+                             (new_id, new_pgs, target['tcg_name']))
+            print("✅ Updated.")
 
     def import_scanner_json(self):
         target_path = JSON_FILE_PATH
@@ -144,7 +211,6 @@ class CardDBManager:
             with self.get_conn() as conn:
                 conn.execute(f"UPDATE {table} SET {up_col} = ? WHERE {col} = ?", (new_v, val))
 
-    # --- UPDATED BACKUP WITH ONE-LINE JSON ---
     def backup(self, format="json"):
         ts = datetime.now().strftime("%Y%m%d_%H%M")
         for t in self.get_tables():
@@ -182,7 +248,8 @@ def main():
     while True:
         print("\n" + "=" * 40 + "\n  DATABASE MANAGER\n" + "=" * 40)
         print("1. Statistics\n2. Search\n3. Manual Add\n4. Edit/Delete\n5. Backup")
-        print("6. IMPORT FROM JSON PATH\n7. Make Skipped Images JSON\n8. Exit")
+        print("6. IMPORT FROM JSON PATH\n7. Make Skipped Images JSON\n8. Audit")
+        print("9. UPDATE JAP TCG IDs (jap_update)\n10. Exit")
 
         cmd = input("\nSelect Option: ")
         if cmd == '1':
@@ -210,7 +277,13 @@ def main():
         elif cmd == '7':
             make_skipped_images_json()
         elif cmd == '8':
+            audit_database.run_audit_and_repair()
+        elif cmd == '9':
+            mgr.jap_update()
+        elif cmd == '10':
+            print("Exiting...")
             break
+
 
 
 if __name__ == "__main__":

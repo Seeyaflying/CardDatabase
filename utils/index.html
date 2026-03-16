@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Card Sorter Pro</title>
+    <style>
+        :root { --bg: #121212; --text: #e0e0e0; --primary: #bb86fc; --yes: #4caf50; --no: #cf6679; }
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: sans-serif; }
+        body { display: flex; flex-direction: column; }
+        #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .user-btn { width: 80%; max-width: 300px; padding: 20px; margin: 10px; border-radius: 12px; border: 2px solid var(--primary); background: #1a1a1a; color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
+        #status-bar { height: 45px; background: #000; display: flex; justify-content: space-around; align-items: center; font-size: 0.8rem; border-bottom: 1px solid #222; flex-shrink: 0; cursor: pointer; }
+        #stage { flex: 1; display: flex; align-items: center; justify-content: center; background: #111; overflow: hidden; min-height: 0; }
+        #current-card { max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px; }
+        #controls { height: 160px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 12px; background: #1a1a1a; border-top: 1px solid #333; flex-shrink: 0; }
+        button { border: none; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer; font-size: 1.5rem; }
+        #btn-no { background-color: var(--no); }
+        #btn-undo { background-color: #333; }
+        #btn-yes { background-color: var(--yes); }
+        #btn-sync { grid-column: span 3; background-color: var(--primary); color: #000; height: 50px; font-size: 1rem; transition: background-color 0.3s; }
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        #folder-list { overflow-y: auto; margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .folder-btn { background: #222; border: 1px solid #444; padding: 18px; color: white; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div id="login-overlay">
+        <h1 style="color: var(--primary)">Card Sorter</h1>
+        <button class="user-btn" onclick="setUser('seeya')">SEEYA</button>
+        <button class="user-btn" onclick="setUser('riverleaf')">RIVERLEAF</button>
+    </div>
+    <div id="status-bar" onclick="openModal()">
+        <span>INBOX: <b id="stat-inbox">0</b></span>
+        <span>SET: <b id="stat-folder">...</b> ⚙️</span>
+        <span>DONE: <b id="stat-total">0</b></span>
+    </div>
+    <div id="stage"><img id="current-card" src="" style="display:none;"><div id="wait-msg" style="display:none; color:var(--primary);"><h3>Inbox Empty</h3></div></div>
+    <div id="controls">
+        <button id="btn-no" onclick="handleDecision('no')">✖</button>
+        <button id="btn-undo" onclick="undo()">⟲</button>
+        <button id="btn-yes" onclick="handleDecision('yes')">✔</button>
+        <button id="btn-sync" onclick="sync()">SYNC TO GOOGLE DRIVE</button>
+    </div>
+    <div id="modal"><div style="display:flex; justify-content:space-between;"><h3>Switch Set</h3><span style="font-size: 2.5rem;" onclick="closeModal()">&times;</span></div><div id="folder-list"></div></div>
+
+    <script>
+        let currentUser = localStorage.getItem('card_sorter_user');
+        let currentPath = "";
+
+        if (currentUser) initApp();
+        function setUser(name) { currentUser = name; localStorage.setItem('card_sorter_user', name); initApp(); }
+        function initApp() { document.getElementById('login-overlay').style.display = 'none'; updateStats(); loadNext(); setInterval(updateStats, 5000); }
+
+async function updateStats() {
+    try {
+        const res = await fetch(`/api/stats?user=${currentUser}`);
+        const data = await res.json();
+
+        // Update the top status bar (Inbox is just a number now)
+        document.getElementById('stat-inbox').innerText = data.inbox;
+        document.getElementById('stat-total').innerText = data.total;
+        document.getElementById('stat-folder').innerText = data.folder.toUpperCase();
+
+        // Toggle the "Empty" message based on inbox
+        document.getElementById('wait-msg').style.display = (data.inbox === 0) ? 'block' : 'none';
+
+        // Update the Sync Button color based ONLY on the Yes/No count
+        refreshButtonColor(data.pending);
+    } catch(e){}
+}
+
+function refreshButtonColor(pendingCount) {
+    const btn = document.getElementById('btn-sync');
+
+    // Don't interrupt the active sync animation text/colors
+    if (btn.innerText.includes("⏳") || btn.innerText.includes("✅")) return;
+
+    if (pendingCount >= 1000) {
+        btn.style.backgroundColor = "var(--no)"; // Red
+        btn.style.color = "white";
+        btn.innerText = `⚠️ SYNC REQUIRED (${pendingCount} CARDS)`;
+    } else if (pendingCount >= 500) {
+        btn.style.backgroundColor = "#ffd700"; // Yellow
+        btn.style.color = "#000";
+        btn.innerText = `⚡ SYNC SOON (${pendingCount} CARDS)`;
+    } else {
+        // Under 500 cards, keep it the standard theme color
+        btn.style.backgroundColor = "";
+        btn.style.color = "";
+        btn.innerText = pendingCount > 0 ? `SYNC ${pendingCount} CARDS` : "SYNC TO GOOGLE DRIVE";
+    }
+}
+
+        function refreshButtonColor(count) {
+            const btn = document.getElementById('btn-sync');
+            if (btn.innerText.includes("⏳") || btn.innerText.includes("✅")) return;
+            if (count >= 1000) { btn.style.backgroundColor = "var(--no)"; btn.style.color = "white"; }
+            else if (count >= 500) { btn.style.backgroundColor = "#ffd700"; btn.style.color = "#000"; }
+            else { btn.style.backgroundColor = ""; btn.style.color = ""; }
+        }
+
+        async function loadNext() {
+            const res = await fetch(`/api/next?user=${currentUser}`);
+            const data = await res.json();
+            const img = document.getElementById('current-card');
+            if (data.url) { img.src = data.url + "?t=" + Date.now(); img.style.display = 'block'; currentPath = data.path; }
+            else { img.style.display = 'none'; currentPath = ""; }
+        }
+
+        async function handleDecision(choice) {
+            if (!currentPath) return;
+            const p = currentPath; currentPath = "";
+            await fetch('/api/decision', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user: currentUser, path: p, decision: choice})});
+            loadNext(); updateStats();
+        }
+
+        async function undo() {
+            const res = await fetch('/api/undo', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user: currentUser})});
+            if (res.ok) { loadNext(); updateStats(); }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('modal').style.display === 'flex') return;
+            if (e.key === 'ArrowLeft') handleDecision('no');
+            else if (e.key === 'ArrowRight') handleDecision('yes');
+            else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+        });
+
+        async function sync() {
+            const btn = document.getElementById('btn-sync');
+            btn.innerText = "⏳ SYNCING...";
+            const res = await fetch('/api/sync_to_drive', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user: currentUser})});
+            if (res.ok) { btn.innerText = "✅ SUCCESS"; btn.style.backgroundColor = "var(--yes)"; }
+            setTimeout(() => { btn.innerText = "SYNC TO GOOGLE DRIVE"; updateStats(); }, 2000);
+        }
+
+        async function openModal() {
+            document.getElementById('modal').style.display = 'flex';
+            const res = await fetch('/api/list_folders');
+            const data = await res.json();
+            const list = document.getElementById('folder-list');
+            list.innerHTML = `<button class="folder-btn" onclick="selectFolder('ALL')">📂 ALL FOLDERS</button>`;
+            data.folders.forEach(f => { list.innerHTML += `<button class="folder-btn" onclick="selectFolder('${f.replace(/'/g, "\\'")}')">📁 ${f}</button>`; });
+        }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        async function selectFolder(name) { await fetch('/api/set_folder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user: currentUser, folder: name})}); closeModal(); updateStats(); loadNext(); }
+    </script>
+</body>
+</html>
