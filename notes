@@ -1,0 +1,15 @@
+DEFAULT_TCG_IDS = {
+    'Akora': 75, "Alpha Clash": 78, 'Argent Saga': 61, 'Bakugan': 58,
+    'Battle Spirits Saga': 72, 'Cardfight Vanguard': 16, 'Caster Chronicles': 37,
+    "Chrono Clash System": 60, "Dice Masters": 18, "Digimon": 63, "DBZ TCG": 23,
+    "DBZ Super": 27, "DBZ Super Fusion World": 80, "Dragoborne": 28, "Elestrals": 83,
+    "Final Fantasy": 24, "Flesh and Blood": 62, "Force of Will": 17,
+    "Future Card BuddyFight": 19, "Gate Ruler": 65, "Godzilla Card Game": 88,
+    "Grand Archive": 74, "Gundam": 86, "Hololive": 87, "Kryptik": 76,
+    "Lightseekers": 48, "Lorcana": 71, "MetaX": 30, "MetaZoo": 66,
+    "Munchkin": 53, "One Piece": 68, "Pokemon": 3, "Riftbound": 89,
+    "Shadowverse Evolve": 73, "Sorcery Contested Realm": 77, "Star Wars Destiny": 26,
+    "Star Wars Unlimited": 79, "Transformers": 57, "Union Arena": 81,
+    "UniVersus": 25, "Warhammer Age of Sigmar Champions": 54, "Weiss Schwarz": 20,
+    "Wixoss": 67, "World of Warcraft": 13, "Yugioh": 2, "Zombie World Order": 36,
+}

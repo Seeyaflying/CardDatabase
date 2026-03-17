@@ -30,23 +30,15 @@ download_lock = threading.Lock()
 def init_system():
     if not os.path.exists(BASE_LOCAL_PATH): os.makedirs(BASE_LOCAL_PATH)
     conn = sqlite3.connect(SKIPPED_DB)
+    # Ensure the core progress table exists
     conn.execute('''CREATE TABLE IF NOT EXISTS progress
-    (
-        img_path
-        TEXT,
-        username
-        TEXT,
-        processed_at
-        TEXT,
-        status
-        TEXT,
-        PRIMARY
-        KEY
-                    (
-        img_path,
-        username
-                    ))''')
-    conn.commit();
+                    (img_path TEXT, username TEXT, processed_at TEXT, status TEXT, 
+                    PRIMARY KEY (img_path, username))''')
+    # Ensure our categorized skip table exists
+    conn.execute('''CREATE TABLE IF NOT EXISTS skipped_images 
+                    (image_name TEXT, game_name TEXT, language TEXT, added_at TEXT,
+                    PRIMARY KEY (image_name, game_name, language))''')
+    conn.commit()
     conn.close()
 
 
@@ -171,19 +163,44 @@ def api_next():
 def api_decision():
     data = request.json
     user, rel, dec = data['user'], data['path'], data['decision']
+
+    # 1. IDENTIFY GAME AND LANGUAGE
+    # Assumes path like: "Pokemon/CardABC.jpg"
+    parts = rel.split(os.sep)
+    game_name = parts[0] if len(parts) > 1 else "Uncategorized"
+    filename = parts[-1]
+
+    # Language logic: _200w = English, otherwise Japanese
+    lang = "english" if "_200w" in filename else "japanese"
+    # We store the base ID (without the _200w suffix) for cleaner lookups
+    clean_id = filename.replace("_200w", "").split('.')[0] if lang == "english" else filename.split('.')[0]
+
     paths = get_user_paths(user)
     src = os.path.join(paths['inbox'], rel)
     dest = os.path.join(paths['yes'] if dec == 'yes' else paths['no'], rel)
     drive_orig = os.path.join(DRIVE_SOURCE, rel)
+
     if os.path.exists(src):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.move(src, dest)
+
         conn = sqlite3.connect(SKIPPED_DB)
+        # Log general progress
         conn.execute('INSERT OR REPLACE INTO progress VALUES (?, ?, ?, ?)',
                      (drive_orig, user, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), dec))
-        conn.commit();
+
+        # IF IT IS A 'NO' -> Add to our Master Skip List
+        if dec == 'no':
+            conn.execute('''INSERT
+            OR IGNORE INTO skipped_images 
+                            (image_name, game_name, language, added_at) 
+                            VALUES (?, ?, ?, ?)''',
+                         (clean_id, game_name, lang, datetime.now().strftime("%Y-%m-%d %H:%M")))
+
+        conn.commit()
         conn.close()
         user_history[user].append({"rel": rel, "dest": dest, "drive_orig": drive_orig})
+
     return jsonify({"status": "success"})
 
 

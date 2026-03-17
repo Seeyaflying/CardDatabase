@@ -29,58 +29,25 @@ C = {
 # Global Trackers
 download_counter = 0
 new_download_count = 0
-newly_downloaded_names = []
 counter_lock = threading.Lock()
-
 
 # --- 1. THE ENGINE ---
 
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         conn.execute("""CREATE TABLE IF NOT EXISTS jap_tcgs
-                        (
-                            tcg_name
-                            TEXT
-                            PRIMARY
-                            KEY,
-                            site_id
-                            INTEGER,
-                            total_pages
-                            INTEGER,
-                            last_run
-                            TEXT,
-                            last_duration
-                            TEXT,
-                            lifetime_dl
-                            INTEGER
-                            DEFAULT
-                            0
-                        )""")
-
-        # Migration: Ensure lifetime_dl exists
-        cursor = conn.execute("PRAGMA table_info(jap_tcgs)")
-        cols = [c[1] for c in cursor.fetchall()]
-        if 'lifetime_dl' not in cols:
-            conn.execute("ALTER TABLE jap_tcgs ADD COLUMN lifetime_dl INTEGER DEFAULT 0")
-
-        # Seed categories
-        games = [("Nivel Arena", 101, 10), ("One Piece", 67, 5), ("Pokemon", 35, 5)]
-        for name, sid, pgs in games:
-            conn.execute("""INSERT INTO jap_tcgs (tcg_name, site_id, total_pages)
-                            VALUES (?, ?, ?) ON CONFLICT(tcg_name) DO
-            UPDATE SET site_id=excluded.site_id""", (name, sid, pgs))
-
+                        (tcg_name TEXT PRIMARY KEY, site_id INTEGER, total_pages INTEGER,
+                         last_run TEXT, last_duration TEXT, lifetime_dl INTEGER DEFAULT 0)""")
 
 def display_menu(rows, global_total):
     os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"\n {C['header']}  JAPANESE CARD HARVESTER v3.6  {C['reset']}")
-    print(f" {C['tag']}Archive Status: {C['val']}{global_total:,}{C['reset']} Japanese images tracked")
+    print(f"\n {C['header']}  JAPANESE CARD HARVESTER v4.0 (READ-ONLY)  {C['reset']}")
+    print(f" {C['tag']}Manual Skips Tracked: {C['val']}{global_total:,}{C['reset']} records")
     print(f"{C['line']}═{'═' * 105}{C['reset']}")
 
     head = f"{'ID':<4} {'TCG CATEGORY':<20} | {'SITE ID':<10} | {'PAGES':<6} | {'LAST RUN':<18} | {'DUR':<6} | {'LIFETIME'}"
     print(f" {C['bold']}{head}{C['reset']}")
-    print(
-        f"{C['line']}----{'--------------------'}---{'----------'}---{'------'}---{'------------------'}---{'------'}---{'----------'}{C['reset']}")
+    print(f"{C['line']}----{'--------------------'}---{'----------'}---{'------'}---{'------------------'}---{'------'}---{'----------'}{C['reset']}")
 
     for i, (name, pgs, sid, last, dur, life) in enumerate(rows, 1):
         display_name = (name[:17] + "..") if len(name) > 20 else name
@@ -98,9 +65,6 @@ def display_menu(rows, global_total):
 
     print(f"{C['line']}═{'═' * 105}{C['reset']}")
     return input(f" {C['bold']}📂 Select TCG # (or 'q'): {C['reset']}")
-
-
-# --- 2. HARVEST & DOWNLOAD LOGIC ---
 
 async def run_harvest(site_id, pages, all_skips):
     all_urls = set()
@@ -129,15 +93,12 @@ async def run_harvest(site_id, pages, all_skips):
                         else:
                             all_urls.add(full_url)
                             print(f"      {C['green']}✨ Found New: {img_name}{C['reset']}")
-            except:
-                continue
-    finally:
-        browser.stop()
+            except: continue
+    finally: browser.stop()
     return list(all_urls)
 
-
 def download_file(url, folder, total):
-    global download_counter, new_download_count, newly_downloaded_names
+    global download_counter, new_download_count
     name = url.split("/")[-1]
     path = os.path.join(folder, name)
     try:
@@ -146,37 +107,29 @@ def download_file(url, folder, total):
             os.makedirs(folder, exist_ok=True)
             with open(path, "wb") as f: f.write(r.content)
             with counter_lock:
-                new_download_count += 1;
-                download_counter += 1
-                newly_downloaded_names.append(name)
+                new_download_count += 1; download_counter += 1
                 print(f"      {C['green']}📥 [DL {download_counter}/{total}] Saved: {name}{C['reset']}")
     except:
-        with counter_lock:
-            download_counter += 1
-
-
-# --- 3. MAIN LOOP ---
+        with counter_lock: download_counter += 1
 
 def main():
-    global download_counter, new_download_count, newly_downloaded_names
+    global download_counter, new_download_count
     init_db()
     while True:
         with sqlite3.connect(DB_FILE) as conn:
-            rows = conn.execute(
-                "SELECT tcg_name, total_pages, site_id, last_run, last_duration, lifetime_dl FROM jap_tcgs ORDER BY tcg_name").fetchall()
-            global_total = conn.execute("SELECT COUNT(*) FROM skipped_images WHERE language = 'japanese'").fetchone()[0]
+            rows = conn.execute("SELECT tcg_name, total_pages, site_id, last_run, last_duration, lifetime_dl FROM jap_tcgs ORDER BY tcg_name").fetchall()
+            global_total = conn.execute("SELECT COUNT(*) FROM skipped_images").fetchone()[0]
 
         choice = display_menu(rows, global_total)
         if choice.lower() == 'q': break
         try:
             name, pgs, sid, _, _, _ = rows[int(choice) - 1]
-        except:
-            continue
+        except: continue
 
         print(f"\n {C['cyan']}📊 Analyzing {name} Storage...{C['reset']}")
         with sqlite3.connect(DB_FILE) as conn:
-            db_skips = {r[0] for r in
-                        conn.execute("SELECT image_name FROM skipped_images WHERE language = 'japanese'").fetchall()}
+            # READ ONLY: Filters by Game Name and Language
+            db_skips = {r[0] for r in conn.execute("SELECT image_name FROM skipped_images WHERE language = 'japanese' AND game_name = ?", (name,)).fetchall()}
 
         local_files = set()
         for folder in [CHECK_FOLDER, BASE_SAVE_DIR]:
@@ -184,13 +137,10 @@ def main():
             if os.path.exists(p): local_files.update(os.listdir(p))
 
         all_skips = db_skips.union(local_files)
-        print(
-            f"   ├─ Database Archive: {len(db_skips):,}\n   ├─ Local Folders:   {len(local_files):,}\n   └─ Skip List Total:  {C['bold']}{len(all_skips):,}{C['reset']}")
+        print(f"   ├─ Database Archive (Banned): {len(db_skips):,}\n   ├─ Local Folders:            {len(local_files):,}\n   └─ Total Skip List:           {C['bold']}{len(all_skips):,}{C['reset']}")
 
         start_time = time.time()
         download_counter = new_download_count = 0
-        newly_downloaded_names = []
-
         urls = asyncio.run(run_harvest(sid, pgs, all_skips))
 
         if urls:
@@ -203,20 +153,11 @@ def main():
             duration = int(time.time() - start_time)
             now = datetime.now().strftime("%m-%d %H:%M")
             with sqlite3.connect(DB_FILE) as conn:
-                conn.execute("""UPDATE jap_tcgs
-                                SET last_run=?,
-                                    last_duration=?,
-                                    lifetime_dl=lifetime_dl + ?
-                                WHERE tcg_name = ?""",
+                conn.execute("UPDATE jap_tcgs SET last_run=?, last_duration=?, lifetime_dl=lifetime_dl + ? WHERE tcg_name = ?",
                              (now, f"{duration}s", new_download_count, name))
-                db_data = [(n, 'japanese') for n in newly_downloaded_names]
-                conn.executemany("INSERT OR IGNORE INTO skipped_images (image_name, language) VALUES (?, ?)", db_data)
-            print(f"\n {C['green']}🏁 Finished! Added {new_download_count} to lifetime count.{C['reset']}")
-        else:
-            print(f"\n {C['val']}🟡 No new cards found today.{C['reset']}")
-
+            print(f"\n {C['green']}🏁 Finished! Downloaded {new_download_count} cards.{C['reset']}")
+        else: print(f"\n {C['val']}🟡 No new cards found today.{C['reset']}")
         input(f"\n {C['bold']}Press Enter to return...{C['reset']}")
-
 
 if __name__ == "__main__":
     main()
