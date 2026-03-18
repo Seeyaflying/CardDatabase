@@ -31,13 +31,29 @@ download_counter = 0
 new_download_count = 0
 counter_lock = threading.Lock()
 
-# --- 1. THE ENGINE ---
 
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         conn.execute("""CREATE TABLE IF NOT EXISTS jap_tcgs
-                        (tcg_name TEXT PRIMARY KEY, site_id INTEGER, total_pages INTEGER,
-                         last_run TEXT, last_duration TEXT, lifetime_dl INTEGER DEFAULT 0)""")
+                        (
+                            tcg_name
+                            TEXT
+                            PRIMARY
+                            KEY,
+                            site_id
+                            INTEGER,
+                            total_pages
+                            INTEGER,
+                            last_run
+                            TEXT,
+                            last_duration
+                            TEXT,
+                            lifetime_dl
+                            INTEGER
+                            DEFAULT
+                            0
+                        )""")
+
 
 def display_menu(rows, global_total):
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -47,7 +63,8 @@ def display_menu(rows, global_total):
 
     head = f"{'ID':<4} {'TCG CATEGORY':<20} | {'SITE ID':<10} | {'PAGES':<6} | {'LAST RUN':<18} | {'DUR':<6} | {'LIFETIME'}"
     print(f" {C['bold']}{head}{C['reset']}")
-    print(f"{C['line']}----{'--------------------'}---{'----------'}---{'------'}---{'------------------'}---{'------'}---{'----------'}{C['reset']}")
+    print(
+        f"{C['line']}----{'--------------------'}---{'----------'}---{'------'}---{'------------------'}---{'------'}---{'----------'}{C['reset']}")
 
     for i, (name, pgs, sid, last, dur, life) in enumerate(rows, 1):
         display_name = (name[:17] + "..") if len(name) > 20 else name
@@ -64,14 +81,15 @@ def display_menu(rows, global_total):
               f"{C['green']}{str(life):<10}{C['reset']}")
 
     print(f"{C['line']}═{'═' * 105}{C['reset']}")
-    return input(f" {C['bold']}📂 Select TCG # (or 'q'): {C['reset']}")
+    return input(f" {C['bold']}📂 Select TCG #, {C['green']}'all'{C['reset']}{C['bold']} or 'q': {C['reset']}")
+
 
 async def run_harvest(site_id, pages, all_skips):
     all_urls = set()
     browser = await uc.start(browser_args=['--window-size=1920,1080'])
     try:
         page = await browser.get("https://tcgrepublic.com/")
-        await asyncio.sleep(8)
+        await asyncio.sleep(5)  # Reduced slightly for "Run All" efficiency
         for p in range(1, pages + 1):
             url = f"https://tcgrepublic.com/category/category_page_{site_id}.html?p={p}"
             print(f"\n   {C['bold']}📄 [PAGE {p}/{pages}]{C['reset']} Scanning: {url}")
@@ -79,7 +97,7 @@ async def run_harvest(site_id, pages, all_skips):
             try:
                 await page.select('li.product_thumbnail', timeout=15)
                 await page.scroll_down(1200)
-                await asyncio.sleep(3)
+                await asyncio.sleep(2)
                 imgs = await page.select_all("li.product_thumbnail img")
                 for idx, img in enumerate(imgs, 1):
                     attrs = img.attributes
@@ -89,13 +107,16 @@ async def run_harvest(site_id, pages, all_skips):
                         if not full_url.startswith("http"): full_url = "https://tcgrepublic.com" + full_url
                         img_name = full_url.split("/")[-1]
                         if img_name in all_skips:
-                            print(f"      {C['line']}🏛️  Skip: {img_name}{C['reset']}")
+                            continue  # Silent skip for cleaner "Run All" output
                         else:
                             all_urls.add(full_url)
                             print(f"      {C['green']}✨ Found New: {img_name}{C['reset']}")
-            except: continue
-    finally: browser.stop()
+            except:
+                continue
+    finally:
+        browser.stop()
     return list(all_urls)
+
 
 def download_file(url, folder, total):
     global download_counter, new_download_count
@@ -105,59 +126,86 @@ def download_file(url, folder, total):
         r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
         if r.status_code == 200:
             os.makedirs(folder, exist_ok=True)
-            with open(path, "wb") as f: f.write(r.content)
+            with open(path, "wb") as f:
+                f.write(r.content)
             with counter_lock:
-                new_download_count += 1; download_counter += 1
-                print(f"      {C['green']}📥 [DL {download_counter}/{total}] Saved: {name}{C['reset']}")
+                new_download_count += 1;
+                download_counter += 1
+                if download_counter % 5 == 0:  # Print every 5th to avoid spamming "Run All"
+                    print(f"      {C['green']}📥 [DL {download_counter}/{total}] Progressing...{C['reset']}")
     except:
-        with counter_lock: download_counter += 1
+        with counter_lock:
+            download_counter += 1
+
+
+def process_single_tcg(tcg_data):
+    global download_counter, new_download_count
+    name, pgs, sid, _, _, _ = tcg_data
+
+    print(f"\n{C['header']} 🚀 PROCESSING: {name.upper()} {C['reset']}")
+
+    with sqlite3.connect(DB_FILE) as conn:
+        db_skips = {r[0] for r in
+                    conn.execute("SELECT image_name FROM skipped_images WHERE language = 'japanese' AND game_name = ?",
+                                 (name,)).fetchall()}
+
+    local_files = set()
+    for folder in [CHECK_FOLDER, BASE_SAVE_DIR]:
+        p = os.path.join(folder, name)
+        if os.path.exists(p): local_files.update(os.listdir(p))
+
+    all_skips = db_skips.union(local_files)
+
+    start_time = time.time()
+    download_counter = new_download_count = 0
+    urls = asyncio.run(run_harvest(sid, pgs, all_skips))
+
+    if urls:
+        total = len(urls)
+        print(f" {C['cyan']}📥 Downloading {total} New Photos...{C['reset']}")
+        with ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_WORKERS) as exe:
+            for u in urls: exe.submit(download_file, u, os.path.join(BASE_SAVE_DIR, name), total)
+            while download_counter < total: time.sleep(0.5)
+
+        duration = int(time.time() - start_time)
+        now = datetime.now().strftime("%m-%d %H:%M")
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.execute(
+                "UPDATE jap_tcgs SET last_run=?, last_duration=?, lifetime_dl=lifetime_dl + ? WHERE tcg_name = ?",
+                (now, f"{duration}s", new_download_count, name))
+        print(f" {C['green']}🏁 Finished {name}! Downloaded {new_download_count}.{C['reset']}")
+    else:
+        print(f" {C['val']}🟡 No new cards for {name}.{C['reset']}")
+
 
 def main():
-    global download_counter, new_download_count
     init_db()
     while True:
         with sqlite3.connect(DB_FILE) as conn:
-            rows = conn.execute("SELECT tcg_name, total_pages, site_id, last_run, last_duration, lifetime_dl FROM jap_tcgs ORDER BY tcg_name").fetchall()
+            rows = conn.execute(
+                "SELECT tcg_name, total_pages, site_id, last_run, last_duration, lifetime_dl FROM jap_tcgs ORDER BY tcg_name").fetchall()
             global_total = conn.execute("SELECT COUNT(*) FROM skipped_images").fetchone()[0]
 
         choice = display_menu(rows, global_total)
-        if choice.lower() == 'q': break
+
+        if choice.lower() == 'q':
+            break
+
+        if choice.lower() in ['all', 'a']:
+            print(f"\n {C['tag']}🌟 Starting Full Run for {len(rows)} TCGs...{C['reset']}")
+            for tcg in rows:
+                process_single_tcg(tcg)
+            print(f"\n {C['header']} ✨ ALL TCGs UPDATED ✨ {C['reset']}")
+            input(f"\n {C['bold']}Press Enter to return to menu...{C['reset']}")
+            continue
+
         try:
-            name, pgs, sid, _, _, _ = rows[int(choice) - 1]
-        except: continue
+            target_tcg = rows[int(choice) - 1]
+            process_single_tcg(target_tcg)
+            input(f"\n {C['bold']}Press Enter to return...{C['reset']}")
+        except (ValueError, IndexError):
+            continue
 
-        print(f"\n {C['cyan']}📊 Analyzing {name} Storage...{C['reset']}")
-        with sqlite3.connect(DB_FILE) as conn:
-            # READ ONLY: Filters by Game Name and Language
-            db_skips = {r[0] for r in conn.execute("SELECT image_name FROM skipped_images WHERE language = 'japanese' AND game_name = ?", (name,)).fetchall()}
-
-        local_files = set()
-        for folder in [CHECK_FOLDER, BASE_SAVE_DIR]:
-            p = os.path.join(folder, name)
-            if os.path.exists(p): local_files.update(os.listdir(p))
-
-        all_skips = db_skips.union(local_files)
-        print(f"   ├─ Database Archive (Banned): {len(db_skips):,}\n   ├─ Local Folders:            {len(local_files):,}\n   └─ Total Skip List:           {C['bold']}{len(all_skips):,}{C['reset']}")
-
-        start_time = time.time()
-        download_counter = new_download_count = 0
-        urls = asyncio.run(run_harvest(sid, pgs, all_skips))
-
-        if urls:
-            total = len(urls)
-            print(f"\n {C['cyan']}📥 Downloading {total} New Photos...{C['reset']}")
-            with ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_WORKERS) as exe:
-                for u in urls: exe.submit(download_file, u, os.path.join(BASE_SAVE_DIR, name), total)
-                while download_counter < total: time.sleep(0.5)
-
-            duration = int(time.time() - start_time)
-            now = datetime.now().strftime("%m-%d %H:%M")
-            with sqlite3.connect(DB_FILE) as conn:
-                conn.execute("UPDATE jap_tcgs SET last_run=?, last_duration=?, lifetime_dl=lifetime_dl + ? WHERE tcg_name = ?",
-                             (now, f"{duration}s", new_download_count, name))
-            print(f"\n {C['green']}🏁 Finished! Downloaded {new_download_count} cards.{C['reset']}")
-        else: print(f"\n {C['val']}🟡 No new cards found today.{C['reset']}")
-        input(f"\n {C['bold']}Press Enter to return...{C['reset']}")
 
 if __name__ == "__main__":
     main()

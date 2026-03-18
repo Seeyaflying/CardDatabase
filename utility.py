@@ -1,20 +1,14 @@
 import os
-import json
-import csv
 import sqlite3
 from datetime import datetime
 
 # ==============================================================
 # CONFIGURATION SECTION
 # ==============================================================
-DEFAULT_SCAN_ROOT = r"G:/My Drive/Skipped Cards"
-OUTPUT_FILE = "skipped_output.json"
+SKIPPED_ROOT_DIR = r"G:/My Drive/Skipped Cards"
+CARD_DATABASE_ROOT = r"G:/My Drive/Card Database"
 DB_FILE = "skipped_images.sqlite"
-BACKUP_FOLDER = "backups"
 # ==============================================================
-
-os.makedirs(BACKUP_FOLDER, exist_ok=True)
-
 
 class CardDBManager:
     def __init__(self, db_path=DB_FILE):
@@ -27,135 +21,142 @@ class CardDBManager:
         return conn
 
     def _ensure_core_tables(self):
+        """Initializes tables using the unified schema."""
         with self.get_conn() as conn:
+            # 1. BANNED LIST
             conn.execute("""CREATE TABLE IF NOT EXISTS skipped_images
-            (
-                image_name
-                TEXT,
-                game_name
-                TEXT,
-                language
-                TEXT,
-                added_at
-                TEXT,
-                PRIMARY
-                KEY
-                            (
-                image_name,
-                game_name,
-                language
-                            ))""")
+                            (image_name TEXT, game_name TEXT, language TEXT, added_at TEXT,
+                            PRIMARY KEY (image_name, game_name, language))""")
 
-            conn.execute("""CREATE TABLE IF NOT EXISTS jap_tcgs
-                            (
-                                tcg_name
-                                TEXT
-                                PRIMARY
-                                KEY,
-                                site_id
-                                INTEGER,
-                                total_pages
-                                INTEGER,
-                                last_run
-                                TEXT,
-                                last_duration
-                                TEXT,
-                                lifetime_dl
-                                INTEGER
-                                DEFAULT
-                                0
-                            )""")
-
+            # 2. PROGRESS TRACKER
             conn.execute("""CREATE TABLE IF NOT EXISTS progress
-                            (
-                                img_path
-                                TEXT
-                                PRIMARY
-                                KEY,
-                                processed_at
-                                TEXT,
-                                status
-                                TEXT,
-                                game_name
-                                TEXT
-                            )""")
+                            (image_name TEXT,game_name TEXT,language TEXT,status TEXT,processed_at TEXT,
+                             PRIMARY KEY(image_name,game_name,language))""")
+
+            # 3. HARVESTER CONFIG (Jap)
+            conn.execute("""CREATE TABLE IF NOT EXISTS jap_tcgs
+                            (tcg_name TEXT PRIMARY KEY, site_id INTEGER, total_pages INTEGER,
+                            last_run TEXT, last_duration TEXT, lifetime_dl INTEGER DEFAULT 0)""")
+
+            # 4. HARVESTER CONFIG (Eng)
+            conn.execute("""CREATE TABLE IF NOT EXISTS eng_tcgs
+                            (tcg_name TEXT PRIMARY KEY,site_id INTEGER,total_pages INTEGER,
+                             last_run TEXT,last_duration TEXT,lifetime_dl INTEGER DEFAULT 0)""")
             conn.commit()
 
-    # ==============================================================
-    # OPTION 1: MULTI-TABLE DASHBOARD
-    # ==============================================================
     def show_all_stats(self):
-        print("\n" + "═" * 55)
+        print("\n" + "═" * 60)
         print("              DATABASE GLOBAL DASHBOARD")
-        print("═" * 55)
-
+        print("═" * 60)
         with self.get_conn() as conn:
-            # --- 1. SKIPPED IMAGES (THE BANNED LIST) ---
-            print(f"\n {os.path.basename(self.db_path)} > [skipped_images]")
-            print(f" {'GAME NAME':<20} | {'LANG':<10} | {'BANNED'}")
-            print("-" * 45)
-            skips = conn.execute(
-                "SELECT game_name, language, COUNT(*) as c FROM skipped_images GROUP BY game_name, language").fetchall()
+            # Stats for Banned List
+            print(f"\n 🚫 BANNED CARDS (skipped_images)")
+            print(f" {'GAME NAME':<20} | {'LANG':<10} | {'COUNT'}")
+            print("-" * 50)
+            skips = conn.execute("SELECT game_name, language, COUNT(*) as c FROM skipped_images GROUP BY game_name, language").fetchall()
             skip_total = 0
-            for r in skips:
-                g = str(r['game_name']) if r['game_name'] else "Unknown"
-                l = str(r['language']) if r['language'] else "Unknown"
-                print(f" {g:<20} | {l:<10} | {r['c']:>6,}")
+            for r in (skips or []):
+                print(f" {str(r['game_name']):<20} | {str(r['language']):<10} | {r['c']:>7,}")
                 skip_total += r['c']
-            print(f" TOTAL BANNED CARDS: {skip_total:,}")
+            if not skips: print("  [No banned cards indexed]")
+            print(f" TOTAL BANNED: {skip_total:,}")
 
-            # --- 2. PROGRESS (WEB UI HISTORY) ---
-            print(f"\n {os.path.basename(self.db_path)} > [progress]")
-            prog_count = conn.execute("SELECT COUNT(*) FROM progress").fetchone()[0]
-            print(f" Total Web UI Decisions Logged: {prog_count:,} records")
+            # Stats for Progress
+            print(f"\n 🟢 TOTAL REVIEWED (progress)")
+            print(f" {'GAME NAME':<20} | {'LANG':<10} | {'COUNT'}")
+            print("-" * 50)
+            progs = conn.execute("SELECT game_name, language, COUNT(*) as c FROM progress GROUP BY game_name, language").fetchall()
+            prog_total = 0
+            for r in (progs or []):
+                print(f" {str(r['game_name']):<20} | {str(r['language']):<10} | {r['c']:>7,}")
+                prog_total += r['c']
+            print(f" TOTAL PROGRESS: {prog_total:,}")
+        print("\n" + "═" * 60)
 
-            # --- 3. JAP_TCGS (HARVESTER CONFIG) ---
-            print(f"\n {os.path.basename(self.db_path)} > [jap_tcgs]")
-            print(f" {'TCG NAME':<20} | {'S-ID':<6} | {'PAGES':<5} | {'LIFETIME'}")
-            print("-" * 45)
-            tcgs = conn.execute("SELECT tcg_name, site_id, total_pages, lifetime_dl FROM jap_tcgs").fetchall()
-            for t in tcgs:
-                print(f" {t['tcg_name']:<20} | {t['site_id']:<6} | {t['total_pages']:<5} | {t['lifetime_dl']:,}")
-
-        print("\n" + "═" * 55)
-
-    def run_manual_scan_and_import(self):
+    def run_folder_search_import(self):
+        """Scans Skipped folders and adds them as 'rejected'."""
         print("\n" + "=" * 45)
-        print("      SPECIFIC TCG IMPORT UTILITY")
+        print("      TCG FOLDER SCANNER & IMPORT")
         print("=" * 45)
-        target_dir = input(f"Path to scan [Default: {DEFAULT_SCAN_ROOT}]: ").strip().replace('"',
-                                                                                             '') or DEFAULT_SCAN_ROOT
-        if not os.path.exists(target_dir): return
 
-        game_name = input("Enter Game Name (e.g., Pokemon): ").strip()
-        lang_choice = input("Select Language [1] Japanese [2] English: ")
+        if not os.path.exists(SKIPPED_ROOT_DIR):
+            print(f"❌ Error: Root not found: {SKIPPED_ROOT_DIR}")
+            return
+
+        subfolders = [d for d in os.listdir(SKIPPED_ROOT_DIR) if os.path.isdir(os.path.join(SKIPPED_ROOT_DIR, d))]
+        if not subfolders:
+            print("🟡 No TCG folders found in Skipped directory.")
+            return
+
+        for i, folder in enumerate(subfolders, 1):
+            print(f" {i}. {folder}")
+
+        choice = input("\nSelect TCG # (or paste path): ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(subfolders):
+            game_name = subfolders[int(choice) - 1]
+            target_dir = os.path.join(SKIPPED_ROOT_DIR, game_name)
+        else:
+            target_dir = choice.replace('"', '')
+            game_name = os.path.basename(target_dir)
+
+        if not os.path.exists(target_dir):
+            print("❌ Invalid Path.")
+            return
+
+        lang_choice = input(f"Language for {game_name} [1] Japanese [2] English: ")
         language = "english" if lang_choice == "2" else "japanese"
 
-        skipped_data = []
         exts = ('.png', '.jpg', '.jpeg', '.webp')
         files = [f for f in os.listdir(target_dir) if f.lower().endswith(exts)]
+        if not files:
+            print("🟡 Folder is empty.")
+            return
 
-        for filename in files:
-            name_only = os.path.splitext(filename)[0]
-            image_id = name_only.replace("_200w", "") if "_200w" in name_only else name_only
-            skipped_data.append({"image_name": image_id, "game_name": game_name, "language": language})
-
-        if not skipped_data: return
-
-        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-            f.write("[\n")
-            for i, entry in enumerate(skipped_data):
-                f.write(f"  {json.dumps(entry)}{',' if i < len(skipped_data) - 1 else ''}\n")
-            f.write("]")
-
-        if input(f"\nImport {len(skipped_data)} records to DB? (y/n): ").lower() == 'y':
+        if input(f"\nImport {len(files)} cards as 'REJECTED'? (y/n): ").lower() == 'y':
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             with self.get_conn() as conn:
-                for e in skipped_data:
-                    conn.execute("INSERT OR IGNORE INTO skipped_images VALUES (?,?,?,?)",
-                                 (e['image_name'], e['game_name'], e['language'],
-                                  datetime.now().strftime("%Y-%m-%d %H:%M")))
+                for filename in files:
+                    name_only = os.path.splitext(filename)[0]
+                    image_id = name_only.replace("_200w", "") if "_200w" in name_only else name_only
+                    conn.execute("INSERT OR IGNORE INTO skipped_images VALUES (?,?,?,?)", (image_id, game_name, language, timestamp))
+                    conn.execute("INSERT OR IGNORE INTO progress VALUES (?,?,?,?,?)", (image_id, game_name, language, "rejected", timestamp))
                 conn.commit()
-            print("✨ Import Complete.")
+            print("✨ Success! Tables updated.")
+
+    def run_progress_audit(self):
+        """Audits the Card Database folder and adds missing files to 'progress' as 'approved'."""
+        print("\n" + "=" * 45)
+        print("      DATABASE PROGRESS AUDIT")
+        print("=" * 45)
+        print(f"Scanning: {CARD_DATABASE_ROOT}")
+        print("This will add missing cards to 'progress' without deleting anything.")
+
+        if not os.path.exists(CARD_DATABASE_ROOT):
+            print(f"❌ Error: Path not found: {CARD_DATABASE_ROOT}")
+            return
+
+        new_count = 0
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        exts = ('.png', '.jpg', '.jpeg', '.webp')
+
+        with self.get_conn() as conn:
+            for game_folder in os.listdir(CARD_DATABASE_ROOT):
+                game_path = os.path.join(CARD_DATABASE_ROOT, game_folder)
+                if os.path.isdir(game_path):
+                    print(f"  -> Auditing: {game_folder}")
+                    for filename in os.listdir(game_path):
+                        if filename.lower().endswith(exts):
+                            name_only = os.path.splitext(filename)[0]
+                            lang = "english" if "_200w" in name_only else "japanese"
+                            image_id = name_only.replace("_200w", "") if lang == "english" else name_only
+
+                            cursor = conn.execute("INSERT OR IGNORE INTO progress VALUES (?,?,?,?,?)",
+                                         (image_id, game_folder, lang, "approved", timestamp))
+                            if cursor.rowcount > 0:
+                                new_count += 1
+            conn.commit()
+
+        print(f"\n✅ Audit Complete! Added {new_count:,} new approved cards to progress.")
 
     def jap_update(self):
         print("\n" + "═" * 30 + "\n  JAPANESE TCG SETTINGS\n" + "═" * 30)
@@ -164,7 +165,7 @@ class CardDBManager:
         for i, r in enumerate(rows, 1):
             print(f"{i}. {r['tcg_name']:<15} [ID: {r['site_id']}] [Pages: {r['total_pages']}]")
 
-        choice = input("\nSelect TCG # to edit (n=new, Enter=cancel): ")
+        choice = input("\nEdit # (n=new): ")
         if choice.lower() == 'n':
             n, s, p = input("Name: "), input("Site ID: "), input("Pages: ")
             with self.get_conn() as conn:
@@ -176,35 +177,30 @@ class CardDBManager:
             with self.get_conn() as conn:
                 conn.execute("UPDATE jap_tcgs SET site_id=?, total_pages=? WHERE tcg_name=?", (ni, np, t['tcg_name']))
 
-
 def main():
     mgr = CardDBManager()
     while True:
         print("\n" + "═" * 45 + "\n  TCG DATABASE GLOBAL MANAGER\n" + "═" * 45)
         print(" 1. 📊 GLOBAL DASHBOARD (View All Tables)")
-        print(" 2. 🔍 Search Banned List (Check for Image ID)")
-        print(" 3. 📥 Manual Scan & Import (Add Banned Cards)")
+        print(" 2. 🔍 Search Banned List (By ID)")
+        print(" 3. 📥 SCAN SKIPPED FOLDERS (Add to Banned)")
         print(" 4. ⚙️  Update Japanese Harvester Config")
-        print(" 5. ❌ Exit")
+        print(" 5. 🛠️  AUDIT PROGRESS (Add Missing Approved Cards)")
+        print(" 6. ❌ Exit")
 
         cmd = input("\nSelect Option: ")
-        if cmd == '1':
-            mgr.show_all_stats()
+        if cmd == '1': mgr.show_all_stats()
         elif cmd == '2':
             term = input("\nSearch Image ID: ").strip()
             with mgr.get_conn() as conn:
                 res = conn.execute("SELECT * FROM skipped_images WHERE image_name LIKE ?", (f"%{term}%",)).fetchall()
                 if res:
                     for r in res: print(f" -> {r['image_name']} | {r['game_name']} | {r['language']}")
-                else:
-                    print("Not found.")
-        elif cmd == '3':
-            mgr.run_manual_scan_and_import()
-        elif cmd == '4':
-            mgr.jap_update()
-        elif cmd == '5':
-            break
-
+                else: print("Not found.")
+        elif cmd == '3': mgr.run_folder_search_import()
+        elif cmd == '4': mgr.jap_update()
+        elif cmd == '5': mgr.run_progress_audit()
+        elif cmd == '6': break
 
 if __name__ == "__main__":
     main()
