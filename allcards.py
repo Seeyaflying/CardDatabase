@@ -15,7 +15,7 @@ from datetime import datetime
 DB_FILE = os.path.abspath("skipped_images.sqlite")
 SAVE_ROOT = "G:/My Drive/New Cards"
 CHECK_ROOT = "G:/My Drive/Card Database"
-MAX_CONCURRENT_DOWNLOADS = 25  # Parallel download limit
+MAX_CONCURRENT_DOWNLOADS = 30  # Parallel download limit
 
 # --- COLOR PALETTE ---
 C = {
@@ -34,55 +34,34 @@ C = {
 new_dl_count = 0
 counter_lock = asyncio.Lock()
 
-# ==============================================================
-# DATABASE HELPERS
-# ==============================================================
-def init_db():
-    with sqlite3.connect(DB_FILE) as conn:
-        conn.execute("""CREATE TABLE IF NOT EXISTS eng_tcgs
-                        (tcg_name TEXT PRIMARY KEY,site_id INTEGER,total_pages INTEGER,
-                         last_run TEXT,last_duration TEXT,lifetime_dl INTEGER DEFAULT 0)""")
 
-        # Initial Seed of your TCG IDs
-        count = conn.execute("SELECT COUNT(*) FROM eng_tcgs").fetchone()[0]
-        if count == 0:
-            seed_data = [
-                ('Akora', 75), ("Alpha Clash", 78), ('Argent Saga', 61), ('Bakugan', 58),
-                ('Battle Spirits Saga', 72), ('Cardfight Vanguard', 16), ('Caster Chronicles', 37),
-                ("Chrono Clash System", 60), ("Dice Masters", 18), ("Digimon", 63), ("DBZ TCG", 23),
-                ("DBZ Super", 27), ("DBZ Super Fusion World", 80), ("Dragoborne", 28), ("Elestrals", 83),
-                ("Final Fantasy", 24), ("Flesh and Blood", 62), ("Force of Will", 17),
-                ("Future Card BuddyFight", 19), ("Gate Ruler", 65), ("Godzilla Card Game", 88),
-                ("Grand Archive", 74), ("Gundam", 86), ("Hololive", 87), ("Kryptik", 76),
-                ("Lightseekers", 48), ("Lorcana", 71), ("MetaX", 30), ("MetaZoo", 66),
-                ("Munchkin", 53), ("One Piece", 68), ("Pokemon", 3), ("Riftbound", 89),
-                ("Shadowverse Evolve", 73), ("Sorcery Contested Realm", 77), ("Star Wars Destiny", 26),
-                ("Star Wars Unlimited", 79), ("Transformers", 57), ("Union Arena", 81),
-                ("UniVersus", 25), ("Warhammer Age of Sigmar Champions", 54), ("Weiss Schwarz", 20),
-                ("Wixoss", 67), ("World of Warcraft", 13), ("Yugioh", 2), ("Zombie World Order", 36)
-            ]
-            conn.executemany("INSERT INTO eng_tcgs (tcg_name, site_id, total_pages) VALUES (?, ?, 0)", seed_data)
-            conn.commit()
-
+# ==============================================================
+# MENU LOGIC (Pulls from tcg_master)
+# ==============================================================
 def display_menu(rows, global_total):
     os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"\n {C['header']}  ENGLISH TCG HARVESTER v4.5 (VERBOSE DEBUG)  {C['reset']}")
-    print(f" {C['tag']}Banned Cards Tracked: {C['val']}{global_total:,}{C['reset']} records")
+    print(f"\n {C['header']}  ENGLISH TCG HARVESTER v5.0 (MASTER SYNC)  {C['reset']}")
+    print(f" {C['tag']}Total Banned Tracks: {C['val']}{global_total:,}{C['reset']} records")
     print(f"{C['line']}═{'═' * 105}{C['reset']}")
 
-    head = f"{'ID':<4} {'TCG CATEGORY':<25} | {'SITE ID':<10} | {'LAST RUN':<18} | {'DUR':<6} | {'LIFETIME'}"
+    head = f"{'ID':<4} {'TCG CATEGORY':<25} | {'SITE ID':<10} | {'LAST RUN':<18} | {'FOLDER'}"
     print(f" {C['bold']}{head}{C['reset']}")
-    print(f"{C['line']}{'-'*4}{'-'*26}|{'-'*12}|{'-'*20}|{'-'*8}|{'-'*10}{C['reset']}")
+    print(f"{C['line']}{'-' * 4}{'-' * 26}|{'-' * 12}|{'-' * 20}|{'-' * 20}{C['reset']}")
 
-    for i, (name, sid, last, dur, life) in enumerate(rows, 1):
-        last = last if last else "Never"
+    for i, r in enumerate(rows, 1):
+        name = r['tcg_display_name']
+        sid = r['site_id']
+        last = r['last_run'] if r['last_run'] else "Never"
+        folder = r['folder_name']
+
         name_clr = C['green'] if "2026" in last else C['cyan']
         print(f" {C['val']}{i:<3}{C['reset']} {name_clr}{name:<25}{C['reset']} | "
               f"{C['val']}{str(sid):<10}{C['reset']} | {C['tag']}{last:<18}{C['reset']} | "
-              f"{C['val']}{dur if dur else '0s':<6}{C['reset']} | {C['green']}{life:<10,}{C['reset']}")
+              f"{C['skip']}{folder:<20}{C['reset']}")
 
     print(f"{C['line']}═{'═' * 105}{C['reset']}")
     return input(f" {C['bold']}📂 Select #, {C['green']}'all'{C['reset']}{C['bold']} or 'q': {C['reset']}")
+
 
 # ==============================================================
 # ASYNC HARVESTING LOGIC
@@ -93,26 +72,18 @@ async def fetch_json(session, url):
             if resp.status == 200:
                 data = await resp.json()
                 return data.get('results', [])
-    except: return []
+    except:
+        return []
     return []
+
 
 async def download_image(session, image_url, save_folder, image_name, skipped_ids, existing_filenames, semaphore):
     global new_dl_count
     async with semaphore:
-        # Extract numeric ID for DB checking
-        id_match = re.search(r'(\d+)', image_name)
-        img_id = id_match.group(1) if id_match else image_name
-
-        # Check against DB Bans
-        if img_id in skipped_ids or f"{img_id}_200w" in skipped_ids:
-            print(f"      {C['skip']}🏛️  Skip (Banned): {img_id}{C['reset']}")
+        # Check against DB Bans & Local Folders
+        if image_name in skipped_ids or image_name in existing_filenames:
             return
 
-        # Check against local folders (Silent skip to keep UI clean)
-        if image_name in existing_filenames:
-            return
-
-        # Perform the actual download
         image_path = os.path.join(save_folder, image_name)
         try:
             async with session.get(image_url, timeout=20) as response:
@@ -123,94 +94,101 @@ async def download_image(session, image_url, save_folder, image_name, skipped_id
                     async with counter_lock:
                         new_dl_count += 1
                         print(f"      {C['green']}📥 Downloaded: {image_name}{C['reset']}")
-        except: pass
+        except:
+            pass
 
-async def process_tcg(session, name, tcg_id):
+
+async def process_tcg(session, row):
     global new_dl_count
     new_dl_count = 0
     start_time = time.time()
 
-    print(f"\n{C['header']} 🚀 PROCESSING: {name.upper()} {C['reset']}")
+    name = row['tcg_display_name']
+    sid = row['site_id']
+    folder_name = row['folder_name']
+
+    print(f"\n{C['header']} 🚀 PROCESSING: {name.upper()} ({folder_name}) {C['reset']}")
 
     # 1. STORAGE ANALYSIS
     with sqlite3.connect(DB_FILE) as conn:
-        skipped_ids = {str(row[0]) for row in conn.execute(
+        skipped_ids = {str(r[0]) for r in conn.execute(
             "SELECT image_name FROM skipped_images WHERE language='english' AND game_name=?", (name,)).fetchall()}
 
-    save_dir = os.path.join(SAVE_ROOT, name)
-    check_dir = os.path.join(CHECK_ROOT, name)
+    # Use folder_name for pathing
+    save_dir = os.path.join(SAVE_ROOT, folder_name)
+    check_dir = os.path.join(CHECK_ROOT, folder_name)
     os.makedirs(save_dir, exist_ok=True)
 
     existing_files = set()
     for path in [save_dir, check_dir]:
         if os.path.exists(path): existing_files.update(os.listdir(path))
 
-    print(f"   {C['cyan']}📊 Storage Check:{C['reset']} Banned: {len(skipped_ids):,} | Local: {len(existing_files):,}")
-
-    # 2. GROUP FETCHING
+    # 2. GROUP FETCHING (TCGPlayer API via CSV)
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
-    print(f"   {C['tag']}🔗 Connecting to TCGPlayer API...{C['reset']}")
-    groups_data = await fetch_json(session, f'https://tcgcsv.com/tcgplayer/{tcg_id}/groups')
-    print(f"   {C['tag']}📂 Found {len(groups_data)} Sets/Groups.{C['reset']}")
+    groups_data = await fetch_json(session, f'https://tcgcsv.com/tcgplayer/{sid}/groups')
 
     # 3. SET-BY-SET SCANNING
     for group in groups_data:
         group_id = group.get('groupId')
-        group_name = group.get('name', 'Unknown')
         if not group_id: continue
 
-        print(f"\n   {C['bold']}📄 Scanning:{C['reset']} {group_name}")
-
-        products = await fetch_json(session, f'https://tcgcsv.com/tcgplayer/{tcg_id}/{group_id}/products')
-
+        products = await fetch_json(session, f'https://tcgcsv.com/tcgplayer/{sid}/{group_id}/products')
         tasks = []
         for item in products:
             img_url = item.get('imageUrl')
             if img_url:
                 img_name = img_url.split('/')[-1]
-                tasks.append(download_image(session, img_url, save_dir, img_name, skipped_ids, existing_files, semaphore))
+                tasks.append(
+                    download_image(session, img_url, save_dir, img_name, skipped_ids, existing_files, semaphore))
 
         if tasks:
             await asyncio.gather(*tasks)
-        else:
-            print(f"      {C['line']}No products found in this set.{C['reset']}")
 
-    # 4. FINAL LOGGING
-    duration = int(time.time() - start_time)
-    now = datetime.now().strftime("%m-%d %H:%M")
+    # 4. FINAL LOGGING (Updates tcg_master)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
     with sqlite3.connect(DB_FILE) as conn:
-        conn.execute("UPDATE eng_tcgs SET last_run=?, last_duration=?, lifetime_dl=lifetime_dl + ? WHERE tcg_name = ?",
-                     (now, f"{duration}s", new_dl_count, name))
+        conn.execute("UPDATE tcg_master SET last_run=? WHERE tcg_display_name = ? AND language = 'english'",
+                     (now, name))
+        conn.commit()
 
     print(f"\n {C['green']}🏁 Finished {name}! Saved {new_dl_count} new images.{C['reset']}")
 
+
 async def main_async():
-    init_db()
     async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as session:
         while True:
             with sqlite3.connect(DB_FILE) as conn:
-                rows = conn.execute("SELECT tcg_name, site_id, last_run, last_duration, lifetime_dl FROM eng_tcgs ORDER BY tcg_name").fetchall()
+                conn.row_factory = sqlite3.Row
+                # Strictly pulls English entries from the Master Registry
+                rows = conn.execute(
+                    "SELECT * FROM tcg_master WHERE language = 'english' ORDER BY tcg_display_name").fetchall()
                 global_total = conn.execute("SELECT COUNT(*) FROM skipped_images").fetchone()[0]
+
+            if not rows:
+                print(f"{C['red']}No English TCGs found in tcg_master table!{C['reset']}")
+                break
 
             choice = display_menu(rows, global_total)
             if choice.lower() == 'q': break
 
             if choice.lower() in ['all', 'a']:
-                print(f"\n {C['tag']}🌟 Starting Batch Run for {len(rows)} TCGs...{C['reset']}")
-                for tcg in rows:
-                    await process_tcg(session, tcg[0], tcg[1])
-                print(f"\n {C['header']} ✨ ALL TCGs UPDATED ✨ {C['reset']}")
-                input("Press [Enter] to return to menu...")
+                for tcg_row in rows:
+                    await process_tcg(session, tcg_row)
+                input("\nBatch Run Complete. Press [Enter]...")
                 continue
 
             try:
-                target = rows[int(choice) - 1]
-                await process_tcg(session, target[0], target[1])
+                target_row = rows[int(choice) - 1]
+                await process_tcg(session, target_row)
                 input("\nPress [Enter] to return...")
-            except: continue
+            except:
+                continue
+
 
 if __name__ == '__main__':
     try:
         asyncio.run(main_async())
-    except KeyboardInterrupt: pass
-    except Exception: traceback.print_exc()
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        traceback.print_exc()

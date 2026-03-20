@@ -1,104 +1,147 @@
 import os
 import time
+import sqlite3
 import requests
+import traceback
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 
 # --- CONFIGURATION ---
-# Replace 'C:/path/to/your/utils/chromedriver.exe' with your actual path
-chromedriver_path = './utils/chromedriver.exe'
+HEADLESS_MODE = True  # Set to True to hide the browser, False to show it
+DB_FILE = 'skipped_images.sqlite'
+GAME_NAME = 'NeoPets Battledome'
+LANGUAGE = 'english'
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+scraper_profile_path = os.path.join(script_dir, "Scraper_Profile")
+
 save_folder = 'G:/My Drive/New Cards/NeoPets Battledome'
 check_folder = 'G:/My Drive/Card Database/NeoPets Battledome'
 
-# Create directories
 os.makedirs(save_folder, exist_ok=True)
 os.makedirs(check_folder, exist_ok=True)
+os.makedirs(scraper_profile_path, exist_ok=True)
+
+
+def is_in_skipped_database(image_name):
+    """READ ONLY: Checks if the image is in the DB skip table."""
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            query = "SELECT 1 FROM skipped_images WHERE image_name = ? AND language = ? AND game_name = ?"
+            result = conn.execute(query, (image_name, LANGUAGE, GAME_NAME)).fetchone()
+            return result is not None
+    except sqlite3.Error:
+        return False
 
 
 def download_image(url, folder=save_folder, check_folder=check_folder):
     try:
-        # Get filename and strip potential URL parameters (e.g., ?v=1)
         image_name = url.split("/")[-1].split("?")[0]
+        if "upper_deck_logo" in image_name.lower() or not image_name:
+            return
+
         save_path = os.path.join(folder, image_name)
         check_path = os.path.join(check_folder, image_name)
 
-        if "upper_deck_logo" in image_name.lower():
+        if os.path.exists(save_path):
+            print(f"  - SKIPPED: Already in Save Folder ({image_name})")
             return
 
-        if os.path.exists(save_path) or os.path.exists(check_path):
-            print(f"Already exists: {image_name}")
+        if os.path.exists(check_path):
+            print(f"  - SKIPPED: Already in Check Folder ({image_name})")
+            return
+
+        if is_in_skipped_database(image_name):
+            print(f"  - SKIPPED: Found in Database Skip List ({image_name})")
             return
 
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             with open(save_path, 'wb') as f:
                 f.write(response.content)
-            print(f"Saved: {image_name}")
+            print(f"  [DOWNLOADED]: {image_name}")
+
     except Exception as e:
-        print(f"Error downloading {url}: {e}")
+        print(f"  [ERROR]: Could not process {url}: {e}")
 
 
 # --- SELENIUM SETUP ---
 chrome_options = Options()
-#chrome_options.add_argument("--headless") # Uncomment this to hide the browser window
 
-# Initialize using your local path
-service = Service(executable_path=chromedriver_path)
+# Toggle Headless based on the variable above
+if HEADLESS_MODE:
+    chrome_options.add_argument("--headless=new")  # 'new' is the modern implementation
+    print("Running in HEADLESS mode (Browser hidden)...")
+else:
+    print("Running in HEADED mode (Browser visible)...")
+
+chrome_options.add_argument(f"--user-data-dir={scraper_profile_path}")
+chrome_options.add_argument("--window-size=1920,1080")  # Vital for headless galleries
+chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--no-sandbox")
+
+service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
 base_url = 'https://my.upperdeck.com/public/neopets/cards'
-driver.get(base_url)
 
 
 def scrape_images_from_page():
-    time.sleep(3)  # Give the Neopets gallery time to render images
+    print("\n--- Scanning page for images... ---")
+    time.sleep(5)
     images = driver.find_elements(By.TAG_NAME, 'img')
     valid_extensions = ['.jpg', '.png', '.jpeg', '.webp']
 
+    found_count = 0
     for img in images:
-        img_url = img.get_attribute('src')
-        if img_url and any(ext in img_url.lower() for ext in valid_extensions):
-            download_image(img_url)
+        try:
+            img_url = img.get_attribute('src')
+            if img_url and any(ext in img_url.lower() for ext in valid_extensions):
+                found_count += 1
+                download_image(img_url)
+        except:
+            continue
+    print(f"Finished page. Total images detected: {found_count}")
 
 
 def scrape_all_images():
     try:
+        driver.get(base_url)
+        page_num = 1
         while True:
+            print(f"\n[PAGE {page_num}]")
             scrape_images_from_page()
-            try:
-                # Targeted XPATH for the "Next" pagination button
-                next_button = driver.find_element(By.XPATH, "//a[contains(text(), 'Next')]")
 
-                # Check if the button is disabled or if we're at the end
-                if "disabled" in next_button.get_attribute("class") or not next_button.is_enabled():
-                    print("Reached the last page.")
+            try:
+                next_button = driver.find_element(By.XPATH, "//a[contains(text(), 'Next')]")
+                if "disabled" in next_button.get_attribute("class"):
+                    print("\nReached the last page.")
                     break
 
-                next_button.click()
-                print("Moving to next page...")
-            except:
-                print("No more pages found.")
+                driver.execute_script("arguments[0].click();", next_button)
+                print("\nClicking 'Next'...")
+                time.sleep(3)
+                page_num += 1
+            except Exception:
+                print("\nNo more pagination buttons found.")
                 break
     finally:
-        print("Cleaning up driver...")
+        print("\nClosing browser and cleaning up...")
         driver.quit()
 
-
-import traceback
 
 if __name__ == "__main__":
     try:
         scrape_all_images()
         print("\nProcess completed successfully.")
     except Exception:
-        # This captures the full error log
-        error_details = traceback.format_exc()
-        print("\n" + "!"*30)
+        print("\n" + "!" * 30)
         print("CRITICAL ERROR DETECTED:")
-        print(error_details)
-        print("!"*30)
+        print(traceback.format_exc())
+        print("!" * 30)
     finally:
-        # This keeps the window open until you press Enter
-        input("\nPress Enter to close this window and return to manager...")
+        input("\nBrowser closed. Press Enter to exit the console...")

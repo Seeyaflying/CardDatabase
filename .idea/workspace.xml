@@ -11,9 +11,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="Create .gitignore">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Altered.py" beforeDir="false" afterPath="$PROJECT_DIR$/Altered.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/allcards.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jap_cards_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/jap_cards_main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/neopets.py" beforeDir="false" afterPath="$PROJECT_DIR$/neopets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/run_history.json" beforeDir="false" afterPath="$PROJECT_DIR$/run_history.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utility.py" beforeDir="false" afterPath="$PROJECT_DIR$/utility.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -374,6 +380,7 @@
       <workItem from="1773629709808" duration="1803000" />
       <workItem from="1773708173474" duration="9008000" />
       <workItem from="1773861654079" duration="298000" />
+      <workItem from="1773983560558" duration="50000" />
     </task>
     <task id="LOCAL-00001" summary="Create .gitignore">
       <option name="closed" value="true" />

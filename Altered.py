@@ -1,103 +1,145 @@
 import os
 import time
+import sqlite3
 import requests
+import traceback
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urljoin
 
 # --- CONFIGURATION ---
-# Path to your local chromedriver
-chromedriver_path = './utils/chromedriver.exe'
+HEADLESS_MODE = True
+DB_FILE = 'skipped_images.sqlite'
+GAME_NAME = 'Altered'
+LANGUAGE = 'english'
 
-# Define skipped images
-SKIPPED_IMAGES = {
-    "empty.png",
-    "altered_applestore_en_us-1.png",
-    "altered_googleplay_en_us-1.png",
-    "altered_homepage_cover_logo.png",
-    "divider-sm.png",
-}
-
-# Folders
 save_folder = "G:/My Drive/New Cards/Altered"
 check_folder = "G:/My Drive/Card Database/Altered"
 
-# Ensure folders exist
+script_dir = os.path.dirname(os.path.abspath(__file__))
+# Use a very specific path to avoid permission issues
+scraper_profile_path = os.path.join(script_dir, "Scraper_Profiles", "Altered_Data")
+
 os.makedirs(save_folder, exist_ok=True)
 os.makedirs(check_folder, exist_ok=True)
+os.makedirs(scraper_profile_path, exist_ok=True)
 
 
-# Setup Chrome WebDriver
+def is_in_skipped_database(image_name):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            query = "SELECT 1 FROM skipped_images WHERE image_name = ? AND language = ? AND game_name = ?"
+            result = conn.execute(query, (image_name, LANGUAGE, GAME_NAME)).fetchone()
+            return result is not None
+    except sqlite3.Error:
+        return False
+
+
 def setup_driver():
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in background
-    chrome_options.add_argument("--disable-gpu")
+
+    if HEADLESS_MODE:
+        chrome_options.add_argument("--headless=new")
+
+    # CRITICAL: Path formatting for Windows
+    chrome_options.add_argument(f"--user-data-dir={scraper_profile_path}")
+
+    # Stability Arguments
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--remote-debugging-port=9222")  # Fixes the DevTools error
 
-    # Point to your local executable
-    service = Service(executable_path=chromedriver_path)
+    # Keeps Chrome from showing "Controlled by automated software"
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option("useAutomationExtension", False)
+
+    service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
+
+    # Further automation stealth
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
     return driver
 
 
-# Function to download images with check folder logic
-def download_images_from_page(url, folder=save_folder, check_folder=check_folder):
-    driver = setup_driver()
+def download_image(img_url, img_filename, folder=save_folder, check_folder=check_folder):
     try:
-        driver.get(url)
-        time.sleep(4)  # Altered.gg can be slow to load card assets
+        save_path = os.path.join(folder, img_filename)
+        check_path = os.path.join(check_folder, img_filename)
 
-        img_tags = driver.find_elements(By.TAG_NAME, 'img')
-        print(f"Found {len(img_tags)} image tags on {url}")
+        if os.path.exists(save_path):
+            print(f"  - SKIPPED: Already in Save Folder ({img_filename})")
+            return
 
-        for img_tag in img_tags:
-            # Check src and data-src for lazy-loading
-            img_url = img_tag.get_attribute('src') or img_tag.get_attribute('data-src')
-            if not img_url:
-                continue
+        if os.path.exists(check_path):
+            print(f"  - SKIPPED: Already in Check Folder ({img_filename})")
+            return
 
-            img_url = urljoin(url, img_url)
-            img_filename = os.path.basename(img_url).split("?")[0]  # Clean URL params
+        if is_in_skipped_database(img_filename):
+            print(f"  - SKIPPED: Found in Database Skip List ({img_filename})")
+            return
 
-            save_path = os.path.join(folder, img_filename)
-            check_path = os.path.join(check_folder, img_filename)
+        response = requests.get(img_url, timeout=10)
+        if response.status_code == 200:
+            with open(save_path, 'wb') as file:
+                file.write(response.content)
+            print(f"  [DOWNLOADED]: {img_filename}")
+    except Exception as e:
+        print(f"  [ERROR] processing {img_filename}: {e}")
 
-            # 1. Skip if in global skip list
-            if img_filename in SKIPPED_IMAGES:
-                continue
 
-            # 2. Skip if already exists in either location
-            if os.path.exists(save_path) or os.path.exists(check_path):
-                print(f"Skipping {img_filename} (already exists)")
-                continue
+def scrape_page(driver, url):
+    driver.get(url)
+    time.sleep(6)  # Increased wait for Altered assets
 
-            try:
-                print(f"Downloading {img_url}...")
-                response = requests.get(img_url, timeout=10)
-                if response.status_code == 200:
-                    with open(save_path, 'wb') as file:
-                        file.write(response.content)
-            except Exception as e:
-                print(f"Error downloading {img_url}: {e}")
+    img_tags = driver.find_elements(By.TAG_NAME, 'img')
+    print(f"Scanning {len(img_tags)} image tags...")
+
+    found_count = 0
+    for img_tag in img_tags:
+        img_url = img_tag.get_attribute('src') or img_tag.get_attribute('data-src')
+        if not img_url:
+            continue
+
+        full_url = urljoin(url, img_url)
+        img_filename = os.path.basename(full_url).split("?")[0]
+
+        if img_filename:
+            found_count += 1
+            download_image(full_url, img_filename)
+
+    print(f"Finished page. Total images detected: {found_count}")
+
+
+def main():
+    base_url = "https://www.altered.gg/en-us/cards"
+    max_pages = 40
+    driver = setup_driver()
+
+    try:
+        for current_page in range(1, max_pages + 1):
+            print(f"\n--- [PAGE {current_page}] ---")
+            page_url = f"{base_url}?page={current_page}"
+            scrape_page(driver, page_url)
+    except Exception:
+        print("\n" + "!" * 30)
+        print("CRITICAL ERROR:")
+        print(traceback.format_exc())
+        print("!" * 30)
     finally:
+        print("\nClosing browser...")
         driver.quit()
 
 
-# Function to handle URL-based pagination
-def scrape_paginated_site(base_url, start_page=1, max_pages=40):
-    current_page = start_page
-    while current_page <= max_pages:
-        print(f"\n--- Scraping page {current_page} ---")
-        page_url = f"{base_url}?page={current_page}"
-        download_images_from_page(page_url)
-        current_page += 1
-
-
 if __name__ == "__main__":
-    scrape_paginated_site("https://www.altered.gg/en-us/cards", max_pages=40)
+    main()
+    input("\nProcess complete. Press Enter to exit...")
 
 
 
