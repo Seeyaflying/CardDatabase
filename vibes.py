@@ -2,25 +2,39 @@ import os
 import time
 import requests
 import re
+import sys
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
-# --- CONFIGURATION ---
-TARGET_DIR = r"G:\My Drive\New Cards\Vibes"
-# List all directories you want to check for existing cards
-DATABASE_DIRS = [ r"G:\My Drive\Card Database\Vibes",
-    TARGET_DIR  # Also check the folder we are currently filling
-                ]
+# ==============================================================
+# 1. PLATFORM DETECTION & CONFIGURATION
+# ==============================================================
+IS_WINDOWS = os.name == 'nt'
+
+if IS_WINDOWS:
+    # Windows Native Google Drive Paths
+    TARGET_DIR = r"G:\My Drive\New Cards\Vibes"
+    DATABASE_DIRS = [r"G:\My Drive\Card Database\Vibes", TARGET_DIR]
+else:
+    # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
+    TARGET_DIR = os.path.expanduser("~/Desktop/GDrive/New Cards/Vibes")
+    DATABASE_DIRS = [
+        os.path.expanduser("~/Desktop/GDrive/Card Database/Vibes"),
+        TARGET_DIR
+    ]
+
 URL = "https://www.vibes.game/spoiler?sort=Name&sortDirection=asc"
 
-# 1. Setup Folders and Gather Existing Files
-if not os.path.exists(TARGET_DIR):
-    os.makedirs(TARGET_DIR)
-    print(f"Created target folder: {TARGET_DIR}")
+# Ensure target folder exists
+os.makedirs(TARGET_DIR, exist_ok=True)
 
 
+# ==============================================================
+# 2. FILE INDEXING
+# ==============================================================
 def get_all_filenames(directories):
     found_files = set()
     for directory in directories:
@@ -31,57 +45,79 @@ def get_all_filenames(directories):
     return found_files
 
 
-# Create a master set of everything you already own
 existing_files = get_all_filenames(DATABASE_DIRS)
-print(f"--- Total unique cards indexed: {len(existing_files)} ---")
+print(f"--- Total unique cards indexed: {len(existing_files)} ---\n")
 
-# 2. Setup Selenium
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+# ==============================================================
+# 3. SELENIUM SETUP
+# ==============================================================
+chrome_options = Options()
+if not IS_WINDOWS:
+    # Mandatory flags for Ubuntu stability
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--headless=new")  # Optional: run hidden on Linux
+
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 driver.get(URL)
 
-# 3. Scroll Phase
-print("\n--- Starting Scroll Phase ---")
+# ==============================================================
+# 4. SCROLL & DISCOVERY
+# ==============================================================
+print("--- Starting Scroll Phase ---")
 last_height = driver.execute_script("return document.body.scrollHeight")
 while True:
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    time.sleep(3)
+    time.sleep(3)  # Give images time to lazy-load
     new_height = driver.execute_script("return document.body.scrollHeight")
     if new_height == last_height:
         break
     last_height = new_height
 
-# 4. Discovery
+# Vibes specific selector
 cards = driver.find_elements(By.CSS_SELECTOR, "a[class*='aspect-[2.5/3.5]'] img")
 total_cards = len(cards)
 print(f"--- Found {total_cards} cards on site ---\n")
 
-# 5. Download with Triple-Check
+# ==============================================================
+# 5. DOWNLOAD LOOP
+# ==============================================================
 for index, img in enumerate(cards, 1):
     try:
         raw_name = img.get_attribute('alt') or f"card_{index}"
-        # Clean name for filesystem safety
+        # File-safe name cleaning
         clean_name = re.sub(r'[^\w\s-]', '', raw_name).strip().replace(" ", "_")
         filename = f"{clean_name}.png"
 
-        # CHECK IF EXISTS IN ANY OF THE THREE FOLDERS
         if filename.lower() in existing_files:
-            print(f"[{index}/{total_cards}] SKIP: {raw_name} (Already in database)")
+            print(f"[{index}/{total_cards}] SKIP: {raw_name} (Exists)")
             continue
-
-        print(f"[{index}/{total_cards}] DOWNLOADING: {raw_name}...", end="\r")
 
         srcset = img.get_attribute('srcset')
         if srcset:
-            # Grab the high-res URL from the srcset
-            actual_url = srcset.split('url=')[1].split('&')[0]
-            actual_url = requests.utils.unquote(actual_url)
+            # Extract high-res URL from Next.js image optimization parameters
+            try:
+                actual_url = srcset.split('url=')[1].split('&')[0]
+                actual_url = requests.utils.unquote(actual_url)
 
-            response = requests.get(actual_url)
-            if response.status_code == 200:
-                with open(os.path.join(TARGET_DIR, filename), 'wb') as f:
-                    f.write(response.content)
-                print(f"[{index}/{total_cards}] SUCCESS: {raw_name}          ")
-                existing_files.add(filename.lower())  # Prevent duplicates in same session
+                # Check if URL is relative
+                if actual_url.startswith('/'):
+                    actual_url = "https://www.vibes.game" + actual_url
+
+                print(f"[{index}/{total_cards}] DOWNLOADING: {raw_name}...", end="\r")
+
+                # Use a browser-like User Agent
+                headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
+                response = requests.get(actual_url, headers=headers, timeout=15)
+
+                if response.status_code == 200:
+                    with open(os.path.join(TARGET_DIR, filename), 'wb') as f:
+                        f.write(response.content)
+                    print(f"[{index}/{total_cards}] SUCCESS: {raw_name}           ")
+                    existing_files.add(filename.lower())
+            except (IndexError, Exception) as inner_e:
+                print(f"\n[{index}/{total_cards}] URL PARSE ERROR: {raw_name}")
 
     except Exception as e:
         print(f"\n[{index}/{total_cards}] ERROR on {raw_name}: {str(e)[:50]}")

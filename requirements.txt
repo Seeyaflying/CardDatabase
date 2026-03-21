@@ -1,0 +1,24 @@
+# --- UI & Web Frameworks ---
+PySide6
+Pillow
+Flask
+Flask-CORS
+
+# --- Machine Learning & Data ---
+tensorflow>=2.16.1
+numpy
+ijson
+tqdm
+
+# --- Web Scraping & Automation ---
+requests
+aiohttp
+aiofiles
+selenium
+webdriver-manager
+nodriver
+gdown
+
+# --- System & Input ---
+keyboard
+pynput

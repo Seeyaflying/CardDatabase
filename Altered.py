@@ -3,6 +3,7 @@ import time
 import sqlite3
 import requests
 import traceback
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -10,24 +11,38 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urljoin
 
-# --- CONFIGURATION ---
+# ==============================================================
+# 1. PLATFORM DETECTION & PATH CONFIGURATION
+# ==============================================================
+IS_WINDOWS = os.name == 'nt'
 HEADLESS_MODE = True
 DB_FILE = 'skipped_images.sqlite'
 GAME_NAME = 'Altered'
 LANGUAGE = 'english'
 
-save_folder = "G:/My Drive/New Cards/Altered"
-check_folder = "G:/My Drive/Card Database/Altered"
-
 script_dir = os.path.dirname(os.path.abspath(__file__))
-# Use a very specific path to avoid permission issues
-scraper_profile_path = os.path.join(script_dir, "Scraper_Profiles", "Altered_Data")
 
-os.makedirs(save_folder, exist_ok=True)
-os.makedirs(check_folder, exist_ok=True)
-os.makedirs(scraper_profile_path, exist_ok=True)
+if IS_WINDOWS:
+    # Windows Paths
+    SAVE_FOLDER = r"G:\My Drive\New Cards\Altered"
+    CHECK_FOLDER = r"G:\My Drive\Card Database\Altered"
+    SCRAPER_PROFILE_PATH = os.path.join(script_dir, "Scraper_Profiles", "Altered_Data")
+else:
+    # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
+    SAVE_FOLDER = os.path.expanduser("~/Desktop/GDrive/New Cards/Altered")
+    CHECK_FOLDER = os.path.expanduser("~/Desktop/GDrive/Card Database/Altered")
+    # Chrome profiles on Linux work best in /tmp or local home hidden folders
+    SCRAPER_PROFILE_PATH = os.path.expanduser("~/.config/altered_scraper_profile")
+
+# Ensure directories exist
+os.makedirs(SAVE_FOLDER, exist_ok=True)
+os.makedirs(CHECK_FOLDER, exist_ok=True)
+os.makedirs(os.path.dirname(SCRAPER_PROFILE_PATH), exist_ok=True)
 
 
+# ==============================================================
+# 2. UTILITY FUNCTIONS
+# ==============================================================
 def is_in_skipped_database(image_name):
     try:
         with sqlite3.connect(DB_FILE) as conn:
@@ -44,79 +59,87 @@ def setup_driver():
     if HEADLESS_MODE:
         chrome_options.add_argument("--headless=new")
 
-    # CRITICAL: Path formatting for Windows
-    chrome_options.add_argument(f"--user-data-dir={scraper_profile_path}")
-
-    # Stability Arguments
+    # Chrome Stability & Linux Sandbox Fixes
+    chrome_options.add_argument(f"--user-data-dir={SCRAPER_PROFILE_PATH}")
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--remote-debugging-port=9222")  # Fixes the DevTools error
 
-    # Keeps Chrome from showing "Controlled by automated software"
+    # Essential for Ubuntu to prevent "Chrome failed to start"
+    chrome_options.add_argument("--remote-debugging-port=9222")
+
+    # Stealth settings
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option("useAutomationExtension", False)
 
+    # Auto-install and set up driver
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    # Further automation stealth
+    # Stealth: Hide Selenium signature
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
     return driver
 
 
-def download_image(img_url, img_filename, folder=save_folder, check_folder=check_folder):
+def download_image(img_url, img_filename):
     try:
-        save_path = os.path.join(folder, img_filename)
-        check_path = os.path.join(check_folder, img_filename)
+        save_path = os.path.join(SAVE_FOLDER, img_filename)
+        check_path = os.path.join(CHECK_FOLDER, img_filename)
 
-        if os.path.exists(save_path):
-            print(f"  - SKIPPED: Already in Save Folder ({img_filename})")
-            return
-
-        if os.path.exists(check_path):
-            print(f"  - SKIPPED: Already in Check Folder ({img_filename})")
-            return
+        if os.path.exists(save_path) or os.path.exists(check_path):
+            return  # Already have it
 
         if is_in_skipped_database(img_filename):
-            print(f"  - SKIPPED: Found in Database Skip List ({img_filename})")
+            print(f"  - SKIPPED: In Skip List ({img_filename})")
             return
 
-        response = requests.get(img_url, timeout=10)
+        # Use a real browser-like User Agent
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        response = requests.get(img_url, headers=headers, timeout=10)
+
         if response.status_code == 200:
             with open(save_path, 'wb') as file:
                 file.write(response.content)
             print(f"  [DOWNLOADED]: {img_filename}")
+
     except Exception as e:
-        print(f"  [ERROR] processing {img_filename}: {e}")
+        print(f"  [ERROR] downloading {img_filename}: {e}")
 
 
 def scrape_page(driver, url):
+    print(f"Navigating to: {url}")
     driver.get(url)
-    time.sleep(6)  # Increased wait for Altered assets
 
+    # Altered.gg uses heavy JS, wait for elements to load
+    time.sleep(7)
+
+    # Find images
     img_tags = driver.find_elements(By.TAG_NAME, 'img')
-    print(f"Scanning {len(img_tags)} image tags...")
+    print(f"Found {len(img_tags)} tags. Filtering...")
 
     found_count = 0
     for img_tag in img_tags:
+        # Check src and data-src for lazy loading
         img_url = img_tag.get_attribute('src') or img_tag.get_attribute('data-src')
-        if not img_url:
+        if not img_url or "base64" in img_url:
             continue
 
         full_url = urljoin(url, img_url)
         img_filename = os.path.basename(full_url).split("?")[0]
 
-        if img_filename:
+        if img_filename and len(img_filename) > 4:  # Avoid tiny icon files
             found_count += 1
             download_image(full_url, img_filename)
 
-    print(f"Finished page. Total images detected: {found_count}")
+    print(f"Page processing finished. Detected: {found_count}")
 
 
+# ==============================================================
+# 3. MAIN LOOP
+# ==============================================================
 def main():
     base_url = "https://www.altered.gg/en-us/cards"
     max_pages = 40
@@ -128,10 +151,7 @@ def main():
             page_url = f"{base_url}?page={current_page}"
             scrape_page(driver, page_url)
     except Exception:
-        print("\n" + "!" * 30)
-        print("CRITICAL ERROR:")
-        print(traceback.format_exc())
-        print("!" * 30)
+        print("\n" + "!" * 30 + "\nCRITICAL ERROR:\n" + traceback.format_exc() + "\n" + "!" * 30)
     finally:
         print("\nClosing browser...")
         driver.quit()
@@ -139,11 +159,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-    input("\nProcess complete. Press Enter to exit...")
-
-
-
-
-
-
-
+    if IS_WINDOWS:
+        input("\nProcess complete. Press Enter to exit...")
