@@ -10,12 +10,7 @@
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexRemoved" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="Create .gitignore">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/utils/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_base.py" afterDir="false" />
-    </list>
+    <list default="true" id="7baa4bf2-3a90-48b0-9c63-407c208bd276" name="Changes" comment="Create .gitignore" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -381,7 +376,7 @@
       <workItem from="1774577016467" duration="348000" />
       <workItem from="1774577739031" duration="1754000" />
       <workItem from="1774589275007" duration="468000" />
-      <workItem from="1774673846966" duration="706000" />
+      <workItem from="1774673846966" duration="799000" />
     </task>
     <task id="LOCAL-00001" summary="Create .gitignore">
       <option name="closed" value="true" />
