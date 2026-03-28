@@ -21,7 +21,8 @@
         #btn-sync { grid-column: span 3; background-color: var(--primary); color: #000; height: 50px; font-size: 1rem; transition: background-color 0.3s; }
         #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; padding: 20px; box-sizing: border-box; }
         #folder-list { overflow-y: auto; margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .folder-btn { background: #222; border: 1px solid #444; padding: 18px; color: white; border-radius: 8px; }
+        .folder-btn { background: #222; border: 1px solid #444; padding: 18px; color: white; border-radius: 8px; text-align: left; }
+        #shutdown-btn { background: #444; color: #ff5555; margin-top: auto; padding: 15px; font-size: 0.9rem; border: 1px solid #666; }
     </style>
 </head>
 <body>
@@ -42,7 +43,11 @@
         <button id="btn-yes" onclick="handleDecision('yes')">✔</button>
         <button id="btn-sync" onclick="sync()">SYNC TO GOOGLE DRIVE</button>
     </div>
-    <div id="modal"><div style="display:flex; justify-content:space-between;"><h3>Switch Set</h3><span style="font-size: 2.5rem;" onclick="closeModal()">&times;</span></div><div id="folder-list"></div></div>
+    <div id="modal">
+        <div style="display:flex; justify-content:space-between;"><h3>Settings</h3><span style="font-size: 2.5rem;" onclick="closeModal()">&times;</span></div>
+        <div id="folder-list"></div>
+        <button id="shutdown-btn" onclick="shutdownServer()">🛑 SHUTDOWN SERVER (CLOSE APP)</button>
+    </div>
 
     <script>
         let currentUser = localStorage.getItem('card_sorter_user');
@@ -52,52 +57,34 @@
         function setUser(name) { currentUser = name; localStorage.setItem('card_sorter_user', name); initApp(); }
         function initApp() { document.getElementById('login-overlay').style.display = 'none'; updateStats(); loadNext(); setInterval(updateStats, 5000); }
 
-async function updateStats() {
-    try {
-        const res = await fetch(`/api/stats?user=${currentUser}`);
-        const data = await res.json();
+        async function updateStats() {
+            try {
+                const res = await fetch(`/api/stats?user=${currentUser}`);
+                const data = await res.json();
+                document.getElementById('stat-inbox').innerText = data.inbox;
+                document.getElementById('stat-total').innerText = data.total;
+                document.getElementById('stat-folder').innerText = data.folder.toUpperCase();
+                document.getElementById('wait-msg').style.display = (data.inbox === 0) ? 'block' : 'none';
+                refreshButtonColor(data.pending);
+            } catch(e){}
+        }
 
-        // Update the top status bar (Inbox is just a number now)
-        document.getElementById('stat-inbox').innerText = data.inbox;
-        document.getElementById('stat-total').innerText = data.total;
-        document.getElementById('stat-folder').innerText = data.folder.toUpperCase();
-
-        // Toggle the "Empty" message based on inbox
-        document.getElementById('wait-msg').style.display = (data.inbox === 0) ? 'block' : 'none';
-
-        // Update the Sync Button color based ONLY on the Yes/No count
-        refreshButtonColor(data.pending);
-    } catch(e){}
-}
-
-function refreshButtonColor(pendingCount) {
-    const btn = document.getElementById('btn-sync');
-
-    // Don't interrupt the active sync animation text/colors
-    if (btn.innerText.includes("⏳") || btn.innerText.includes("✅")) return;
-
-    if (pendingCount >= 1000) {
-        btn.style.backgroundColor = "var(--no)"; // Red
-        btn.style.color = "white";
-        btn.innerText = `⚠️ SYNC REQUIRED (${pendingCount} CARDS)`;
-    } else if (pendingCount >= 500) {
-        btn.style.backgroundColor = "#ffd700"; // Yellow
-        btn.style.color = "#000";
-        btn.innerText = `⚡ SYNC SOON (${pendingCount} CARDS)`;
-    } else {
-        // Under 500 cards, keep it the standard theme color
-        btn.style.backgroundColor = "";
-        btn.style.color = "";
-        btn.innerText = pendingCount > 0 ? `SYNC ${pendingCount} CARDS` : "SYNC TO GOOGLE DRIVE";
-    }
-}
-
-        function refreshButtonColor(count) {
+        function refreshButtonColor(pendingCount) {
             const btn = document.getElementById('btn-sync');
             if (btn.innerText.includes("⏳") || btn.innerText.includes("✅")) return;
-            if (count >= 1000) { btn.style.backgroundColor = "var(--no)"; btn.style.color = "white"; }
-            else if (count >= 500) { btn.style.backgroundColor = "#ffd700"; btn.style.color = "#000"; }
-            else { btn.style.backgroundColor = ""; btn.style.color = ""; }
+            if (pendingCount >= 1000) {
+                btn.style.backgroundColor = "var(--no)";
+                btn.style.color = "white";
+                btn.innerText = `⚠️ SYNC REQUIRED (${pendingCount} CARDS)`;
+            } else if (pendingCount >= 500) {
+                btn.style.backgroundColor = "#ffd700";
+                btn.style.color = "#000";
+                btn.innerText = `⚡ SYNC SOON (${pendingCount} CARDS)`;
+            } else {
+                btn.style.backgroundColor = "";
+                btn.style.color = "";
+                btn.innerText = pendingCount > 0 ? `SYNC ${pendingCount} CARDS` : "SYNC TO GOOGLE DRIVE";
+            }
         }
 
         async function loadNext() {
@@ -145,6 +132,14 @@ function refreshButtonColor(pendingCount) {
         }
         function closeModal() { document.getElementById('modal').style.display = 'none'; }
         async function selectFolder(name) { await fetch('/api/set_folder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user: currentUser, folder: name})}); closeModal(); updateStats(); loadNext(); }
+
+        async function shutdownServer() {
+            if (!confirm("Are you sure you want to stop the server? This will close the application.")) return;
+            try {
+                await fetch('/api/shutdown', { method: 'POST' });
+            } catch (e) {}
+            document.body.innerHTML = "<div style='display:flex; height:100vh; align-items:center; justify-content:center; color:white;'><h1>Server Stopped. You can close this tab.</h1></div>";
+        }
     </script>
 </body>
 </html>
