@@ -4,12 +4,14 @@ import shutil
 import threading
 import time
 import random
+import signal
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from urllib.parse import unquote
 from flask import Flask, render_template, send_from_directory, jsonify, request
 from flask_cors import CORS
 
+# Tells Flask to look for index.html in the utils folder
 app = Flask(__name__, template_folder='utils')
 CORS(app)
 
@@ -17,8 +19,6 @@ CORS(app)
 # 1. PLATFORM DETECTION & CONFIGURATION
 # ==============================================================
 IS_WINDOWS = os.name == 'nt'
-
-# The SQLite DB stays relative to the script
 SKIPPED_DB = "skipped_images.sqlite"
 
 if IS_WINDOWS:
@@ -26,16 +26,17 @@ if IS_WINDOWS:
     DRIVE_SOURCE = r"G:\My Drive\New Cards"
     DRIVE_YES_DIR = r"G:\My Drive\Card Database"
     DRIVE_NO_DIR = r"G:\My Drive\Skipped Cards"
+    # Updated to 'Cards' as requested
     BASE_LOCAL_PATH = r"C:\Users\seeya\OneDrive\Desktop\Cards"
 else:
-    # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
+    # Ubuntu Paths
     DRIVE_SOURCE = os.path.expanduser("~/Desktop/GDrive/New Cards")
     DRIVE_YES_DIR = os.path.expanduser("~/Desktop/GDrive/Card Database")
     DRIVE_NO_DIR = os.path.expanduser("~/Desktop/GDrive/Skipped Cards")
-    # Local working directory on Ubuntu SSD (Faster for triage than GDrive)
-    BASE_LOCAL_PATH = os.path.expanduser("~/Desktop/Cards_Triage_Local")
+    # Updated to 'Cards' as requested
+    BASE_LOCAL_PATH = os.path.expanduser("~/Desktop/Cards")
 
-# List of folders that must NEVER be deleted, even if empty
+# List of folders that must NEVER be deleted
 PROTECTED_ROOTS = {
     os.path.normpath(DRIVE_SOURCE),
     os.path.normpath(DRIVE_YES_DIR),
@@ -49,7 +50,7 @@ PROTECTED_ROOTS = {
 # ==============================================================
 active_users = {"seeya", "riverleaf"}
 user_prefs = {"seeya": "WAITING", "riverleaf": "WAITING"}
-user_history = {"seeya": []}  # Added riverleaf in get_user_paths dynamically if needed
+user_history = {"seeya": [], "riverleaf": []}
 
 SYNC_BATCH_SIZE = 1500
 MIN_THRESHOLD = 300
@@ -62,23 +63,16 @@ download_lock = threading.Lock()
 # ==========================
 
 def recursive_cleanup(root_path):
-    """Deletes empty folders recursively from the bottom up, skipping protected ones."""
-    if not os.path.exists(root_path):
-        return 0
-
+    """Deletes empty folders recursively from the bottom up."""
+    if not os.path.exists(root_path): return 0
     deleted_count = 0
-    # topdown=False is critical: it cleans children before parents
     for root, dirs, files in os.walk(root_path, topdown=False):
         for name in dirs:
             dir_path = os.path.normpath(os.path.join(root, name))
-
-            if dir_path in PROTECTED_ROOTS:
-                continue
-
+            if dir_path in PROTECTED_ROOTS: continue
             try:
                 if not os.listdir(dir_path):
                     os.rmdir(dir_path)
-                    print(f"   [CLEANUP] Removed empty folder: {dir_path}")
                     deleted_count += 1
             except OSError:
                 pass
@@ -86,10 +80,9 @@ def recursive_cleanup(root_path):
 
 
 def init_system():
-    """Initializes the synchronized database schema."""
+    """Initializes the database and local directory."""
     os.makedirs(BASE_LOCAL_PATH, exist_ok=True)
     conn = sqlite3.connect(SKIPPED_DB)
-    # Using triple quotes for cleaner SQL
     conn.execute('''CREATE TABLE IF NOT EXISTS progress
     (
         image_name
@@ -101,23 +94,6 @@ def init_system():
         status
         TEXT,
         processed_at
-        TEXT,
-        PRIMARY
-        KEY
-                    (
-        image_name,
-        game_name,
-        language
-                    ))''')
-    conn.execute('''CREATE TABLE IF NOT EXISTS skipped_images
-    (
-        image_name
-        TEXT,
-        game_name
-        TEXT,
-        language
-        TEXT,
-        added_at
         TEXT,
         PRIMARY
         KEY
@@ -140,10 +116,6 @@ def get_user_paths(username):
     for p in paths.values():
         os.makedirs(p, exist_ok=True)
         PROTECTED_ROOTS.add(os.path.normpath(p))
-
-    if username not in user_history:
-        user_history[username] = []
-
     return paths
 
 
@@ -152,8 +124,6 @@ def is_processed_by_anyone(rel_path):
     if len(parts) < 2: return False
     game_name, filename = parts[0], parts[-1]
     name_only = os.path.splitext(filename)[0]
-
-    # Logic for language detection
     lang = "english" if "_200w" in name_only else "japanese"
     image_id = name_only.replace("_200w", "") if lang == "english" else name_only
 
@@ -165,14 +135,12 @@ def is_processed_by_anyone(rel_path):
 
 
 def auto_sync_worker():
-    """Background thread to keep user inboxes full from the Google Drive Source."""
+    """Background thread to keep user inboxes full."""
     while True:
         if not download_lock.locked():
             for user in list(active_users):
                 if user_prefs.get(user) == "WAITING": continue
-
                 paths = get_user_paths(user)
-                # Fast file count check
                 inbox_count = sum([len(files) for r, d, files in os.walk(paths['inbox'])])
 
                 if inbox_count < MIN_THRESHOLD:
@@ -193,21 +161,16 @@ def auto_sync_worker():
                         for scan_root in scan_paths:
                             if not os.path.exists(scan_root) or len(to_copy) >= SYNC_BATCH_SIZE: continue
                             for root, _, files in os.walk(scan_root):
-                                if len(to_copy) >= SYNC_BATCH_SIZE: break
                                 for f in files:
                                     if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
                                         drive_p = os.path.join(root, f)
                                         rel_p = os.path.relpath(drive_p, DRIVE_SOURCE)
-
                                         if not is_processed_by_anyone(rel_p):
-                                            in_use = any(os.path.exists(os.path.join(get_user_paths(u)['inbox'], rel_p))
-                                                         for u in active_users)
-                                            if not in_use:
-                                                to_copy.append((drive_p, os.path.join(paths['inbox'], rel_p)))
-                                                if len(to_copy) >= SYNC_BATCH_SIZE: break
+                                            to_copy.append((drive_p, os.path.join(paths['inbox'], rel_p)))
+                                            if len(to_copy) >= SYNC_BATCH_SIZE: break
 
                         if to_copy:
-                            print(f"[SYNC] Pushing {len(to_copy)} images to {user}'s inbox...")
+                            print(f"[SYNC] Pushing {len(to_copy)} images to {user}...")
                             with ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_THREADS) as ex:
                                 for dp, lp in to_copy:
                                     os.makedirs(os.path.dirname(lp), exist_ok=True)
@@ -221,7 +184,14 @@ def auto_sync_worker():
 
 @app.route('/')
 def index():
-    return "<h1>TCG Triage Server Active</h1><p>Connect via the web interface.</p>"
+    return render_template('index.html')
+
+
+@app.route('/api/shutdown', methods=['POST'])
+def shutdown():
+    print("Server shutting down...")
+    os.kill(os.getpid(), signal.SIGINT)
+    return jsonify({"status": "shutdown"})
 
 
 @app.route('/api/stats')
@@ -241,14 +211,14 @@ def api_stats():
         "inbox": inbox_c,
         "pending": pending_sync,
         "total": total_done,
-        "folder": user_prefs.get(user, "WAITING")
+        "folder": user_prefs.get(user, "WAITING") or "ALL"
     })
 
 
 @app.route('/api/list_folders')
 def list_folders():
-    if not os.path.exists(DRIVE_SOURCE): return jsonify({"folders": []})
-    flds = [d for d in os.listdir(DRIVE_SOURCE) if os.path.isdir(os.path.join(DRIVE_SOURCE, d))]
+    flds = [d for d in os.listdir(DRIVE_SOURCE) if os.path.isdir(os.path.join(DRIVE_SOURCE, d))] if os.path.exists(
+        DRIVE_SOURCE) else []
     flds.sort(key=str.lower)
     return jsonify({"folders": flds})
 
@@ -264,7 +234,6 @@ def set_folder():
 
 @app.route('/images/<user>/<path:filename>')
 def serve_image(user, filename):
-    # unquote handles URL-encoded filenames (common in TCG sets)
     return send_from_directory(get_user_paths(user)['inbox'], unquote(filename))
 
 
@@ -276,7 +245,6 @@ def api_next():
         for f in files:
             if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
                 rel = os.path.relpath(os.path.join(root, f), paths['inbox'])
-                # Replace backslashes with forward slashes for URL routing
                 return jsonify({"url": f"/images/{user}/{rel.replace(os.sep, '/')}", "path": rel})
     return jsonify({"url": None})
 
@@ -286,11 +254,9 @@ def api_decision():
     data = request.json
     user, rel, dec = data['user'], data['path'], data['decision']
 
-    # Path parsing logic
     parts = rel.split(os.sep)
     game_name = parts[0] if len(parts) > 1 else "Uncategorized"
-    filename = parts[-1]
-    name_only = os.path.splitext(filename)[0]
+    name_only = os.path.splitext(parts[-1])[0]
     lang = "english" if "_200w" in name_only else "japanese"
     clean_id = name_only.replace("_200w", "") if lang == "english" else name_only
 
@@ -301,18 +267,12 @@ def api_decision():
     if os.path.exists(src):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.move(src, dest)
-
         conn = sqlite3.connect(SKIPPED_DB)
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         conn.execute('INSERT OR REPLACE INTO progress VALUES (?, ?, ?, ?, ?)',
-                     (clean_id, game_name, lang, dec, timestamp))
+                     (clean_id, game_name, lang, dec, datetime.now().strftime("%Y-%m-%d %H:%M")))
         conn.commit()
         conn.close()
-
-        user_history[user].append({
-            "rel": rel, "dest": dest, "drive_orig": os.path.join(DRIVE_SOURCE, rel),
-            "id": clean_id, "game": game_name, "lang": lang
-        })
+        user_history[user].append({"rel": rel, "dest": dest, "id": clean_id, "game": game_name, "lang": lang})
     return jsonify({"status": "success"})
 
 
@@ -320,17 +280,14 @@ def api_decision():
 def api_undo():
     user = request.json.get('user')
     if not user_history.get(user): return jsonify({"status": "error"}), 400
-
     last = user_history[user].pop()
-    rel, src, c_id, g_name, lang = last["rel"], last["dest"], last["id"], last["game"], last["lang"]
-    dest = os.path.join(get_user_paths(user)['inbox'], rel)
-
-    if os.path.exists(src):
+    dest = os.path.join(get_user_paths(user)['inbox'], last["rel"])
+    if os.path.exists(last["dest"]):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
-        shutil.move(src, dest)
+        shutil.move(last["dest"], dest)
         conn = sqlite3.connect(SKIPPED_DB)
         conn.execute('DELETE FROM progress WHERE image_name = ? AND game_name = ? AND language = ?',
-                     (c_id, g_name, lang))
+                     (last["id"], last["game"], last["lang"]))
         conn.commit()
         conn.close()
         return jsonify({"status": "success"})
@@ -341,23 +298,19 @@ def api_undo():
 def sync_to_drive():
     user = request.json.get('user')
     paths = get_user_paths(user)
-    moved_count, folders_removed = 0, 0
-
+    moved_count = 0
     with download_lock:
-        print(f"\n>>> SYNCING [{user.upper()}] TO GOOGLE DRIVE...")
-        mapping = [('YES', DRIVE_YES_DIR, paths['yes']), ('NO', DRIVE_NO_DIR, paths['no'])]
-        for label, dr_root, loc_root in mapping:
+        print(f"Syncing {user} to Google Drive...")
+        for label, dr_root, loc_root in [('YES', DRIVE_YES_DIR, paths['yes']), ('NO', DRIVE_NO_DIR, paths['no'])]:
             if not os.path.exists(loc_root): continue
             for root, _, files in os.walk(loc_root):
                 for f in files:
                     l_path = os.path.join(root, f)
                     rel = os.path.relpath(l_path, loc_root)
                     d_path = os.path.join(dr_root, rel)
-
                     os.makedirs(os.path.dirname(d_path), exist_ok=True)
                     shutil.move(l_path, d_path)
 
-                    # Delete original from source to clean up
                     orig = os.path.join(DRIVE_SOURCE, rel)
                     if os.path.exists(orig):
                         try:
@@ -365,19 +318,13 @@ def sync_to_drive():
                             moved_count += 1
                         except:
                             pass
-
-        print(f">>> STARTING SAFE FOLDER CLEANUP...")
-        folders_removed += recursive_cleanup(os.path.join(BASE_LOCAL_PATH, "users", user))
-        folders_removed += recursive_cleanup(DRIVE_SOURCE)
-
-    print(f">>> SYNC COMPLETE: {moved_count} files moved | {folders_removed} folders deleted.")
-    return jsonify({"status": "success", "moved": moved_count, "deleted_folders": folders_removed})
+        recursive_cleanup(os.path.join(BASE_LOCAL_PATH, "users", user))
+        recursive_cleanup(DRIVE_SOURCE)
+    return jsonify({"status": "success", "moved": moved_count})
 
 
 if __name__ == '__main__':
     init_system()
-    # Start the background sync worker
     threading.Thread(target=auto_sync_worker, daemon=True).start()
-
-    # Run server - host 0.0.0.0 makes it accessible on your local network
+    print("Card Sorter Server Active on http://localhost:5000")
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
