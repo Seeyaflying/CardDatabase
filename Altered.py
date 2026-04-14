@@ -20,24 +20,26 @@ DB_FILE = 'skipped_images.sqlite'
 GAME_NAME = 'Altered'
 LANGUAGE = 'english'
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
+# Global Scrapers Root (ignored in Git)
+SCRAPER_ROOT = os.path.join(os.getcwd(), "scrapers")
+os.makedirs(SCRAPER_ROOT, exist_ok=True)
 
 if IS_WINDOWS:
     # Windows Paths
     SAVE_FOLDER = r"G:\My Drive\New Cards\Altered"
     CHECK_FOLDER = r"G:\My Drive\Card Database\Altered"
-    SCRAPER_PROFILE_PATH = os.path.join(script_dir, "Scraper_Profiles", "Altered_Data")
+    SCRAPER_PROFILE_PATH = os.path.join(SCRAPER_ROOT, "Altered")
 else:
     # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
     SAVE_FOLDER = os.path.expanduser("~/Desktop/GDrive/New Cards/Altered")
     CHECK_FOLDER = os.path.expanduser("~/Desktop/GDrive/Card Database/Altered")
-    # Chrome profiles on Linux work best in /tmp or local home hidden folders
+    # Chrome profiles on Linux work best in local hidden folders
     SCRAPER_PROFILE_PATH = os.path.expanduser("~/.config/altered_scraper_profile")
 
 # Ensure directories exist
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 os.makedirs(CHECK_FOLDER, exist_ok=True)
-os.makedirs(os.path.dirname(SCRAPER_PROFILE_PATH), exist_ok=True)
+os.makedirs(SCRAPER_PROFILE_PATH, exist_ok=True)
 
 
 # ==============================================================
@@ -46,7 +48,7 @@ os.makedirs(os.path.dirname(SCRAPER_PROFILE_PATH), exist_ok=True)
 def is_in_skipped_database(image_name):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            query = "SELECT 1 FROM skipped_images WHERE image_name = ? AND language = ? AND game_name = ?"
+            query = "SELECT 1 FROM progress WHERE image_name = ? AND language = ? AND game_name = ?"
             result = conn.execute(query, (image_name, LANGUAGE, GAME_NAME)).fetchone()
             return result is not None
     except sqlite3.Error:

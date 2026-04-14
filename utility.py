@@ -16,11 +16,13 @@ IS_WINDOWS = os.name == 'nt'
 if IS_WINDOWS:
     import msvcrt
     # Windows Paths
+    DRIVE_SOURCE = r"G:\My Drive\New Cards"
     SKIPPED_ROOT_DIR = r"G:\My Drive\Skipped Cards"
     CARD_DATABASE_ROOT = r"G:\My Drive\Card Database"
     CLEAR_SCREEN = 'cls'
 else:
     # Ubuntu/Linux Paths (Assumes rclone mount at ~/Desktop/GDrive)
+    DRIVE_SOURCE = os.path.expanduser("~/Desktop/GDrive/New Cards")
     SKIPPED_ROOT_DIR = os.path.expanduser("~/Desktop/GDrive/Skipped Cards")
     CARD_DATABASE_ROOT = os.path.expanduser("~/Desktop/GDrive/Card Database")
     CLEAR_SCREEN = 'clear'
@@ -33,6 +35,7 @@ DB_FILE = "skipped_images.sqlite"
 class Color:
     PURPLE = '\033[95m'; CYAN = '\033[96m'; GREEN = '\033[92m'
     YELLOW = '\033[93m'; RED = '\033[91m'; BOLD = '\033[1m'; END = '\033[0m'
+    DG = '\033[2m\033[92m'  # Dim Green
 
 # ==============================================================
 # THE STABILIZER (Cross-Platform Key Handling)
@@ -43,7 +46,6 @@ def clear_buffers():
         while msvcrt.kbhit():
             msvcrt.getch()
     else:
-        # On Linux, we flush sys.stdin to prevent menu skipping
         try:
             import termios
             termios.tcflush(sys.stdin, termios.TCIOFLUSH)
@@ -54,13 +56,9 @@ def wait_for_user():
     """Flushes ghost inputs and waits for a fresh hardware-level keypress."""
     print(f"\n{Color.YELLOW}>>> Press ANY KEY to return to menu... {Color.END}")
     clear_buffers()
-
-    # Using pynput as a cross-platform listener
     def on_press(key): return False
-
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
-
     time.sleep(0.1)
     clear_buffers()
 
@@ -77,7 +75,6 @@ class TCGGuiWizard:
         self.db_mgr = db_manager
         self.current_idx = 0
 
-        # UI Font adjustment (Helvetica is standard on Linux)
         font_main = ("Helvetica", 16, "bold") if not IS_WINDOWS else ("Segoe UI", 16, "bold")
 
         self.label_folder = tk.Label(root, text="", font=font_main, fg="#00ffcc", bg="#1a1a1a")
@@ -120,7 +117,6 @@ class TCGGuiWizard:
             files = [f for f in os.listdir(path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
             if files:
                 img_path = os.path.join(path, files[0])
-                # Note: PIL.Image.Resampling.LANCZOS for newer Pillow versions
                 img = Image.open(img_path).resize((500, 650))
                 self.photo = ImageTk.PhotoImage(img)
                 self.canvas.create_image(250, 325, image=self.photo)
@@ -171,7 +167,7 @@ class CardDBManager:
 
     def show_table_summary(self):
         os.system(CLEAR_SCREEN)
-        print(f"\n{Color.CYAN}{'?' * 45}{Color.END}\n{Color.BOLD}         DATABASE TABLE SUMMARY{Color.END}\n{Color.CYAN}{'?' * 45}{Color.END}")
+        print(f"\n{Color.CYAN}{'═' * 45}{Color.END}\n{Color.BOLD}         DATABASE TABLE SUMMARY{Color.END}\n{Color.CYAN}{'═' * 45}{Color.END}")
         with self.get_conn() as conn:
             tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()
             print(f" {'TABLE NAME':<25} | {'RECORDS':<10}\n" + "-" * 45)
@@ -213,6 +209,106 @@ class CardDBManager:
                     print("\nTable is empty.")
         wait_for_user()
 
+    def run_duplicate_audit(self):
+        os.system(CLEAR_SCREEN)
+        print(f"{Color.CYAN}{'═' * 45}\n  STARTING DUPLICATE AUDIT\n{'═' * 45}{Color.END}")
+        print(f"[1/3] Reading database history...")
+        processed_keys = set()
+        with self.get_conn() as conn:
+            rows = conn.execute("SELECT image_name, game_name, language FROM progress").fetchall()
+            for r in rows:
+                processed_keys.add((r[0].lower(), r[1].lower(), r[2].lower()))
+        print(f"      - Found {len(processed_keys):,} processed records.")
+
+        print(f"[2/3] Scanning Card Database for physical files...")
+        existing_on_disk = set()
+        if os.path.exists(CARD_DATABASE_ROOT):
+            for root, dirs, files in os.walk(CARD_DATABASE_ROOT):
+                game_name = os.path.basename(root).lower()
+                for f in files:
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                        name_only = os.path.splitext(f)[0].lower()
+                        lang = "english" if "_200w" in name_only else "japanese"
+                        clean_id = name_only.replace("_200w", "")
+                        existing_on_disk.add((clean_id, game_name, lang))
+        print(f"      - Found {len(existing_on_disk):,} files in library.")
+
+        print(f"[3/3] Auditing 'New Cards' for duplicates...\n")
+        deleted_count = 0
+        if os.path.exists(DRIVE_SOURCE):
+            for root, dirs, files in os.walk(DRIVE_SOURCE):
+                game_name = os.path.basename(root).lower()
+                for f in files:
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                        name_only = os.path.splitext(f)[0].lower()
+                        lang = "english" if "_200w" in name_only else "japanese"
+                        clean_id = name_only.replace("_200w", "")
+                        file_key = (clean_id, game_name, lang)
+                        
+                        if file_key in processed_keys or file_key in existing_on_disk:
+                            try:
+                                full_path = os.path.join(root, f)
+                                reason = "Database" if file_key in processed_keys else "Physical Library"
+                                print(f"  {Color.RED}[DELETE]{Color.END} {game_name}/{f} (Match: {reason})")
+                                os.remove(full_path)
+                                deleted_count += 1
+                            except Exception as e:
+                                print(f"  {Color.YELLOW}[ERROR]{Color.END} Failed to delete {f}: {e}")
+        print(f"\n{Color.GREEN}{'═' * 45}\n  AUDIT COMPLETE\n{'═' * 45}{Color.END}")
+        print(f"  Total Duplicates Purged: {deleted_count}")
+        wait_for_user()
+
+    def run_matrix_sync_audit(self):
+        os.system(CLEAR_SCREEN)
+        if not os.path.exists(CARD_DATABASE_ROOT):
+            print(f"{Color.RED}[!] ERROR: Path not found: {CARD_DATABASE_ROOT}{Color.END}")
+            return
+        folders = sorted([d for d in os.listdir(CARD_DATABASE_ROOT) if os.path.isdir(os.path.join(CARD_DATABASE_ROOT, d))])
+        print(f"\n{Color.CYAN}--- TCG SECTOR SELECTOR (SYNC PHYSICAL -> DB) ---{Color.END}")
+        print(f"0) [SCAN ALL FOLDERS]")
+        for i, fld in enumerate(folders, 1): print(f"{Color.GREEN}{i}) {fld}{Color.END}")
+        choice = input(f"\n{Color.YELLOW}Select Sector (Number): {Color.END}").strip()
+        targets = folders if choice == "0" else [folders[int(choice) - 1]] if (choice.isdigit() and 0 < int(choice) <= len(folders)) else None
+        if targets is None: return
+        print(f"{Color.DG}Loading Database Matrices...{Color.END}")
+        with self.get_conn() as conn:
+            progress_set = {(r[0].lower(), r[1].lower(), r[2].lower()) for r in conn.execute("SELECT image_name, game_name, language FROM progress").fetchall()}
+            skipped_set = {(r[0].lower(), r[1].lower(), r[2].lower()) for r in conn.execute("SELECT image_name, game_name, language FROM skipped_images").fetchall()}
+        total_count = 0
+        buffer = []
+        for tcg_folder in targets:
+            current_path = os.path.join(CARD_DATABASE_ROOT, tcg_folder)
+            print(f"\n{Color.CYAN}>>> INITIATING STREAM: {Color.GREEN}{tcg_folder}{Color.END}")
+            for root, _, files in os.walk(current_path):
+                for f in files:
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                        total_count += 1
+                        name_only = os.path.splitext(f)[0]
+                        lang = "english" if "_200w" in name_only else "japanese"
+                        clean_id = name_only.replace("_200w", "")
+                        card_key = (clean_id.lower(), tcg_folder.lower(), lang.lower())
+                        ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                        prefix = f"{Color.YELLOW}[{ts}] {Color.CYAN}#{total_count:<7}{Color.END}"
+                        if card_key in progress_set:
+                            print(f"{prefix}{Color.GREEN} [MATCH]   | {tcg_folder[:15]:<15} | {clean_id[:25]:<25}{Color.END}")
+                        elif card_key in skipped_set:
+                            print(f"{prefix}{Color.DG} [SKIPPED] | {tcg_folder[:15]:<15} | {clean_id[:25]:<25}{Color.END}")
+                        else:
+                            print(f"{prefix}{Color.BOLD}{Color.PURPLE} [NEW]     | {tcg_folder[:15]:<15} | {clean_id[:25]:<25}{Color.END}")
+                            buffer.append((clean_id, tcg_folder, lang, "yes", datetime.now().strftime("%Y-%m-%d %H:%M")))
+                            progress_set.add(card_key)
+                            if len(buffer) >= 50:
+                                with self.get_conn() as conn:
+                                    conn.executemany('INSERT OR REPLACE INTO progress VALUES (?, ?, ?, ?, ?)', buffer)
+                                    conn.commit()
+                                buffer = []
+        if buffer:
+            with self.get_conn() as conn:
+                conn.executemany('INSERT OR REPLACE INTO progress VALUES (?, ?, ?, ?, ?)', buffer)
+                conn.commit()
+        print(f"\n{Color.GREEN}--- SYNC COMPLETE: {total_count:,} ITEMS ACCOUNTED FOR ---{Color.END}")
+        wait_for_user()
+
 # ==============================================================
 # MAIN PROGRAM LOOP
 # ==============================================================
@@ -221,7 +317,7 @@ def main():
     while True:
         clear_buffers()
         os.system(CLEAR_SCREEN)
-        print(f"{Color.CYAN}{'?' * 45}\n  GLOBAL TCG DATABASE MANAGER\n{'?' * 45}{Color.END}")
+        print(f"{Color.CYAN}{'═' * 45}\n  GLOBAL TCG DATABASE MANAGER\n{'═' * 45}{Color.END}")
         print(" 1. View Table Summary")
         print(" 2. Search Banned List")
         print(" 3. Import from Skipped Cards")
@@ -229,12 +325,13 @@ def main():
         print(" 5. Deep Table Inspection")
         print(" 6. Rename TCG / Swap Lang")
         print(" 7. Delete Tables")
-        print(" 8. Exit")
+        print(f" 8. {Color.RED}Purge Duplicates from New Cards{Color.END}")
+        print(f" 9. {Color.PURPLE}Sync Physical Library to DB{Color.END}")
+        print(" 10. Exit")
 
-        cmd = input(f"\nSelect Option (1-8) > ").strip()
+        cmd = input(f"\nSelect Option (1-10) > ").strip()
 
-        if cmd == '1':
-            mgr.show_table_summary()
+        if cmd == '1': mgr.show_table_summary()
         elif cmd == '2':
             os.system(CLEAR_SCREEN)
             sid = input("Search ID: ")
@@ -248,7 +345,6 @@ def main():
             with mgr.get_conn() as conn:
                 configs = conn.execute("SELECT * FROM tcg_master ORDER BY tcg_display_name ASC").fetchall()
             for i, c in enumerate(configs, 1): print(f" {i:2}. {c['tcg_display_name']} [{c['language']}]")
-
             choice = input(f"\nSelect #: ")
             if choice.isdigit() and 0 < int(choice) <= len(configs):
                 cfg = configs[int(choice) - 1]
@@ -269,7 +365,6 @@ def main():
             mode = input("1. New | 2. All: ")
             with mgr.get_conn() as conn:
                 reg = [r[0] for r in conn.execute("SELECT folder_name FROM tcg_master").fetchall()]
-
             if os.path.exists(CARD_DATABASE_ROOT):
                 all_f = sorted([d for d in os.listdir(CARD_DATABASE_ROOT) if os.path.isdir(os.path.join(CARD_DATABASE_ROOT, d))])
                 final_f = all_f if mode == '2' else [f for f in all_f if f not in reg]
@@ -277,15 +372,11 @@ def main():
                     root = tk.Tk()
                     TCGGuiWizard(root, final_f, mgr)
                     root.mainloop()
-            else:
-                print(f"{Color.RED}Error: Root directory not found at {CARD_DATABASE_ROOT}{Color.END}")
-                time.sleep(2)
-        elif cmd == '5':
-            mgr.smart_inspect()
+            wait_for_user()
+        elif cmd == '5': mgr.smart_inspect()
         elif cmd == '6':
             os.system(CLEAR_SCREEN)
-            old = input("Current Name: ")
-            new = input("New Name: ")
+            old = input("Current Name: "); new = input("New Name: ")
             with mgr.get_conn() as conn:
                 conn.execute("UPDATE tcg_master SET tcg_display_name=? WHERE tcg_display_name=?", (new, old))
                 conn.execute("UPDATE skipped_images SET game_name=? WHERE game_name=?", (new, old))
@@ -305,8 +396,9 @@ def main():
                         conn.execute(f"DROP TABLE {target}")
                         print("Deleted.")
                         time.sleep(1)
-        elif cmd == '8':
-            break
+        elif cmd == '8': mgr.run_duplicate_audit()
+        elif cmd == '9': mgr.run_matrix_sync_audit()
+        elif cmd == '10': break
 
 if __name__ == "__main__":
     main()

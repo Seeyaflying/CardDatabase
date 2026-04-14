@@ -18,13 +18,15 @@ DB_FILE = 'skipped_images.sqlite'
 GAME_NAME = 'NeoPets Battledome'
 LANGUAGE = 'english'
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
+# Global Scrapers Root (ignored in Git)
+SCRAPER_ROOT = os.path.join(os.getcwd(), "scrapers")
+os.makedirs(SCRAPER_ROOT, exist_ok=True)
 
 if IS_WINDOWS:
     # Windows Native Paths
     SAVE_FOLDER = r"G:\My Drive\New Cards\NeoPets Battledome"
     CHECK_FOLDER = r"G:\My Drive\Card Database\NeoPets Battledome"
-    SCRAPER_PROFILE_PATH = os.path.join(script_dir, "Scraper_Profile")
+    SCRAPER_PROFILE_PATH = os.path.join(SCRAPER_ROOT, "NeoPets")
 else:
     # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
     SAVE_FOLDER = os.path.expanduser("~/Desktop/GDrive/New Cards/NeoPets Battledome")
@@ -42,10 +44,11 @@ os.makedirs(SCRAPER_PROFILE_PATH, exist_ok=True)
 # 2. UTILITY FUNCTIONS
 # ==============================================================
 def is_in_skipped_database(image_name):
-    """Checks if the image is in the DB skip table."""
+    """Checks if the image has already been processed in the DB."""
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            query = "SELECT 1 FROM skipped_images WHERE image_name = ? AND language = ? AND game_name = ?"
+            # Check the progress table to skip cards already sorted
+            query = "SELECT 1 FROM progress WHERE image_name = ? AND language = ? AND game_name = ?"
             result = conn.execute(query, (image_name, LANGUAGE, GAME_NAME)).fetchone()
             return result is not None
     except sqlite3.Error:
@@ -69,7 +72,7 @@ def download_image(url):
             return
 
         if is_in_skipped_database(image_name):
-            print(f"  - SKIPPED: In Skip List ({image_name})")
+            print(f"  - SKIPPED: Already Processed ({image_name})")
             return
 
         # Download with timeout and user-agent

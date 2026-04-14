@@ -18,12 +18,16 @@ from webdriver_manager.chrome import ChromeDriverManager
 # ==============================================================
 IS_WINDOWS = os.name == 'nt'
 
+# Global Scrapers Root (to be ignored in Git)
+SCRAPER_ROOT = os.path.join(os.getcwd(), "scrapers")
+os.makedirs(SCRAPER_ROOT, exist_ok=True)
+
 if IS_WINDOWS:
     # Windows Native Paths
     BASE_PATH = r"G:\My Drive\New Cards\Legend of the Five Rings"
     DATABASE_PATH = r"G:\My Drive\Database\Legend of the Five Rings"
-    LOCAL_STAGING = os.path.join(os.getcwd(), "L5R_Staging")
-    PROFILE_DIR = os.path.join(os.getcwd(), "ScraperProfile")
+    LOCAL_STAGING = os.path.join( "L5R_Staging")
+    PROFILE_DIR = os.path.join(SCRAPER_ROOT, "L5R")
 else:
     # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
     BASE_PATH = os.path.expanduser("~/Desktop/GDrive/New Cards/Legend of the Five Rings")
@@ -146,11 +150,14 @@ def download_modern_semi_auto():
         driver.get("https://www.emeralddb.org/cards")
         while True:
             print(f"\n>>> [PAGE {current_page}] Scanning Gallery...")
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/card/']")))
+            try:
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/card/']")))
+            except:
+                print("[!] Gallery didn't load. Please navigate to the cards page in Chrome.")
+                input("Press ENTER when cards are visible...")
 
             # Deduplicate links
-            links = list(dict.fromkeys([l.get_attribute('href') for l in driver.find_elements(By.CSS_SELECTOR,
-                                                                                              "a[href*='/card/'] text-decoration-none")]))
+            links = list(dict.fromkeys([l.get_attribute('href') for l in driver.find_elements(By.CSS_SELECTOR, "a[href*='/card/']")]))
 
             for url in links:
                 slug = url.split('/')[-1]
@@ -195,9 +202,27 @@ def download_modern_semi_auto():
                 driver.back()
                 time.sleep(1)
 
-            print(f"\nPAGE {current_page} DONE.")
-            if input("Continue to next page? (y/n): ").lower() != 'y': break
-            current_page += 1
+            # Auto-Next Logic
+            auto_success = False
+            try:
+                next_buttons = driver.find_elements(By.CSS_SELECTOR, "button")
+                for btn in next_buttons:
+                    btn_text = btn.text.strip().lower()
+                    if (btn_text == "next" or "chevron_right" in btn.get_attribute("innerHTML")) and btn.is_enabled():
+                        print(f"\n[SYSTEM] Auto-clicking Next page...")
+                        btn.click()
+                        auto_success = True
+                        break
+            except: pass
+
+            if auto_success:
+                current_page += 1
+                time.sleep(2)
+            else:
+                print(f"\n[PAUSE] Finished Page {current_page}. Could not find 'Next' button.")
+                cmd = input("Navigate to next page in browser and press ENTER to continue (or type 'done' to stop): ").lower()
+                if cmd == 'done': break
+                current_page += 1
     finally:
         driver.quit()
 
