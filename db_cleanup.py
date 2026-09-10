@@ -514,12 +514,19 @@ def copy_only():
 
                     if not file.exists():
                         skipped += 1
+                        elapsed = int(time.time() - start_time)
+                        dash.set_header(folder.name, elapsed, done, total_done)
+                        dash.maybe_refresh()
                         continue
 
                     dest_file = dest_folder / file.name
                     if dest_file.exists() and dest_file.stat().st_size == file.stat().st_size:
                         skipped += 1
+                        elapsed = int(time.time() - start_time)
+                        dash.set_header(folder.name, elapsed, done, total_done)
+                        dash.maybe_refresh()
                         continue
+
                     try:
                         shutil.copy2(str(file), str(dest_file))
                         copied += 1
@@ -541,14 +548,13 @@ def copy_only():
             errors += 1
             continue
 
-
     print("\033[2J\033[H", end="")
     print("=" * 70)
     print("COMPLETE")
     print("=" * 70)
-    print(f"  Copied:   {copied}")
-    print(f"  Skipped:  {skipped}")
-    print(f"  Errors:   {errors}")
+    print(f"  Copied:  {copied}")
+    print(f"  Skipped: {skipped}")
+    print(f"  Errors:  {errors}")
     print(f"  Total files processed: {total_done}")
     pause()
 
@@ -695,17 +701,20 @@ def reorganize_done_cards():
         f.write("REORGANIZE DONE CARDS REPORT\n")
         f.write("=" * 70 + "\n")
 
-    if not db_has_data():
+    col = _get_coll()
+    if col.count_documents({}) == 0:
         print("\n  No index found. Run 'Build Card Index' first (option 1).")
         pause()
         return
 
-    coll = _get_coll()
     filename_map = {}
-    for doc in coll.find({}, {"filename": 1, "game": 1}):
+    for doc in col.find({}, {"filename": 1, "game": 1}):
         filename_map[doc["filename"]] = doc["game"]
 
-    moved = unmatched = errors = total = 0
+    moved = 0
+    unmatched = 0
+    errors = 0
+    total = 0
 
     dash = Dashboard()
     set_refresh_for_folder(dash, "done cards")
@@ -715,12 +724,16 @@ def reorganize_done_cards():
     start_time = time.time()
 
     try:
-        with os.scandir(DONE_CARDS)as it:
+        with os.scandir(DONE_CARDS) as it:
             for entry in it:
                 if not entry.is_file():
                     continue
                 file = Path(entry.path)
                 total += 1
+
+                # Skip if the file is already gone (race condition fix)
+                if not file.exists():
+                    continue
 
                 game = filename_map.get(file.name)
                 if game:
@@ -736,10 +749,10 @@ def reorganize_done_cards():
                         try:
                             shutil.move(str(file), str(UNMATCHED / file.name))
                             dash.add_line(f"  ERROR, sent to Unmatched: {file.name}")
-                            _write_reorg(f"ERROR moved to Unmatched: {file.name} ({type(e.__name__)}: {e})")
+                            _write_reorg(f"ERROR moved to Unmatched: {file.name} ({type(e).__name__}: {e})")
                         except Exception as e2:
                             dash.add_line(f"  ERROR (could not move): {file.name}")
-                            _write_reorg(f"ERROR could not move: {file.name} ({type(e2.__name__)}: {e2})")
+                            _write_reorg(f"ERROR could not move: {file.name} ({type(e2).__name__}: {e2})")
                 else:
                     unmatched += 1
                     try:
@@ -749,13 +762,13 @@ def reorganize_done_cards():
                     except Exception as e2:
                         errors += 1
                         dash.add_line(f"  ERROR moving to Unmatched: {file.name}")
-                        _write_reorg(f"ERROR moving to Unmatched: {file.name} ({type(e2.__name__)}: {e2})")
+                        _write_reorg(f"ERROR moving to Unmatched: {file.name} ({type(e2).__name__}: {e2})")
 
                 elapsed = int(time.time() - start_time)
                 dash.set_header("Done Cards", elapsed, total, total)
                 dash.maybe_refresh()
     except Exception as e:
-        print(f"  ERROR scanning Done Cards: {type(e.__name__)}: {e}")
+        print(f"  ERROR scanning Done Cards: {type(e).__name__}: {e}")
 
     print("\033[2J\033[H", end="")
     print("=" * 70)
@@ -768,6 +781,7 @@ def reorganize_done_cards():
     print(f"\n  Report: {REORG_FILE}")
     print(f"  Unmatched folder: {UNMATCHED}")
     pause()
+
 
 def clean_empty_folders():
     clear_screen()
