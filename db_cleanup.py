@@ -7,6 +7,7 @@ from collections import deque
 from pathlib import Path
 
 from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError
 
 # ============================================================
 # Configuration - edit these
@@ -14,7 +15,10 @@ from pymongo import MongoClient
 
 # Replace <SERVER_IP> with the server's Tailscale IP (or LAN IP).
 # Port 27018 matches what we mapped in the compose file.
-MONGO_URI = ("mongodb://card_manager:1369@100.80.179.119:27018/carddb")
+MONGO_URI = os.getenv(
+    "MONGO_URI",
+    "mongodb://card_manager:1369@100.80.179.119:27018/carddb",
+)
 DB_NAME = "carddb"
 COLLECTION_NAME = "card_index"
 
@@ -43,8 +47,10 @@ def _get_db():
         _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     return _client[DB_NAME]
 
+
 def _get_coll():
     return _get_db()[COLLECTION_NAME]
+
 
 def close_db():
     global _client
@@ -182,8 +188,8 @@ def rebuild_index():
     print("=" * 70)
     print("BUILD CARD INDEX (first run)")
     print("=" * 70)
-    print("\nThis scans every game folder under the source (T) and")
-    print("destination (G) and records each file's location.")
+    print("\nThis scans every game folder under the source (T)")
+    print("and records each file's expected destination location.")
     print("This is a one-time full scan - it can take a while")
     print("with hundreds of thousands of files.")
     print("\nPress Enter to start...")
@@ -219,20 +225,21 @@ def rebuild_index():
             )
             dash.maybe_refresh()
             try:
-                with os.scandir(folder)as it:
+                with os.scandir(folder) as it:
                     batch = []
                     for entry in it:
                         if entry.is_file():
                             total_files += 1
                             dst = DEST / folder.name / entry.name
+                            is_uploaded = dst.exists()
                             batch.append({
                                 "filename": entry.name,
                                 "game": folder.name,
                                 "source_path": str(SOURCE / folder.name / entry.name),
                                 "dest_path": str(dst),
-                                "status": "uploaded" if dst.exists() else "pending",
+                                "status": "uploaded" if is_uploaded else "pending",
                                 "file_size": entry.stat().st_size,
-                                "uploaded_at": None,
+                                "uploaded_at": time.strftime("%Y-%m-%d %H:%M:%S") if is_uploaded else None,
                             })
                             if len(batch) >= 5000:
                                 coll.insert_many(batch, ordered=False)
@@ -260,7 +267,6 @@ def rebuild_index():
     print(f"  Database:          {MONGO_URI}")
     pause()
 
-
 def scan_for_new_cards():
     clear_screen()
     print("=" * 70)
@@ -274,21 +280,20 @@ def scan_for_new_cards():
     input()
     clear_screen()
 
-    if not db_has_data():
+    col = _get_coll()
+    if col.count_documents({}) == 0:
         print("\n  No index found. Run 'Build Card Index' first (option 1).")
         pause()
         return
 
-    coll = _get_coll()
-
-    dash = Dashboard()
+    dash = Dashboard(max_lines=10)
     dash.set_header("Scanning for new cards", 0, 0, 0)
     dash.draw()
 
     start_time = time.time()
     new_cards = 0
     already_known = 0
-    errors =  0
+    errors = 0
     total_scanned = 0
 
     for folder in game_folders():
@@ -297,34 +302,43 @@ def scan_for_new_cards():
         dash.set_header(
             f"Scanning: {folder.name}",
             int(time.time() - start_time),
-            0,
+            total_scanned,
             total_scanned,
         )
+        dash.maybe_refresh()
         try:
             with os.scandir(folder_path) as it:
                 for entry in it:
                     if not entry.is_file():
                         continue
                     total_scanned += 1
-                    if coll.find_one({"filename": entry.name}):
+                    if col.find_one({"filename": entry.name, "game": folder.name}):
                         already_known += 1
-                        continue
-                    src = SOURCE / folder.name / entry.name
-                    dst = DEST / folder.name / entry.name
-                    try:
-                        coll.insert_one({
-                            "filename": entry.name,
-                            "game": folder.name,
-                            "source_path": str(src),
-                            "dest_path": str(dst),
-                            "status": "pending",
-                            "file_size": entry.stat().st_size,
-                            "uploaded_at": None,
-                        })
-                        new_cards += 1
-                        dash.add_line(f"  NEW: {entry.name}")
-                    except Exception:
-                        already_known += 1
+                        dash.add_line(f"  EXISTS: {entry.name}")
+                    else:
+                        src = SOURCE / folder.name / entry.name
+                        dst = DEST / folder.name / entry.name
+                        try:
+                            col.insert_one({
+                                "filename": entry.name,
+                                "game": folder.name,
+                                "source_path": str(src),
+                                "dest_path": str(dst),
+                                "status": "pending",
+                                "file_size": entry.stat().st_size,
+                                "uploaded_at": None,
+                            })
+                            new_cards += 1
+                            dash.add_line(f"  NEW ({new_cards} so far): {entry.name}")
+                        except DuplicateKeyError:
+                            already_known += 1
+                            dash.add_line(f"  EXISTS (dup): {entry.name}")
+                    dash.set_header(
+                        f"Scanning: {folder.name}",
+                        int(time.time() - start_time),
+                        total_scanned,
+                        total_scanned,
+                    )
                     dash.maybe_refresh()
         except Exception as e:
             errors += 1
@@ -334,22 +348,26 @@ def scan_for_new_cards():
     print("=" * 70)
     print("SCAN COMPLETE")
     print("=" * 70)
-    print(f"  Files scanned:   {total_scanned}")
-    print(f"  New cards found:  {new_cards}")
-    print(f"  Already known:    {already_known}")
-    print(f"  Errors:           {errors}")
-    if new_cards == 0:
-        print("\n  No new cards found. Everything is up to date.")
-    else:
-        print(f"\n  {new_cards} new card(s) recorded as 'pending'.")
-        print("  Run 'Copy & Archive' to upload them.")
+    print(f"  Total files scanned: {total_scanned}")
+    print(f"  New cards found (pending): {new_cards}")
+    print(f"  Already in database: {already_known}")
+    print(f"  Errors:              {errors}")
+    print(f"\n  {new_cards} new card(s) need to be transferred.")
+    print(f"  Run 'Copy & Archive' to upload them.")
     pause()
 
 def _mark_uploaded(filename, game, dst_file):
     coll = _get_coll()
     coll.update_one(
-        {"filename": filename},
+        {"filename": filename, "game": game},
         {"$set": {"status": "uploaded", "dest_path": str(dst_file), "uploaded_at": time.strftime("%Y-%m-%d %H:%M:%S")}},
+    )
+
+def _mark_missing_source(filename, game):
+    coll = _get_coll()
+    coll.update_one(
+        {"filename": filename, "game": game},
+        {"$set": {"status": "missing_source"}},
     )
 
 def copy_and_archive():
@@ -384,7 +402,7 @@ def copy_and_archive():
     copied = archived = skipped = errors = 0
     total_done = 0
 
-    dash = Dashboard()
+    dash = Dashboard(max_lines=10)
 
     for game_name, files in pending.items():
         dest_folder = DEST / game_name
@@ -408,6 +426,17 @@ def copy_and_archive():
             done += 1
             total_done += 1
 
+            # Source missing -> skip before any .stat() call on it
+            if not src_file.exists():
+                skipped += 1
+                _mark_missing_source(filename, game_name)
+                dash.add_line(f"  SKIPPED (source missing): {filename}")
+                elapsed = int(time.time() - start_time)
+                dash.set_header(game_name, elapsed, done, total_done)
+                dash.maybe_refresh()
+                continue
+
+            # Already uploaded (same size at destination)
             if dst_file.exists() and dst_file.stat().st_size == src_file.stat().st_size:
                 _mark_uploaded(filename, game_name, dst_file)
                 skipped += 1
@@ -417,34 +446,44 @@ def copy_and_archive():
                 dash.maybe_refresh()
                 continue
 
+            # Already archived in Done Cards
             if (done_subfolder / filename).exists():
+                _mark_uploaded(filename, game_name, dst_file)
                 skipped += 1
-                dash.add_line(f"  SKIPPED (already archived: {filename}")
-                elapsed = int(time.time() - start_time)
-                dash.set_header(game_name, elapsed, done, total_done)
-                dash.maybe_refresh()
-                continue
-
-            if not src_file.exists():
-                skipped += 1
-                dash.add_line(f"  SKIPPED (source missing: {filename}")
+                dash.add_line(f"  SKIPPED (already archived): {filename}")
                 elapsed = int(time.time() - start_time)
                 dash.set_header(game_name, elapsed, done, total_done)
                 dash.maybe_refresh()
                 continue
 
             try:
+                file_size = src_file.stat().st_size  # capture size before move
                 shutil.copy2(str(src_file), str(dst_file))
-                if src_file.stat().st_size != dst_file.stat().st_size:
+                if file_size != dst_file.stat().st_size:
                     raise RuntimeError("size mismatch after copy")
                 shutil.move(str(src_file), str(done_subfolder / filename))
                 copied += 1
                 archived += 1
-                _mark_uploaded(filename, game_name, dst_file)
+
+                existing = coll.find_one({"filename": filename, "game": game_name})
+                if existing:
+                    _mark_uploaded(filename, game_name, dst_file)
+                else:
+                    coll.insert_one({
+                        "filename": filename,
+                        "game": game_name,
+                        "source_path": str(src_file),
+                        "dest_path": str(dst_file),
+                        "status": "uploaded",
+                        "file_size": file_size,
+                        "uploaded_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    })
+
                 _write_combined(f"COPIED & ARCHIVED: {game_name} / {filename}")
                 dash.add_line(f"  {filename}: copied, verified, moved")
             except FileNotFoundError:
                 skipped += 1
+                _mark_missing_source(filename, game_name)
                 dash.add_line(f"  SKIPPED (not found): {filename}")
             except Exception as e:
                 errors += 1
@@ -484,7 +523,8 @@ def copy_only():
 
     folders = game_folders()
 
-    dash = Dashboard()
+    dash = Dashboard(max_lines=10)
+    col = _get_coll()
 
     for folder in folders:
         folder_path = folder.resolve()
@@ -514,22 +554,29 @@ def copy_only():
 
                     if not file.exists():
                         skipped += 1
-                        elapsed = int(time.time() - start_time)
-                        dash.set_header(folder.name, elapsed, done, total_done)
-                        dash.maybe_refresh()
                         continue
 
                     dest_file = dest_folder / file.name
                     if dest_file.exists() and dest_file.stat().st_size == file.stat().st_size:
                         skipped += 1
-                        elapsed = int(time.time() - start_time)
-                        dash.set_header(folder.name, elapsed, done, total_done)
-                        dash.maybe_refresh()
                         continue
-
                     try:
                         shutil.copy2(str(file), str(dest_file))
                         copied += 1
+                        # Insert the DB entry if it doesn't exist, then mark uploaded
+                        existing = col.find_one({"filename": file.name, "game": folder.name})
+                        if existing:
+                            _mark_uploaded(file.name, folder.name, dest_file)
+                        else:
+                            col.insert_one({
+                                "filename": file.name,
+                                "game": folder.name,
+                                "source_path": str(file),
+                                "dest_path": str(dest_file),
+                                "status": "uploaded",
+                                "file_size": file.stat().st_size,
+                                "uploaded_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                            })
                         _write_combined(f"COPIED: {folder.name} / {file.name}")
                         dash.add_line(f"  {file.name}: copied")
                     except FileNotFoundError:
@@ -552,39 +599,45 @@ def copy_only():
     print("=" * 70)
     print("COMPLETE")
     print("=" * 70)
-    print(f"  Copied:  {copied}")
-    print(f"  Skipped: {skipped}")
-    print(f"  Errors:  {errors}")
+    print(f"  Copied:   {copied}")
+    print(f"  Skipped:  {skipped}")
+    print(f"  Errors:   {errors}")
     print(f"  Total files processed: {total_done}")
     pause()
 
 def archive_only():
     clear_screen()
     print("=" * 70)
-    print("ARCHIVE ONLY (no copy)")
+    print("ARCHIVE ONLY (no copy to Drive)")
     print("=" * 70)
     print(f"\nSource:      {SOURCE}")
-    print(f"Destination: {DEST}")
     print(f"Done Cards:  {DONE_CARDS}")
-    print("\nMoves files that already exist on the destination into")
-    print("Done Cards. Stops after 10 unverified files in a row.")
+    print("\nMoves every active file from the source into its game")
+    print("subfolder in Done Cards, without copying to Google Drive.")
+    print("Use this when cards are already uploaded and you just")
+    print("want to archive the originals.")
     print("\nPress Enter to start...")
     input()
     clear_screen()
 
     archived = skipped = errors = 0
     total_done = 0
-    unverified_streak = 0
-    stopped_early = False
 
     folders = game_folders()
 
-    dash = Dashboard()
+    dash = Dashboard(max_lines=10)
+    col = _get_coll()
+
 
     for folder in folders:
         folder_path = folder.resolve()
-        dest_folder = DEST / folder.name
         done_subfolder = DONE_CARDS / folder.name
+        try:
+            done_subfolder.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"  ERROR creating {done_subfolder}: {type(e).__name__}: {e}")
+            errors += 1
+            continue
 
         done = 0
         start_time = time.time()
@@ -604,84 +657,60 @@ def archive_only():
 
                     if not file.exists():
                         skipped += 1
-                        unverified_streak += 1
-                        dash.add_line(f"  UNVERIFIED: {file.name} (missing)")
-                        if unverified_streak >= 10:
-                            stopped_early = True
-                            break
                         continue
 
+                    # Already archived in Done Cards
                     if (done_subfolder / file.name).exists():
                         skipped += 1
-                        unverified_streak = 0
-                        continue
-
-                    dest_file = dest_folder / file.name
-                    if not dest_file.exists():
-                        skipped += 1
-                        unverified_streak += 1
-                        dash.add_line(f"  UNVERIFIED: {file.name} (not on destination)")
-                        if unverified_streak >= 10:
-                            stopped_early = True
-                            break
+                        dash.add_line(f"  SKIPPED (already archived): {file.name}")
+                        elapsed = int(time.time() - start_time)
+                        dash.set_header(folder.name, elapsed, done, total_done)
+                        dash.maybe_refresh()
                         continue
 
                     try:
-                        if file.stat().st_size == dest_file.stat().st_size:
-                            shutil.move(str(file), str(done_subfolder / file.name))
-                            archived += 1
-                            unverified_streak = 0
-                            _write_combined(f"ARCHIVED: {folder.name} / {file.name}")
-                            dash.add_line(f"  {file.name}: verified, moved")
+                        file_size = file.stat().st_size  # capture size before move
+                        shutil.move(str(file), str(done_subfolder / file.name))
+                        archived += 1
+                        # Insert the DB entry if it doesn't exist, then mark uploaded
+                        existing = col.find_one({"filename": file.name, "game": folder.name})
+                        if existing:
+                            _mark_uploaded(file.name, folder.name, done_subfolder / file.name)
                         else:
-                            errors += 1
-                            unverified_streak += 1
-                            dash.add_line(f"  UNVERIFIED: {file.name} (size mismatch)")
-                            _write_difference(f"SIZE MISMATCH: {folder.name} / {file.name}")
-                            if unverified_streak >= 10:
-                                stopped_early = True
-                                break
+                            col.insert_one({
+                                "filename": file.name,
+                                "game": folder.name,
+                                "source_path": str(file),
+                                "dest_path": str(done_subfolder / file.name),
+                                "status": "uploaded",
+                                "file_size": file_size,
+                                "uploaded_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                            })
+                        _write_combined(f"ARCHIVED: {folder.name} / {file.name}")
+                        dash.add_line(f"  {file.name}: archived")
                     except FileNotFoundError:
                         skipped += 1
-                        unverified_streak += 1
-                        dash.add_line(f"  UNVERIFIED: {file.name} (not found)")
-                        if unverified_streak >= 10:
-                            stopped_early = True
-                            break
+                        dash.add_line(f"  SKIPPED (not found): {file.name}")
                     except Exception as e:
                         errors += 1
-                        unverified_streak += 1
-                        dash.add_line(f"  UNVERIFIED: {file.name} ({type(e).__name__})")
+                        dash.add_line(f"  ERROR: {file.name}: {type(e).__name__}")
                         _write_difference(f"ERROR: {folder.name} / {file.name} - {e}")
-                        if unverified_streak >= 10:
-                            stopped_early = True
-                            break
 
                     elapsed = int(time.time() - start_time)
                     dash.set_header(folder.name, elapsed, done, total_done)
                     dash.maybe_refresh()
-
-                if stopped_early:
-                    break
-
         except Exception as e:
-            print(f"\n  ERROR listing {folder.name}: {type(e.__name__)}: {e}")
+            print(f"\n  ERROR listing {folder.name}: {type(e).__name__}: {e}")
             errors += 1
             continue
 
-        if stopped_early:
-            break
-
     print("\033[2J\033[H", end="")
     print("=" * 70)
-    if stopped_early:
-        print("STOPPED EARLY - 10 unverified files in a row")
-    else:
-        print("COMPLETE")
+    print("COMPLETE")
     print("=" * 70)
-    print(f"  Archived: {archived}")
-    print(f"  Skipped:  {skipped}")
-    print(f"  Errors:   {errors}")
+    print(f"  Archived:  {archived}")
+    print(f"  Skipped:   {skipped}")
+    print(f"  Errors:    {errors}")
     print(f"  Total files processed: {total_done}")
     pause()
 
@@ -692,7 +721,7 @@ def reorganize_done_cards():
     print("=" * 70)
     print(f"\nDone Cards: {DONE_CARDS}")
     print("\nUses the card index to match each flat file to its game folder.")
-    print("Files that can't be matched go to the Unmatched folder.")
+    print("Files that can't be matched, or duplicate-name matches, go to the Unmatched folder.")
     print("\nPress Enter to start...")
     input()
     clear_screen()
@@ -701,20 +730,25 @@ def reorganize_done_cards():
         f.write("REORGANIZE DONE CARDS REPORT\n")
         f.write("=" * 70 + "\n")
 
-    col = _get_coll()
-    if col.count_documents({}) == 0:
+    if not db_has_data():
         print("\n  No index found. Run 'Build Card Index' first (option 1).")
         pause()
         return
 
+    coll = _get_coll()
     filename_map = {}
-    for doc in col.find({}, {"filename": 1, "game": 1}):
-        filename_map[doc["filename"]] = doc["game"]
+    duplicate_filenames = set()
 
-    moved = 0
-    unmatched = 0
-    errors = 0
-    total = 0
+    for doc in coll.find({}, {"filename": 1, "game": 1}):
+        filename = doc["filename"]
+        game = doc["game"]
+
+        if filename in filename_map and filename_map[filename] != game:
+            duplicate_filenames.add(filename)
+        else:
+            filename_map[filename] = game
+
+    moved = unmatched = errors = total = 0
 
     dash = Dashboard()
     set_refresh_for_folder(dash, "done cards")
@@ -728,41 +762,51 @@ def reorganize_done_cards():
             for entry in it:
                 if not entry.is_file():
                     continue
+
                 file = Path(entry.path)
                 total += 1
 
-                # Skip if the file is already gone (race condition fix)
-                if not file.exists():
-                    continue
-
-                game = filename_map.get(file.name)
-                if game:
-                    target_folder = DONE_CARDS / game
-                    try:
-                        target_folder.mkdir(parents=True, exist_ok=True)
-                        shutil.move(str(file), str(target_folder / file.name))
-                        moved += 1
-                        _write_reorg(f"MOVED: {file.name} -> {game}")
-                        dash.add_line(f"  {file.name}: -> {game}")
-                    except Exception as e:
-                        errors += 1
-                        try:
-                            shutil.move(str(file), str(UNMATCHED / file.name))
-                            dash.add_line(f"  ERROR, sent to Unmatched: {file.name}")
-                            _write_reorg(f"ERROR moved to Unmatched: {file.name} ({type(e).__name__}: {e})")
-                        except Exception as e2:
-                            dash.add_line(f"  ERROR (could not move): {file.name}")
-                            _write_reorg(f"ERROR could not move: {file.name} ({type(e2).__name__}: {e2})")
-                else:
+                if file.name in duplicate_filenames:
                     unmatched += 1
                     try:
                         shutil.move(str(file), str(UNMATCHED / file.name))
-                        dash.add_line(f"  UNMATCHED, sent to Unmatched: {file.name}")
-                        _write_reorg(f"UNMATCHED moved to Unmatched: {file.name}")
-                    except Exception as e2:
+                        dash.add_line(f"  AMBIGUOUS, sent to Unmatched: {file.name}")
+                        _write_reorg(f"AMBIGUOUS moved to Unmatched: {file.name}")
+                    except Exception as e:
                         errors += 1
-                        dash.add_line(f"  ERROR moving to Unmatched: {file.name}")
-                        _write_reorg(f"ERROR moving to Unmatched: {file.name} ({type(e2).__name__}: {e2})")
+                        dash.add_line(f"  ERROR moving ambiguous file to Unmatched: {file.name}")
+                        _write_reorg(f"ERROR moving ambiguous file to Unmatched: {file.name} ({type(e).__name__}: {e})")
+                else:
+                    game = filename_map.get(file.name)
+
+                    if game:
+                        target_folder = DONE_CARDS / game
+                        try:
+                            target_folder.mkdir(parents=True, exist_ok=True)
+                            shutil.move(str(file), str(target_folder / file.name))
+                            moved += 1
+                            _write_reorg(f"MOVED: {file.name} -> {game}")
+                            dash.add_line(f"  {file.name}: -> {game}")
+                        except Exception as e:
+                            errors += 1
+                            try:
+                                shutil.move(str(file), str(UNMATCHED / file.name))
+                                unmatched += 1
+                                dash.add_line(f"  ERROR, sent to Unmatched: {file.name}")
+                                _write_reorg(f"ERROR moved to Unmatched: {file.name} ({type(e).__name__}: {e})")
+                            except Exception as e2:
+                                dash.add_line(f"  ERROR (could not move): {file.name}")
+                                _write_reorg(f"ERROR could not move: {file.name} ({type(e2).__name__}: {e2})")
+                    else:
+                        unmatched += 1
+                        try:
+                            shutil.move(str(file), str(UNMATCHED / file.name))
+                            dash.add_line(f"  UNMATCHED, sent to Unmatched: {file.name}")
+                            _write_reorg(f"UNMATCHED moved to Unmatched: {file.name}")
+                        except Exception as e:
+                            errors += 1
+                            dash.add_line(f"  ERROR moving to Unmatched: {file.name}")
+                            _write_reorg(f"ERROR moving to Unmatched: {file.name} ({type(e).__name__}: {e})")
 
                 elapsed = int(time.time() - start_time)
                 dash.set_header("Done Cards", elapsed, total, total)
@@ -781,7 +825,6 @@ def reorganize_done_cards():
     print(f"\n  Report: {REORG_FILE}")
     print(f"  Unmatched folder: {UNMATCHED}")
     pause()
-
 
 def clean_empty_folders():
     clear_screen()
