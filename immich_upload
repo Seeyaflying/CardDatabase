@@ -1,0 +1,374 @@
+import os
+import hashlib
+import requests
+import sqlite3
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
+
+
+# ============================================
+# CONFIGURATION
+# ============================================
+
+IMMICH_URL = "http://100.80.179.119:8081"
+
+API_KEY = "EYkQt5q6S1wkngy3G2zvE688cPGPmlsJRsnG3OYcGE"
+
+PHOTO_ROOT = r"T:\Cards Done"
+
+
+MAX_WORKERS = 12
+
+SUPPORTED_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp"
+}
+
+DATABASE = "immich_uploads.db"
+# Folder name to skip entirely (case-insensitive)
+SKIP_FOLDERS = {"backed up"}
+
+
+headers = {
+    "x-api-key": API_KEY
+}
+
+
+# ============================================
+# DATABASE
+# ============================================
+
+def setup_database():
+
+    conn = sqlite3.connect(DATABASE)
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS uploads (
+        hash TEXT PRIMARY KEY,
+        filepath TEXT,
+        asset_id TEXT,
+        album TEXT
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+
+def already_uploaded(file_hash):
+
+    conn = sqlite3.connect(DATABASE)
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT hash FROM uploads WHERE hash=?",
+        (file_hash,)
+    )
+
+    result = cursor.fetchone()
+
+    conn.close()
+
+    return result is not None
+
+
+
+def save_upload(file_hash, filepath, asset_id, album):
+
+    conn = sqlite3.connect(DATABASE)
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO uploads
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            file_hash,
+            filepath,
+            asset_id,
+            album
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+
+
+# ============================================
+# HASHING
+# ============================================
+
+def calculate_hash(path):
+
+    sha = hashlib.sha256()
+
+    with open(path, "rb") as file:
+
+        while chunk := file.read(1024 * 1024):
+
+            sha.update(chunk)
+
+
+    return sha.hexdigest()
+
+
+
+# ============================================
+# IMMICH
+# ============================================
+
+def load_albums():
+
+    response = requests.get(
+        f"{IMMICH_URL}/api/albums",
+        headers=headers
+    )
+
+    response.raise_for_status()
+
+    albums = {}
+
+    for album in response.json():
+
+        albums[album["albumName"]] = album["id"]
+
+
+    return albums
+
+
+
+def create_album(name):
+
+    response = requests.post(
+        f"{IMMICH_URL}/api/albums",
+        headers=headers,
+        json={
+            "albumName": name
+        }
+    )
+
+    response.raise_for_status()
+
+    return response.json()["id"]
+
+
+
+def get_album(name, albums):
+
+    if name in albums:
+
+        return albums[name]
+
+
+    print(f"Creating album: {name}")
+
+    album_id = create_album(name)
+
+    albums[name] = album_id
+
+    return album_id
+
+
+
+def upload_image(path):
+
+    with open(path, "rb") as image:
+
+        response = requests.post(
+            f"{IMMICH_URL}/api/assets",
+            headers=headers,
+            files={
+                "assetData": image
+            },
+            data={
+                "deviceAssetId": path.name,
+                "deviceId": "TCG Import",
+                "fileCreatedAt": "2025-01-01T00:00:00.000Z",
+                "fileModifiedAt": "2025-01-01T00:00:00.000Z"
+            }
+        )
+
+
+    response.raise_for_status()
+
+    return response.json()["id"]
+
+
+
+def add_to_album(album_id, asset_id):
+
+    requests.put(
+        f"{IMMICH_URL}/api/albums/{album_id}/assets",
+        headers=headers,
+        json={
+            "ids":[asset_id]
+        }
+    )
+
+
+
+# ============================================
+# WORKER
+# ============================================
+
+def process_image(path, album_name, album_id):
+
+    file_hash = calculate_hash(path)
+
+
+    if already_uploaded(file_hash):
+
+        return "Skipped"
+
+
+    try:
+
+        asset_id = upload_image(path)
+
+
+        add_to_album(
+            album_id,
+            asset_id
+        )
+
+
+        save_upload(
+            file_hash,
+            str(path),
+            asset_id,
+            album_name
+        )
+
+
+        return "Uploaded"
+
+
+    except Exception as e:
+
+        print(
+            f"\nERROR {path}: {e}"
+        )
+
+        return "Failed"
+
+
+
+# ============================================
+# MAIN
+# ============================================
+
+def main():
+
+    setup_database()
+
+
+    print("Loading Immich albums...")
+
+    albums = load_albums()
+
+
+    root = Path(PHOTO_ROOT)
+
+
+    if not root.exists():
+
+        print("Folder not found")
+
+        return
+
+
+
+    for folder in root.iterdir():
+
+
+        if not folder.is_dir():
+
+            continue
+
+
+        # Skip the 'Backed Up' folder (and any variation of its name)
+        if folder.name.lower() in SKIP_FOLDERS:
+
+
+            print(f"Skipping folder: {folder.name}")
+
+            continue
+
+
+        album_name = folder.name
+
+
+        print("")
+        print("============================")
+        print(album_name)
+        print("============================")
+
+
+        album_id = get_album(
+            album_name,
+            albums
+        )
+
+
+        images = []
+
+
+        for file in folder.iterdir():
+
+            if file.suffix.lower() in SUPPORTED_EXTENSIONS:
+
+                images.append(file)
+
+
+
+        print(
+            f"{len(images)} images found"
+        )
+
+
+        with ThreadPoolExecutor(
+            max_workers=MAX_WORKERS
+        ) as executor:
+
+
+            jobs = []
+
+
+            for image in images:
+
+                jobs.append(
+                    executor.submit(
+                        process_image,
+                        image,
+                        album_name,
+                        album_id
+                    )
+                )
+
+
+            for job in tqdm(
+                as_completed(jobs),
+                total=len(jobs)
+            ):
+
+                job.result()
+
+
+
+    print("")
+    print("IMPORT COMPLETE")
+
+
+
+if __name__ == "__main__":
+    main()
