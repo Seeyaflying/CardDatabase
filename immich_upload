@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-
+import shutil
 
 # ============================================
 # CONFIGURATION
@@ -16,6 +16,7 @@ IMMICH_URL = "http://100.80.179.119:8081"
 API_KEY = "EYkQt5q6S1wkngy3G2zvE688cPGPmlsJRsnG3OYcGE"
 
 PHOTO_ROOT = r"T:\Cards Done"
+DESTINATION_ROOT = r"T:\Card Database"
 
 
 MAX_WORKERS = 12
@@ -228,6 +229,19 @@ def process_image(path, album_name, album_id):
 
     if already_uploaded(file_hash):
 
+        # Already uploaded — just move it to the destination
+        dest_dir = Path(DESTINATION_ROOT) / album_name
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / path.name
+
+        if dest_path.exists():
+
+            dest_path = dest_dir / f"{path.stem}_{file_hash[:8]}{path.suffix}"
+
+
+        shutil.move(str(path), str(dest_path))
+
+
         return "Skipped"
 
 
@@ -250,6 +264,19 @@ def process_image(path, album_name, album_id):
         )
 
 
+        # Move the file to the destination, preserving the album structure
+        dest_dir = Path(DESTINATION_ROOT) / album_name
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / path.name
+
+        if dest_path.exists():
+
+            dest_path = dest_dir / f"{path.stem}_{file_hash[:8]}{path.suffix}"
+
+
+        shutil.move(str(path), str(dest_path))
+
+
         return "Uploaded"
 
 
@@ -260,8 +287,6 @@ def process_image(path, album_name, album_id):
         )
 
         return "Failed"
-
-
 
 # ============================================
 # MAIN
