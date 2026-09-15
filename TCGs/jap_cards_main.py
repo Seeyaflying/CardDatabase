@@ -1,6 +1,6 @@
 import os
 import time
-import sqlite3
+import sys
 import requests
 import threading
 import asyncio
@@ -8,13 +8,15 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import nodriver as uc
 
+# Make config/db importable from Utilities/
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "Utilities"))
+import config
+import db
+
 # ==============================================================
 # 1. PLATFORM DETECTION & PATH CONFIGURATION
 # ==============================================================
 IS_WINDOWS = os.name == 'nt'
-
-# Database path
-DB_FILE = os.path.abspath("skipped_images.sqlite")
 
 if IS_WINDOWS:
     # Windows Native Google Drive Paths
@@ -46,6 +48,16 @@ new_download_count = 0
 counter_lock = threading.Lock()
 
 
+def skipped_coll():
+    return db.get_db()[config.SKIPPED_IMAGES_COLLECTION]
+
+def progress_coll():
+    return db.get_db()[config.PROGRESS_COLLECTION]
+
+def tcg_master_coll():
+    return db.get_db()[config.TCG_MASTER_COLLECTION]
+
+
 # ==============================================================
 # 2. UI & UTILITIES
 # ==============================================================
@@ -61,7 +73,6 @@ def display_menu(rows, global_total):
 
     for i, (name, lang, sid, pgs, folder, last) in enumerate(rows, 1):
         last_str = last if last else "Never"
-        # Highlight if updated in the current year
         name_clr = C['green'] if "2026" in str(last_str) else C['cyan']
         print(f" {C['val']}{i:<3}{C['reset']} {name_clr}{name:<25}{C['reset']} | "
               f"{C['val']}{str(sid):<10}{C['reset']} | "
@@ -78,12 +89,10 @@ def display_menu(rows, global_total):
 async def run_harvest(site_id, pages, all_skips):
     all_urls = set()
 
-    # Linux-specific flags to prevent "No Sandbox" errors
     browser_args = ['--window-size=1920,1080', '--no-sandbox', '--disable-dev-shm-usage']
 
     browser = await uc.start(browser_args=browser_args)
     try:
-        # Initial handshake
         page = await browser.get("https://tcgrepublic.com/")
         await asyncio.sleep(5)
 
@@ -93,7 +102,6 @@ async def run_harvest(site_id, pages, all_skips):
             await page.get(url)
 
             try:
-                # Wait for products to appear
                 await page.select('li.product_thumbnail', timeout=15)
                 await page.scroll_down(1200)
                 await asyncio.sleep(2)
@@ -101,10 +109,8 @@ async def run_harvest(site_id, pages, all_skips):
                 imgs = await page.select_all("li.product_thumbnail img")
                 for img in imgs:
                     attrs = img.attributes
-                    # Extract 'src' attribute safely
                     src = next((attrs[i + 1] for i in range(len(attrs)) if attrs[i] == 'src'), None)
                     if src:
-                        # Clean the URL to get high-res original
                         full_url = src.replace(".l2_thumbnail.jpg", "")
                         if not full_url.startswith("http"):
                             full_url = "https://tcgrepublic.com" + full_url
@@ -134,8 +140,7 @@ def download_file(url, folder, total):
                 os.makedirs(folder, exist_ok=True)
 
             with open(path, "wb") as f:
-                file_content = r.content
-                f.write(file_content)
+                f.write(r.content)
 
             with counter_lock:
                 new_download_count += 1
@@ -154,9 +159,8 @@ def process_single_tcg(tcg_data):
     print(f"\n{C['header']} ? PROCESSING: {name.upper()} {C['reset']}")
 
     # Pull existing skips from DB
-    with sqlite3.connect(DB_FILE) as conn:
-        db_skips = {r[0] for r in conn.execute(
-            "SELECT image_name FROM skipped_images WHERE language = 'japanese' AND game_name = ?", (name,)).fetchall()}
+    db_skips = {r["image_name"] for r in skipped_coll().find(
+        {"language": "japanese", "game_name": name}, {"image_name": 1})}
 
     # Check local folders (rclone mount)
     local_files = set()
@@ -185,11 +189,9 @@ def process_single_tcg(tcg_data):
 
         # Update Last Run in DB
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        with sqlite3.connect(DB_FILE) as conn:
-            conn.execute(
-                "UPDATE tcg_master SET last_run=? WHERE tcg_display_name = ? AND language = 'japanese'",
-                (now, name))
-            conn.commit()
+        tcg_master_coll().update_one(
+            {"tcg_display_name": name, "language": "japanese"},
+            {"$set": {"last_run": now}})
 
         print(f" {C['green']}? Finished {name}! Saved {new_download_count}.{C['reset']}")
     else:
@@ -200,12 +202,19 @@ def process_single_tcg(tcg_data):
 # 5. MAIN LOOP
 # ==============================================================
 def main():
+    confirm = input("VPN enabled before continuing? (y/n): ").strip().lower()
+    if confirm not in ("y", "yes"):
+        print("VPN not confirmed. Exiting.")
+        return
+    
     while True:
-        with sqlite3.connect(DB_FILE) as conn:
-            conn.row_factory = sqlite3.Row
-            rows = conn.execute(
-                "SELECT tcg_display_name, language, site_id, total_pages, folder_name, last_run FROM tcg_master WHERE language = 'japanese' ORDER BY tcg_display_name").fetchall()
-            global_total = conn.execute("SELECT COUNT(*) FROM skipped_images").fetchone()[0]
+        rows = list(tcg_master_coll().find(
+            {"language": "japanese"},
+            {"tcg_display_name": 1, "site_id": 1, "total_pages": 1, "folder_name": 1, "last_run": 1})
+            .sort("tcg_display_name", 1))
+        rows = [(r.get("tcg_display_name"), "japanese", r.get("site_id"),
+                 r.get("total_pages", 0), r.get("folder_name"), r.get("last_run")) for r in rows]
+        global_total = skipped_coll().count_documents({})
 
         if not rows:
             print("No Japanese TCGs found in tcg_master!")

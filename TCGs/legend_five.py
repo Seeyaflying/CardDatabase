@@ -84,14 +84,35 @@ def get_existing_library():
 def download_classic_local():
     print(f"\n{'=' * 60}\n[STEP 1] DOWNLOADING ARCHIVE\n{'=' * 60}")
     drive_url = "https://drive.google.com/drive/folders/1nw_--s3Nsynczf1yFkogmGrMCaIg_Xrx"
+
+    # Build set of files we already have so we can skip them
+    existing = set()
+    if os.path.exists(LOCAL_STAGING):
+        for root, _, files in os.walk(LOCAL_STAGING):
+            for f in files:
+                existing.add(f.lower())
+
+    print(f"[INDEX] {len(existing)} file(s) already in staging.")
     print("[NETWORK] Connecting to Google Drive Archive...")
     try:
-        # gdown works great on both OSs
         gdown.download_folder(url=drive_url, output=LOCAL_STAGING, quiet=False, remaining_ok=True)
+
+        # Remove anything that was already present before this run,
+        # so we don't keep stale duplicates around (gdown overwrites by default).
+        removed = 0
+        for root, _, files in os.walk(LOCAL_STAGING):
+            for f in files:
+                fp = os.path.join(root, f)
+                if f.lower() in existing:
+                    try:
+                        os.remove(fp)
+                        removed += 1
+                    except:
+                        pass
+        print(f"[SKIP] Removed {removed} pre-existing file(s) that were re-fetched.")
         print("[SUCCESS] Local staging updated.")
     except Exception as e:
         print(f"[ERROR] Drive download failed: {e}")
-
 
 def process_and_flatten_local():
     print(f"\n{'=' * 60}\n[STEP 2] EXTRACTION & FLATTENING\n{'=' * 60}")
@@ -115,10 +136,12 @@ def process_and_flatten_local():
                             dest_filename = os.path.basename(ext_f)
                             dest_path = os.path.join(LOCAL_STAGING, dest_filename)
 
-                            # Move and overwrite only if the new file is larger/better
+                            # Skip if we already have this file at equal or larger size
                             if os.path.exists(dest_path):
                                 if os.path.getsize(src_path) > os.path.getsize(dest_path):
                                     shutil.move(src_path, dest_path)
+                                else:
+                                    print(f"    [SKIP] Already have: {dest_filename}")
                             else:
                                 shutil.move(src_path, dest_path)
                             success_count += 1
@@ -137,7 +160,6 @@ def process_and_flatten_local():
         except:
             pass
     print("[SUCCESS] Staging area is now flat.")
-
 
 def download_modern_semi_auto():
     print(f"\n{'=' * 60}\n[STEP 3] MODERN SCRAPE (EMERALD DB)\n{'=' * 60}")

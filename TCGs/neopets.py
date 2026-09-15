@@ -1,6 +1,6 @@
 import os
 import time
-import sqlite3
+import sys
 import requests
 import traceback
 from selenium import webdriver
@@ -9,12 +9,16 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
+# Make config/db importable from Utilities/
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "Utilities"))
+import config
+import db
+
 # ==============================================================
 # 1. PLATFORM DETECTION & PATH CONFIGURATION
 # ==============================================================
 IS_WINDOWS = os.name == 'nt'
 HEADLESS_MODE = True  # Set to True to hide the browser
-DB_FILE = 'skipped_images.sqlite'
 GAME_NAME = 'NeoPets Battledome'
 LANGUAGE = 'english'
 
@@ -46,12 +50,10 @@ os.makedirs(SCRAPER_PROFILE_PATH, exist_ok=True)
 def is_in_skipped_database(image_name):
     """Checks if the image has already been processed in the DB."""
     try:
-        with sqlite3.connect(DB_FILE) as conn:
-            # Check the progress table to skip cards already sorted
-            query = "SELECT 1 FROM progress WHERE image_name = ? AND language = ? AND game_name = ?"
-            result = conn.execute(query, (image_name, LANGUAGE, GAME_NAME)).fetchone()
-            return result is not None
-    except sqlite3.Error:
+        res = db.get_db()[config.PROGRESS_COLLECTION].find_one(
+            {"image_name": image_name, "language": LANGUAGE, "game_name": GAME_NAME})
+        return res is not None
+    except Exception:
         return False
 
 

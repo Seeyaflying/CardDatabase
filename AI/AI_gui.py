@@ -26,7 +26,7 @@ IS_WINDOWS = os.name == 'nt'
 
 # The SQLite DB stays in the same folder as this script
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "skipped_images.sqlite")
+DB_PATH = os.path.join(BASE_DIR, "../skipped_images.sqlite")
 
 if IS_WINDOWS:
     # Windows Native Google Drive Paths

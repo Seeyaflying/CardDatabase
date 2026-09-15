@@ -1,6 +1,3 @@
-# Large Database
-skipped_images.sqlite
-
 # All Scraper generated data/profiles
 scrapers/
 
@@ -13,3 +10,6 @@ __pycache__/
 *.log
 run_history.json
 scryfall_all_cards.json
+
+Utilities/.env
+*.db

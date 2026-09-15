@@ -16,7 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # --- CONFIGURATION: Paths ---
-UTILS_DIR = "../utils"
+UTILS_DIR = "../Utilities"
 CHROME_DRIVER_PATH = os.path.join(UTILS_DIR, "chromedriver.exe" if platform.system() == "Windows" else "chromedriver")
 
 # --- USER CONFIGURATION ---

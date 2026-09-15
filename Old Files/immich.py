@@ -10,15 +10,10 @@ import shutil
 # ============================================
 # CONFIGURATION
 # ============================================
-
 IMMICH_URL = "http://100.80.179.119:8081"
-
 API_KEY = "EYkQt5q6S1wkngy3G2zvE688cPGPmlsJRsnG3OYcGE"
-
 PHOTO_ROOT = r"T:\Cards Done"
 DESTINATION_ROOT = r"T:\Card Database"
-
-
 MAX_WORKERS = 12
 
 SUPPORTED_EXTENSIONS = {
