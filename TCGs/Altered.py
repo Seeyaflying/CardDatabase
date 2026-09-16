@@ -30,8 +30,8 @@ os.makedirs(SCRAPER_ROOT, exist_ok=True)
 
 if IS_WINDOWS:
     # Windows Paths
-    SAVE_FOLDER = r"G:\My Drive\New Cards\Altered"
-    CHECK_FOLDER = r"G:\My Drive\Card Database\Altered"
+    SAVE_FOLDER = r"T:\Full Card Database\New Cards\Altered"
+    CHECK_FOLDER = r"T:\Full Card Database\Card Database\Altered"
     SCRAPER_PROFILE_PATH = os.path.join(SCRAPER_ROOT, "Altered")
 else:
     # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)

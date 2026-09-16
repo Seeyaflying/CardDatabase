@@ -30,7 +30,7 @@ SYNC_COLLECTION = "scryfall_sync"     # tracks last sync date
 DEFAULT_LOOKBACK_DAYS = 30
 
 # Performance Tuning
-NUM_WORKERS = 20
+NUM_WORKERS = 10
 MAX_RETRIES = 3
 
 

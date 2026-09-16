@@ -2,8 +2,7 @@ import sys
 import os
 import random
 import numpy as np
-import sqlite3
-import time
+from pathlib import Path
 from PIL import Image
 
 # AI Frameworks
@@ -12,87 +11,82 @@ from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense
 from tensorflow.keras.optimizers import Adam
 
+# Point at the shared utilities config.py
+UTILS = Path(__file__).resolve().parent.parent / "utilities"
+sys.path.insert(0, str(UTILS))
+
+import config
+from pymongo import MongoClient
+
 # ==============================================================
 # 1. PLATFORM DETECTION & DYNAMIC PATHS
 # ==============================================================
 IS_WINDOWS = os.name == 'nt'
 
-# SQLite database stays in the script folder
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "../skipped_images.sqlite")
-
 if IS_WINDOWS:
-    # Windows Native Google Drive Paths (G: Drive)
-    DATASET_PATH = r"G:\My Drive\Card Database"
-    MODELS_DIR = r"G:\My Drive\models\CardData\models"
+    DATASET_PATH = r"T:\Full Card Database\Card Database"
+    MODELS_DIR = config.G_DRIVE / "models" / "CardData"
 else:
-    # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
     DATASET_PATH = os.path.expanduser("~/Desktop/GDrive/Card Database")
-    MODELS_DIR = os.path.expanduser("~/Desktop/GDrive/models/CardData/models")
+    MODELS_DIR = Path(os.path.expanduser("~/Desktop/GDrive/models/CardData"))
 
-# Ensure the models directory exists locally or on drive
+# Canonical model file shared with the GUI
+MODEL_FILE = MODELS_DIR / "card_ai_model.keras"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 
 # ==============================================================
-# 2. DATABASE HELPERS
+# 2. DATABASE HELPERS (Mongo carddb.card_ai, keyed by id: 1)
 # ==============================================================
-def connect_db():
-    conn = sqlite3.connect(DB_PATH)
-    # Ensure the table exists if starting from scratch on Ubuntu
-    cursor = conn.cursor()
-    cursor.execute("""
-                   CREATE TABLE IF NOT EXISTS card_ai
-                   (
-                       id
-                       INTEGER
-                       PRIMARY
-                       KEY
-                       CHECK
-                   (
-                       id =
-                       1
-                   ),
-                       genome INTEGER NOT NULL,
-                       total_steps INTEGER NOT NULL,
-                       full_iteration INTEGER NOT NULL
-                       )
-                   """)
-    conn.commit()
-    return conn
+_client = None
 
+def get_client():
+    global _client
+    if _client is None:
+        _client = MongoClient(config.MONGO_URI, serverSelectionTimeoutMS=5000)
+    return _client
 
-def load_card_ai(conn):
-    cursor = conn.cursor()
-    cursor.execute("SELECT genome, total_steps, full_iteration FROM card_ai WHERE id = 1")
-    row = cursor.fetchone()
-    if row:
-        return {"genome": row[0], "total_steps": row[1], "full_iteration": row[2]}
-    return {"genome": 1, "total_steps": 0, "full_iteration": 0}
+def card_ai_coll():
+    return get_client()[config.DB_NAME]["card_ai"]
 
+def load_card_ai():
+    """Read genome/steps from the shared card_ai doc (keyed by id: 1)."""
+    doc = card_ai_coll().find_one({"id": 1})
+    if doc is None:
+        card_ai_coll().insert_one({"id": 1, "genome": 1, "total_steps": 0, "full_iteration": 0})
+        return {"genome": 1, "total_steps": 0, "full_iteration": 0}
+    return {
+        "genome": doc.get("genome", 1),
+        "total_steps": doc.get("total_steps", 0),
+        "full_iteration": doc.get("full_iteration", 0),
+    }
 
-def save_card_ai(conn, genome, total_steps, full_iteration):
-    cursor = conn.cursor()
-    cursor.execute("""
-                   INSERT INTO card_ai (id, genome, total_steps, full_iteration)
-                   VALUES (1, ?, ?, ?) ON CONFLICT(id) DO
-                   UPDATE SET
-                       genome=excluded.genome,
-                       total_steps=excluded.total_steps,
-                       full_iteration=excluded.full_iteration
-                   """, (genome, total_steps, full_iteration))
-    conn.commit()
+def save_card_ai(genome, total_steps, full_iteration):
+    card_ai_coll().update_one(
+        {"id": 1},
+        {"$set": {"genome": genome, "total_steps": total_steps, "full_iteration": full_iteration}},
+        upsert=True,
+    )
 
 
 # ==============================================================
 # 3. CNN HELPERS
 # ==============================================================
 def init_model(target_size, class_labels):
-    model_file = os.path.join(MODELS_DIR, 'card_predictor_model.keras')
-    if os.path.exists(model_file):
-        print(f"Loading existing model from {model_file}")
-        # Note: compile=False is safer when moving models across platforms
-        return load_model(model_file)
+    num_classes = len(class_labels)
+
+    if MODEL_FILE.exists():
+        try:
+            loaded = load_model(str(MODEL_FILE))
+            existing = loaded.output_shape[-1]
+            if existing == num_classes:
+                print(f"Loading existing model ({existing} classes) from {MODEL_FILE}")
+                return loaded
+            else:
+                print(f"Class count changed: model has {existing} classes, data now has {num_classes}. "
+                      f"Rebuilding model to match.")
+        except Exception as e:
+            print(f"Could not load existing model ({e}). Building new one.")
 
     model = Sequential([
         Input(shape=(target_size[0], target_size[1], 3)),
@@ -100,14 +94,14 @@ def init_model(target_size, class_labels):
         MaxPooling2D((2, 2)),
         Flatten(),
         Dense(128, activation='relu'),
-        Dense(len(class_labels), activation='softmax')
+        Dense(num_classes, activation='softmax')
     ])
     model.compile(optimizer=Adam(1e-5), loss='categorical_crossentropy', metrics=['accuracy'])
-    print(f"Initialized new CNN model for {len(class_labels)} classes.")
+    print(f"Initialized new CNN model for {num_classes} classes.")
     return model
 
 
-def train_model(model, data_path, target_size, epochs, class_labels, max_steps, conn, genome, total_steps,
+def train_model(model, data_path, target_size, epochs, class_labels, max_steps, genome, total_steps,
                 full_iteration):
     image_paths, labels, tcg_names = [], [], []
 
@@ -134,7 +128,6 @@ def train_model(model, data_path, target_size, epochs, class_labels, max_steps, 
 
         for step_in_epoch, (img_path, class_idx, tcg_name) in enumerate(combined[:steps_per_epoch], start=1):
             try:
-                # Use Resampling.BICUBIC for Pillow 10+ (standard on Python 3.12)
                 img = Image.open(img_path).convert("RGB").resize(target_size, Image.Resampling.BICUBIC)
                 x = np.expand_dims(np.array(img) / 255.0, axis=0)
                 y = np.zeros((1, len(class_labels)))
@@ -144,8 +137,7 @@ def train_model(model, data_path, target_size, epochs, class_labels, max_steps, 
                 total_steps += 1
                 full_iteration += 1
 
-                # Save progress to SQLite
-                save_card_ai(conn, genome, total_steps, full_iteration)
+                save_card_ai(genome, total_steps, full_iteration)
 
                 print(f"[Step {total_steps}] G:{genome} | E:{epoch + 1}/{epochs} | "
                       f"S:{step_in_epoch}/{steps_per_epoch} | TCG: {tcg_name} | "
@@ -154,13 +146,9 @@ def train_model(model, data_path, target_size, epochs, class_labels, max_steps, 
                 print(f"Skipping {os.path.basename(img_path)} due to error: {e}")
                 continue
 
-    # Save model progress
-    latest_file = os.path.join(MODELS_DIR, 'card_predictor_model.keras')
-    genome_file = os.path.join(MODELS_DIR, f'card_predictor_model_genome_{genome}.keras')
-
-    model.save(latest_file)
-    model.save(genome_file)
-    print(f"Saved model for genome {genome} at {genome_file}\n")
+    # Save the shared model file
+    model.save(str(MODEL_FILE))
+    print(f"Saved shared model at {MODEL_FILE}\n")
 
     return total_steps, full_iteration
 
@@ -170,8 +158,7 @@ def train_model(model, data_path, target_size, epochs, class_labels, max_steps, 
 # ==============================================================
 def main():
     target_size = (200, 200)
-    conn = connect_db()
-    values = load_card_ai(conn)
+    values = load_card_ai()
     genome = values["genome"]
     total_steps = values["total_steps"]
     full_iteration = values["full_iteration"]
@@ -181,7 +168,6 @@ def main():
         print("Make sure your rclone mount is active!")
         return
 
-    # Filter out hidden folders like .tmp or .idea
     class_labels = [d for d in sorted(os.listdir(DATASET_PATH))
                     if os.path.isdir(os.path.join(DATASET_PATH, d)) and not d.startswith('.')]
 
@@ -191,29 +177,40 @@ def main():
 
     model = init_model(target_size, class_labels)
 
-    try:
-        num_genomes = int(input("Number of genomes to train: "))
-    except ValueError:
-        print("Invalid input. Defaulting to 1 genome.")
-        num_genomes = 1
-
     epochs = 1
     max_steps_per_epoch = 500
 
-    for _ in range(num_genomes):
-        print(f"\n=== Training Genome {genome} ===")
-        total_steps, full_iteration = train_model(
-            model, DATASET_PATH, target_size, epochs,
-            class_labels, max_steps_per_epoch,
-            conn, genome, total_steps, full_iteration
-        )
-        genome += 1
-        full_iteration = 0  # Reset local iteration for next genome
-        save_card_ai(conn, genome, total_steps, full_iteration)
+    while True:
+        try:
+            num_genomes = int(input("Number of genomes to train (or 0 to exit): "))
+        except ValueError:
+            print("Invalid input. Defaulting to 1 genome.")
+            num_genomes = 1
 
-    conn.close()
+        if num_genomes <= 0:
+            print("Exiting.")
+            break
+
+        for _ in range(num_genomes):
+            print(f"\n=== Training Genome {genome} ===")
+            total_steps, full_iteration = train_model(
+                model, DATASET_PATH, target_size, epochs,
+                class_labels, max_steps_per_epoch,
+                genome, total_steps, full_iteration
+            )
+            genome += 1
+            save_card_ai(genome, total_steps, full_iteration)
+            print(f"--- Genome {genome - 1} complete. Model saved to {MODEL_FILE.name}. "
+                  f"Ready to run again. ---")
+
+        again = input("\nRun another genome? (y/n): ").strip().lower()
+        if again not in ("y", "yes"):
+            print("Exiting.")
+            break
+
     print("\nTraining completed.")
 
 
 if __name__ == "__main__":
     main()
+

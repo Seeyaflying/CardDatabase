@@ -1,9 +1,10 @@
 import sys
 import os
+import re
 import random
 import numpy as np
-import sqlite3
 import time
+from pathlib import Path
 
 # UI Imports
 from PySide6.QtWidgets import (
@@ -19,73 +20,68 @@ from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense
 from tensorflow.keras.optimizers import Adam
 
-# ==============================================================
-# 1. PLATFORM DETECTION & DYNAMIC PATHS
-# ==============================================================
-IS_WINDOWS = os.name == 'nt'
+# Point Python at the utilities folder where config.py lives
+UTILS = Path(__file__).resolve().parent.parent / "utilities"
+sys.path.insert(0, str(UTILS))
 
-# The SQLite DB stays in the same folder as this script
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "../skipped_images.sqlite")
-
-if IS_WINDOWS:
-    # Windows Native Google Drive Paths
-    DATASET_PATH = r"G:\My Drive\Card Database"
-    MODELS_DIR = r"G:\My Drive\models\CardData"
-else:
-    # Ubuntu/Linux Paths (Assumes rclone mount at ~/Desktop/GDrive)
-    DATASET_PATH = os.path.expanduser("~/Desktop/GDrive/Card Database")
-    MODELS_DIR = os.path.expanduser("~/Desktop/GDrive/models/CardData")
-
-# Ensure the models directory exists locally/on drive
-os.makedirs(MODELS_DIR, exist_ok=True)
-
+import config
+from pymongo import MongoClient
 
 # ==============================================================
-# 2. DATABASE HELPERS
+# 1. DATABASE (Mongo carddb.card_ai) & PATHS
 # ==============================================================
-def connect_db():
-    """Connects to SQLite with multi-thread support for the GUI."""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    cursor = conn.cursor()
-    cursor.execute("""
-                   CREATE TABLE IF NOT EXISTS card_ai
-                   (
-                       id
-                       INTEGER
-                       PRIMARY
-                       KEY
-                       CHECK
-                   (
-                       id =
-                       1
-                   ),
-                       genome INTEGER NOT NULL,
-                       total_steps INTEGER NOT NULL
-                       )
-                   """)
-    cursor.execute("SELECT COUNT(*) FROM card_ai WHERE id=1")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO card_ai (id, genome, total_steps) VALUES (1, 1, 0)")
-        conn.commit()
-    return conn
+_client = None
 
+def get_client():
+    global _client
+    if _client is None:
+        _client = MongoClient(config.MONGO_URI, serverSelectionTimeoutMS=5000)
+    return _client
 
-def load_card_ai(conn):
-    cursor = conn.cursor()
-    cursor.execute("SELECT genome, total_steps FROM card_ai WHERE id=1")
-    row = cursor.fetchone()
-    return {"genome": row[0], "total_steps": row[1]} if row else {"genome": 1, "total_steps": 0}
+def card_ai_coll():
+    return get_client()[config.DB_NAME]["card_ai"]
 
+# --- Card database folders to scan for images -----------------
+DATASET_ROOTS = [
+    Path(r"T:\Full Card Database\Card Database"),
+    Path(r"T:\Full Card Database\New Cards"),
+]
 
-def save_card_ai(conn, genome, total_steps):
-    cursor = conn.cursor()
-    cursor.execute("UPDATE card_ai SET genome=?, total_steps=? WHERE id=1", (genome, total_steps))
-    conn.commit()
+# --- Model save locations --------------------------------------
+MODELS_DIR = config.G_DRIVE / "models" / "CardData"
+MODELS_DIR_LOCAL = Path(r"T:\Full Card Database\models\CardData")
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+MODELS_DIR_LOCAL.mkdir(parents=True, exist_ok=True)
+
+# Shared model file — same one the headless script uses
+MODEL_FILE = MODELS_DIR / "card_ai_model.keras"
+MODEL_FILE_LOCAL = MODELS_DIR_LOCAL / "card_ai_model.keras"
 
 
 # ==============================================================
-# 3. TRAINING THREAD (Backend Logic)
+# 2. DATABASE HELPERS (read/write card_ai, keyed by id: 1)
+# ==============================================================
+def load_card_ai():
+    """Read genome/steps from the existing card_ai doc (keyed by id: 1)."""
+    doc = card_ai_coll().find_one({"id": 1})
+    if doc is None:
+        card_ai_coll().insert_one({"id": 1, "genome": 1, "total_steps": 0, "full_iteration": 0})
+        return {"genome": 1, "total_steps": 0}
+    return {
+        "genome": doc.get("genome", 1),
+        "total_steps": doc.get("total_steps", 0),
+    }
+
+def save_card_ai(genome, total_steps):
+    card_ai_coll().update_one(
+        {"id": 1},
+        {"$set": {"genome": genome, "total_steps": total_steps}},
+        upsert=True,
+    )
+
+
+# ==============================================================
+# 3. TRAINING THREAD
 # ==============================================================
 class TrainingThread(QThread):
     progress = Signal(str)
@@ -96,34 +92,38 @@ class TrainingThread(QThread):
     total_steps_update = Signal(int)
     progress_bar_update = Signal(int)
 
-    def __init__(self, model, data_path, target_size, epochs, class_labels, max_steps_per_epoch):
+    def __init__(self, model, data_roots, target_size, epochs, class_labels, max_steps_per_epoch):
         super().__init__()
         self.model = model
-        self.data_path = data_path
+        self.data_roots = data_roots
         self.target_size = target_size
         self.epochs = epochs
         self.class_labels = class_labels
         self.max_steps_per_epoch = max_steps_per_epoch
-        self.conn = connect_db()
-        stats = load_card_ai(self.conn)
+        stats = load_card_ai()
         self.genome = stats["genome"]
         self.total_steps = stats["total_steps"]
 
     def run(self):
         try:
             image_paths, labels = [], []
-            for subdir, _, files in os.walk(self.data_path):
-                class_name = os.path.basename(subdir)
-                if class_name in self.class_labels:
-                    idx = self.class_labels.index(class_name)
-                    for file in files:
-                        if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                            image_paths.append(os.path.join(subdir, file))
-                            labels.append(idx)
+            for root in self.data_roots:
+                if not os.path.exists(root):
+                    continue
+                for subdir, _, files in os.walk(root):
+                    class_name = os.path.basename(subdir)
+                    if class_name in self.class_labels:
+                        idx = self.class_labels.index(class_name)
+                        for file in files:
+                            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                                image_paths.append(os.path.join(subdir, file))
+                                labels.append(idx)
 
             if not image_paths:
-                self.progress.emit(f"Error: No images found in {self.data_path}")
+                self.progress.emit(f"Error: No images found in {self.data_roots}")
                 return
+
+            self.progress.emit(f"Found {len(image_paths)} images across {len(self.class_labels)} classes.")
 
             total_run_steps = self.max_steps_per_epoch * self.epochs
             current_run_step = 0
@@ -136,15 +136,18 @@ class TrainingThread(QThread):
                 for step in range(steps_in_epoch):
                     img_p, class_idx = combined[step]
 
-                    # Pillow 10+ uses Resampling.BICUBIC
-                    img = Image.open(img_p).convert("RGB").resize(self.target_size, Image.Resampling.BICUBIC)
+                    try:
+                        img = Image.open(img_p).convert("RGB").resize(self.target_size, Image.Resampling.BICUBIC)
+                    except Exception as e:
+                        self.progress.emit(f"SKIP bad image: {os.path.basename(img_p)} ({e})")
+                        continue
+
                     x = np.expand_dims(np.array(img) / 255.0, axis=0)
                     y = np.zeros((1, len(self.class_labels)))
                     y[0, class_idx] = 1
 
                     loss, acc = self.model.train_on_batch(x, y)
 
-                    # UI Updates
                     self.progress.emit(
                         f"G:{self.genome} E:{epoch + 1} S:{step + 1} | {os.path.basename(img_p)} | Acc:{acc:.2f}")
                     self.image_update.emit(QPixmap(img_p))
@@ -156,21 +159,23 @@ class TrainingThread(QThread):
                     self.total_steps_update.emit(self.total_steps)
                     self.progress_bar_update.emit(int(current_run_step / total_run_steps * 100))
 
-                    save_card_ai(self.conn, self.genome, self.total_steps)
+                    save_card_ai(self.genome, self.total_steps)
 
-                # Save model per epoch
-                m_path = os.path.join(MODELS_DIR, f'card_ai_gen_{self.genome}_ep_{epoch + 1}.keras')
-                self.model.save(m_path)
+                # Save to the shared model file (Drive + local copy)
+                self.model.save(str(MODEL_FILE))
+                self.model.save(str(MODEL_FILE_LOCAL))
 
                 self.genome += 1
                 self.genome_update.emit(self.genome)
-                save_card_ai(self.conn, self.genome, self.total_steps)
+                save_card_ai(self.genome, self.total_steps)
+
+                self.progress.emit(
+                    f"--- Genome {self.genome - 1} complete. Model saved to {MODEL_FILE.name} "
+                    f"(+ local copy). Ready to run again. ---")
 
             self.progress.emit("--- Training Session Complete ---")
         except Exception as e:
             self.progress.emit(f"CRITICAL ERROR: {str(e)}")
-        finally:
-            self.conn.close()
 
 
 # ==============================================================
@@ -182,16 +187,12 @@ class CardPredictorApp(QWidget):
         self.setWindowTitle("TCG Card Predictor AI")
         self.resize(1100, 750)
 
-        # DB Init
-        self.conn = connect_db()
-        stats = load_card_ai(self.conn)
+        stats = load_card_ai()
         self.genome = stats["genome"]
         self.total_steps = stats["total_steps"]
 
-        # UI Layout
         main_layout = QHBoxLayout()
 
-        # Left Side (Image Preview)
         left_layout = QVBoxLayout()
         self.image_label = QLabel("Waiting for Training...")
         self.image_label.setAlignment(Qt.AlignCenter)
@@ -201,19 +202,16 @@ class CardPredictorApp(QWidget):
         left_layout.addWidget(self.image_label)
         main_layout.addLayout(left_layout)
 
-        # Right Side (Logs & Stats)
         right_layout = QVBoxLayout()
         self.text_output = QTextEdit()
         self.text_output.setReadOnly(True)
         self.text_output.setStyleSheet("background: #1e1e1e; color: #00ff00; font-family: monospace;")
         right_layout.addWidget(self.text_output)
 
-        # Inputs
         self.epochs_input = QLineEdit()
         self.epochs_input.setPlaceholderText("Number of Epochs (e.g. 5)")
         right_layout.addWidget(self.epochs_input)
 
-        # Labels
         self.accuracy_label = QLabel("Accuracy: 0.00%")
         self.loss_label = QLabel("Loss: 0.0000")
         self.genome_label = QLabel(f"Current Genome: {self.genome}")
@@ -234,28 +232,45 @@ class CardPredictorApp(QWidget):
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)
 
-        # Load Data Info
         self.target_size = (200, 200)
-        if os.path.exists(DATASET_PATH):
-            self.class_labels = sorted(
-                [d for d in os.listdir(DATASET_PATH) if os.path.isdir(os.path.join(DATASET_PATH, d))])
+        self.class_labels = self.collect_class_labels()
+        if self.class_labels:
             self.append_text(f"Loaded {len(self.class_labels)} card categories.")
         else:
-            self.class_labels = []
-            self.append_text(f"CRITICAL: Dataset not found at {DATASET_PATH}")
+            self.append_text(f"CRITICAL: No card folders found in {DATASET_ROOTS}")
 
         self.model = self.load_or_create_model()
 
-    def load_or_create_model(self):
-        m_file = os.path.join(MODELS_DIR, 'card_predictor_latest.keras')
-        if os.path.exists(m_file):
-            self.append_text("Loading existing model...")
-            return load_model(m_file)
-        return self.build_model()
+    def collect_class_labels(self):
+        """Gather unique game-folder names across all dataset roots."""
+        labels = set()
+        for root in DATASET_ROOTS:
+            if not os.path.exists(root):
+                continue
+            for subdir, _, _ in os.walk(root):
+                labels.add(os.path.basename(subdir))
+        return sorted(labels)
 
-    def build_model(self):
-        self.append_text("Building new neural network...")
+    def load_or_create_model(self):
+        """Load the shared model, or rebuild it if the class count changed."""
         num_classes = len(self.class_labels) if self.class_labels else 1
+
+        if MODEL_FILE.exists():
+            try:
+                loaded = load_model(str(MODEL_FILE))
+                # Check if the output layer matches the current class count
+                existing = loaded.output_shape[-1]
+                if existing == num_classes:
+                    self.append_text(f"Loading shared model ({existing} classes): {MODEL_FILE.name}")
+                    return loaded
+                else:
+                    self.append_text(
+                        f"Class count changed: model has {existing} classes, data now has {num_classes}. "
+                        f"Rebuilding model to match.")
+            except Exception as e:
+                self.append_text(f"Could not load existing model ({e}). Building new one.")
+
+        self.append_text("Building new neural network...")
         model = Sequential([
             Input(shape=(200, 200, 3)),
             Conv2D(32, (3, 3), activation='relu'),
@@ -279,10 +294,8 @@ class CardPredictorApp(QWidget):
             epochs = 1
 
         self.train_button.setEnabled(False)
-        self.training_thread = TrainingThread(self.model, DATASET_PATH, self.target_size, epochs, self.class_labels,
-                                              500)
+        self.training_thread = TrainingThread(self.model, DATASET_ROOTS, self.target_size, epochs, self.class_labels, 500)
 
-        # Connect Signals
         self.training_thread.progress.connect(self.append_text)
         self.training_thread.image_update.connect(self.update_image)
         self.training_thread.accuracy_update.connect(self.update_accuracy)
@@ -321,3 +334,9 @@ if __name__ == "__main__":
     window = CardPredictorApp()
     window.show()
     sys.exit(app.exec())
+
+
+
+
+
+

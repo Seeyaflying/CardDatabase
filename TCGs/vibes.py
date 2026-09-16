@@ -16,8 +16,8 @@ IS_WINDOWS = os.name == 'nt'
 
 if IS_WINDOWS:
     # Windows Native Google Drive Paths
-    TARGET_DIR = r"G:\My Drive\New Cards\Vibes"
-    DATABASE_DIRS = [r"G:\My Drive\Card Database\Vibes", TARGET_DIR]
+    TARGET_DIR = r"T:\Full Card Database\New Cards\Vibes"
+    DATABASE_DIRS = [r"T:\Full Card Database\Card Database\Vibes", TARGET_DIR]
 else:
     # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
     TARGET_DIR = os.path.expanduser("~/Desktop/GDrive/New Cards/Vibes")

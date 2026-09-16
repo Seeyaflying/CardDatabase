@@ -14,7 +14,7 @@ import config
 import db
 
 # Tells Flask to look for index.html in the Utilities folder
-app = Flask(__name__, template_folder='Utilities')
+app = Flask(__name__, template_folder=os.path.dirname(os.path.abspath(__file__)))
 CORS(app)
 
 # ==============================================================
@@ -25,9 +25,9 @@ PROGRESS_COLLECTION = config.PROGRESS_COLLECTION  # "progress" in Mongo carddb
 
 if IS_WINDOWS:
     # Windows Native Paths
-    DRIVE_SOURCE = r"G:\My Drive\New Cards"
-    DRIVE_YES_DIR = r"G:\My Drive\Card Database"
-    DRIVE_NO_DIR = r"G:\My Drive\Skipped Cards"
+    DRIVE_SOURCE = r"T:\Full Card Database\New Cards"
+    DRIVE_YES_DIR = r"T:\Full Card Database\Card Upload"
+    DRIVE_NO_DIR = r"T:\Full Card Database\Skipped Cards"
     BASE_LOCAL_PATH = r"C:\Users\seeya\OneDrive\Desktop\Cards"
 else:
     # Ubuntu Paths

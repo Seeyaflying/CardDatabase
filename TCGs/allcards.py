@@ -20,8 +20,8 @@ IS_WINDOWS = os.name == 'nt'
 
 if IS_WINDOWS:
     # Windows Native Google Drive Paths
-    SAVE_ROOT = r"G:\My Drive\New Cards"
-    CHECK_ROOT = r"G:\My Drive\Card Database"
+    SAVE_ROOT = r"T:\Full Card Database\New Cards"
+    CHECK_ROOT = r"T:\Full Card Database\Card Database"
     CLEAR_CMD = 'cls'
 else:
     # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)

@@ -24,8 +24,8 @@ os.makedirs(SCRAPER_ROOT, exist_ok=True)
 
 if IS_WINDOWS:
     # Windows Native Paths
-    BASE_PATH = r"G:\My Drive\New Cards\Legend of the Five Rings"
-    DATABASE_PATH = r"G:\My Drive\Database\Legend of the Five Rings"
+    BASE_PATH = r"T:\Full Card Database\New Cards\Legend of the Five Rings"
+    DATABASE_PATH = r"T:\Full Card Database\Card Database\Legend of the Five Rings"
     LOCAL_STAGING = os.path.join( "L5R_Staging")
     PROFILE_DIR = os.path.join(SCRAPER_ROOT, "L5R")
 else:
