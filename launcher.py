@@ -13,6 +13,9 @@ HISTORY_COLLECTION = "last_run"
 IS_WINDOWS = os.name == 'nt'
 active_process = None
 
+# Anchor everything to launcher.py's own folder, so it works no matter where you launch from
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 class Color:
     PURPLE = '\033[95m'; CYAN = '\033[96m'; DARKCYAN = '\033[36m'
@@ -79,7 +82,8 @@ def kill_active_process():
 
 def run_script(script_name):
     global active_process
-    if not os.path.exists(script_name):
+    full_path = os.path.join(BASE_DIR, script_name)
+    if not os.path.exists(full_path):
         print(f"\n{Color.RED}[!] Error: {script_name} not found.{Color.END}")
         time.sleep(1.5)
         return
@@ -96,7 +100,7 @@ def run_script(script_name):
     print(f"{Color.PURPLE}{'=' * 60}{Color.END}\n")
 
     try:
-        active_process = subprocess.Popen([sys.executable, script_name])
+        active_process = subprocess.Popen([sys.executable, full_path])
         active_process.wait()
 
         status = "Success" if active_process.returncode == 0 else "Stopped/Failed"

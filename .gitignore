@@ -8,6 +8,7 @@ __pycache__/
 
 # Log files
 *.log
+*.json
 run_history.json
 scryfall_all_cards.json
 

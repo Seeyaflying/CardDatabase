@@ -8,9 +8,10 @@ import traceback
 from datetime import datetime
 
 # Make config/db importable from Utilities/ (magic.py lives at project root)
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "Utilities"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Utilities"))
 import config
 import db
+
 
 # ==============================================================
 # 1. PLATFORM DETECTION & CONFIGURATION

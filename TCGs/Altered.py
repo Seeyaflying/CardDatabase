@@ -11,9 +11,10 @@ from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urljoin
 
 # Make config/db importable from Utilities/
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "Utilities"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Utilities"))
 import config
 import db
+
 
 # ==============================================================
 # 1. PLATFORM DETECTION & PATH CONFIGURATION

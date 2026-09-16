@@ -9,9 +9,11 @@ from concurrent.futures import ThreadPoolExecutor
 import nodriver as uc
 
 # Make config/db importable from Utilities/
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "Utilities"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Utilities"))
 import config
 import db
+
+
 
 # ==============================================================
 # 1. PLATFORM DETECTION & PATH CONFIGURATION
@@ -206,7 +208,7 @@ def main():
     if confirm not in ("y", "yes"):
         print("VPN not confirmed. Exiting.")
         return
-    
+
     while True:
         rows = list(tcg_master_coll().find(
             {"language": "japanese"},

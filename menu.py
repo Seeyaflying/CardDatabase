@@ -33,7 +33,7 @@ def draw_menu():
     launcher.print_line("5", "TCGs/magic.py", "MTG Scraper")
     launcher.print_line("6", "TCGs/neopets.py", "Neopets Scraper")
     launcher.print_line("7", "TCGs/Altered.py", "Altered Scraper")
-    launcher.print_line("8", "TCGs/allcards.py", "Global TCG Scraper")
+    launcher.print_line("8", "TCGs/allcards.py", "English TCG Scraper")
     launcher.print_line("9", "TCGs/vibes.py", "Vibes TCG Scraper")
 
     print(f"\n {launcher.Color.BOLD}{launcher.Color.CYAN}🛠  UTILITIES{launcher.Color.END}")
@@ -75,20 +75,35 @@ def main():
         except:
             pass
 
+    # Mapping: menu number -> relative path (matches the menu display exactly)
     mapping = {
-        "1": "AI_gui.py", "2": "ai_headless.py", "3": "web_base.py",
-        "4": "jap_cards_main.py", "5": "magic.py", "6": "neopets.py",
-        "7": "altered.py", "8": "allcards.py", "v": "vibes.py",
-        "s": "TCG Wrapper/tcg_view_tables.py", "e": "TCG Wrapper/tcg_search.py",
-        "i": "TCG Wrapper/tcg_import_skipped.py", "g": "TCG Wrapper/tcg_discovery.py",
-        "p": "TCG Wrapper/tcg_deep_inspect.py", "x": "TCG Wrapper/tcg_rename.py",
-        "y": "TCG Wrapper/tcg_delete_tables.py", "z": "TCG Wrapper/tcg_purge_dupes.py",
-        "l": "TCG Wrapper/tcg_sync.py",
-        "b": "Utilities/card_build_index.py", "n": "Utilities/card_scan_new.py",
-        "c": "Utilities/card_copy_archive.py", "a": "Utilities/card_archive_only.py",
-        "r": "Utilities/card_reorganize.py", "f": "Utilities/card_remove_empty.py",
-        "w": "Utilities/card_verify.py", "m": "Utilities/immich_uploader.py",
-        "d": "Utilities/db_check.py",
+        "1": "AI/AI_gui.py",
+        "2": "AI/ai_headless.py",
+        "3": "Utilities/web_base.py",
+        "4": "TCGs/jap_cards_main.py",
+        "5": "TCGs/magic.py",
+        "6": "TCGs/neopets.py",
+        "7": "TCGs/Altered.py",
+        "8": "TCGs/allcards.py",
+        "9": "TCGs/vibes.py",
+        "10": "TCG Wrapper/tcg_view_tables.py",
+        "11": "TCG Wrapper/tcg_search.py",
+        "12": "TCG Wrapper/tcg_import_skipped.py",
+        "13": "TCG Wrapper/tcg_discovery.py",
+        "14": "TCG Wrapper/tcg_deep_inspect.py",
+        "15": "TCG Wrapper/tcg_rename.py",
+        "16": "TCG Wrapper/tcg_delete_tables.py",
+        "17": "TCG Wrapper/tcg_purge_dupes.py",
+        "18": "TCG Wrapper/tcg_sync.py",
+        "19": "Utilities/card_build_index.py",
+        "20": "Utilities/card_scan_new.py",
+        "21": "Utilities/card_copy_archive.py",
+        "22": "Utilities/card_archive_only.py",
+        "23": "Utilities/card_reorganize.py",
+        "24": "Utilities/card_remove_empty.py",
+        "25": "Utilities/card_verify.py",
+        "26": "Utilities/immich_uploader.py",
+        "27": "Utilities/db_check.py",
     }
 
     while True:
