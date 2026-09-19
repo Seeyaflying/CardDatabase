@@ -2,29 +2,27 @@ import asyncio
 import aiohttp
 import aiofiles
 import os
-import sys
+import sqlite3
 import time
 import traceback
 from datetime import datetime
-
-# Make config/db importable from Utilities/ (magic.py lives at project root)
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Utilities"))
-import config
-import db
-
 
 # ==============================================================
 # 1. PLATFORM DETECTION & CONFIGURATION
 # ==============================================================
 IS_WINDOWS = os.name == 'nt'
 
+# Database path remains relative or absolute based on execution
+DB_FILE = os.path.abspath("skipped_images.sqlite")
+
 if IS_WINDOWS:
     # Windows Native Google Drive Paths
-    SAVE_ROOT = r"T:\Full Card Database\New Cards"
-    CHECK_ROOT = r"T:\Full Card Database\Card Database"
+    SAVE_ROOT = r"G:\My Drive\New Cards"
+    CHECK_ROOT = r"G:\My Drive\Card Database"
     CLEAR_CMD = 'cls'
 else:
     # Ubuntu Paths (Assumes rclone mount at ~/Desktop/GDrive)
+    # Adjust these folder names to match your GDrive structure exactly
     SAVE_ROOT = os.path.expanduser("~/Desktop/GDrive/New Cards")
     CHECK_ROOT = os.path.expanduser("~/Desktop/GDrive/Card Database")
     CLEAR_CMD = 'clear'
@@ -49,17 +47,7 @@ counter_lock = asyncio.Lock()
 
 
 # ==============================================================
-# 2. MONGO COLLECTION HELPERS
-# ==============================================================
-def tcg_master_coll():
-    return db.get_db()[config.TCG_MASTER_COLLECTION]
-
-def skipped_coll():
-    return db.get_db()[config.SKIPPED_IMAGES_COLLECTION]
-
-
-# ==============================================================
-# 3. UI & MENU LOGIC
+# 2. UI & MENU LOGIC
 # ==============================================================
 def display_menu(rows, global_total):
     os.system(CLEAR_CMD)
@@ -88,7 +76,7 @@ def display_menu(rows, global_total):
 
 
 # ==============================================================
-# 4. ASYNC CORE LOGIC
+# 3. ASYNC CORE LOGIC
 # ==============================================================
 async def fetch_json(session, url):
     try:
@@ -137,8 +125,9 @@ async def process_tcg(session, row):
     print(f"\n{C['header']} ? PROCESSING: {name.upper()} ({folder_name}) {C['reset']}")
 
     # Pull skipped IDs for this specific game
-    skipped_ids = {str(doc["image_name"]) for doc in skipped_coll().find(
-        {"language": "english", "game_name": name}, {"image_name": 1})}
+    with sqlite3.connect(DB_FILE) as conn:
+        skipped_ids = {str(r[0]) for r in conn.execute(
+            "SELECT image_name FROM skipped_images WHERE language='english' AND game_name=?", (name,)).fetchall()}
 
     save_dir = os.path.join(SAVE_ROOT, folder_name)
     check_dir = os.path.join(CHECK_ROOT, folder_name)
@@ -173,9 +162,10 @@ async def process_tcg(session, row):
 
     # Update database "last run" time
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    tcg_master_coll().update_one(
-        {"tcg_display_name": name, "language": "english"},
-        {"$set": {"last_run": now}})
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("UPDATE tcg_master SET last_run=? WHERE tcg_display_name = ? AND language = 'english'",
+                     (now, name))
+        conn.commit()
 
     if new_dl_count > 0:
         print(f"\n {C['green']}? Finished {name}! Saved {new_dl_count} new images.{C['reset']}")
@@ -184,15 +174,17 @@ async def process_tcg(session, row):
 
 
 # ==============================================================
-# 5. MAIN LOOP
+# 4. MAIN LOOP
 # ==============================================================
 async def main_async():
     async with aiohttp.ClientSession(headers={'User-Agent': 'Mozilla/5.0'}) as session:
         while True:
             # Re-read DB each loop to refresh UI status
-            rows = list(tcg_master_coll().find({"language": "english"})
-                        .sort("tcg_display_name", 1))
-            global_total = skipped_coll().count_documents({})
+            with sqlite3.connect(DB_FILE) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute(
+                    "SELECT * FROM tcg_master WHERE language = 'english' ORDER BY tcg_display_name").fetchall()
+                global_total = conn.execute("SELECT COUNT(*) FROM skipped_images").fetchone()[0]
 
             if not rows: break
 
@@ -215,7 +207,6 @@ async def main_async():
 
 if __name__ == '__main__':
     try:
-        db.record_run("magic.py")
         asyncio.run(main_async())
     except (KeyboardInterrupt, Exception):
         traceback.print_exc()

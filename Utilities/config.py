@@ -26,3 +26,20 @@ PROGRESS_COLLECTION = os.getenv("PROGRESS_COLLECTION", "progress")
 RUN_HISTORY_COLLECTION = os.getenv("RUN_HISTORY_COLLECTION", "run_history")
 TCG_MASTER_COLLECTION      = os.getenv("TCG_MASTER_COLLECTION", "tcg_master")
 SKIPPED_IMAGES_COLLECTION  = os.getenv("SKIPPED_IMAGES_COLLECTION", "skipped_images")
+
+# Old skipped-images collection
+SKIPPED_IMAGES_COLLECTION = os.getenv(
+    "SKIPPED_IMAGES_COLLECTION",
+    "skipped_images"
+)
+
+# TCG image harvester collection
+FOLDER_SKIPPED_IMAGES_COLLECTION = os.getenv(
+    "FOLDER_SKIPPED_IMAGES_COLLECTION",
+    "folder_skipped_images"
+)
+
+FOLDER_IMAGE_INDEX_COLLECTION = os.getenv(
+    "FOLDER_IMAGE_INDEX_COLLECTION",
+    "folder_image_index"
+)

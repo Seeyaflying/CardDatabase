@@ -11,4 +11,4 @@ s = re.sub(r"[\u200b\u200c\u200d\ufeff]", "", s)
 with open(p, "w", encoding="utf-8") as f:
     f.write(s)
 
-print("Cleaned. Run temp.py again.")
+print("Cleaned. Run old_db.py again.")
