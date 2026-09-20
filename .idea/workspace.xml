@@ -5,15 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ae22b5c9-6a16-41cc-bf68-e0eb1ef0c697" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/TCGs/folder_allcards.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TCGs/folder_neopets.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ccgtrader.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/magic_bypass.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Old Files/clean.py" beforeDir="false" afterPath="$PROJECT_DIR$/Old Files/clean.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Old Files/temp.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TCGs/allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/TCGs/allcards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TCGs/jap_cards_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/TCGs/jap_cards_main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Utilities/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/config.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,7 +14,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="1062" />
+    <option name="cachedIndexableFilesCount" value="70" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -77,6 +70,7 @@
     &quot;Python.inspect_tcg_master.executor&quot;: &quot;Run&quot;,
     &quot;Python.jap_cards_main.executor&quot;: &quot;Run&quot;,
     &quot;Python.legend_five.executor&quot;: &quot;Run&quot;,
+    &quot;Python.magic_bypass.executor&quot;: &quot;Run&quot;,
     &quot;Python.manager.executor&quot;: &quot;Run&quot;,
     &quot;Python.menu.executor&quot;: &quot;Run&quot;,
     &quot;Python.neopets.executor&quot;: &quot;Run&quot;,
@@ -122,9 +116,9 @@
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\TCGs" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Readme" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities" />
-      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\TCGs" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\TCG Wrapper" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\AI" />
     </key>
@@ -158,6 +152,8 @@
       <workItem from="1789704935421" duration="16402000" />
       <workItem from="1789787145132" duration="37000" />
       <workItem from="1789787208541" duration="29000" />
+      <workItem from="1789893209839" duration="1563000" />
+      <workItem from="1789898861201" duration="1000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <option name="closed" value="true" />
@@ -194,16 +190,17 @@
     <option name="LAST_COMMIT_MESSAGE" value="update" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/CardDatabase$manager.coverage" NAME="manager Coverage Results" MODIFIED="1776128449434" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/menu_py$progress_download_jap.coverage" NAME="progress_download_jap Coverage Results" MODIFIED="1789631993757" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/CardDatabase$manager.coverage" NAME="manager Coverage Results" MODIFIED="1776128449434" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/web_base_py$audit_sync.coverage" NAME="audit_sync Coverage Results" MODIFIED="1775529843855" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/test_py$test.coverage" NAME="test Coverage Results" MODIFIED="1789512431885" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/jap_cards_main_py$ccgtrader.coverage" NAME="ccgtrader Coverage Results" MODIFIED="1789720726089" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../Testing" />
     <SUITE FILE_PATH="coverage/test_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1789515873663" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
-    <SUITE FILE_PATH="coverage/test_py$web_base.coverage" NAME="web_base Coverage Results" MODIFIED="1789523369622" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities" />
     <SUITE FILE_PATH="coverage/neopets_py$ai_headless.coverage" NAME="ai_headless Coverage Results" MODIFIED="1789532940172" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/AI" />
+    <SUITE FILE_PATH="coverage/test_py$web_base.coverage" NAME="web_base Coverage Results" MODIFIED="1789523369622" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities" />
     <SUITE FILE_PATH="coverage/jap_cards_main_py$folder_neopets.coverage" NAME="folder_neopets Coverage Results" MODIFIED="1789717760139" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
     <SUITE FILE_PATH="coverage/jap_cards_main_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1789706044667" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
+    <SUITE FILE_PATH="coverage/ccgtrader_py$magic_bypass.coverage" NAME="magic_bypass Coverage Results" MODIFIED="1789894847734" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/menu_py$jap_cards_main.coverage" NAME="jap_cards_main Coverage Results" MODIFIED="1789634707001" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
     <SUITE FILE_PATH="coverage/CardDatabase$legend_five.coverage" NAME="legend_five Coverage Results" MODIFIED="1776127966900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/CardDatabase$AI_gui.coverage" NAME="AI_gui Coverage Results" MODIFIED="1775330716476" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
