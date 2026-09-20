@@ -14,3 +14,4 @@ scryfall_all_cards.json
 
 Utilities/.env
 *.db
+.idea/workspace.xml
