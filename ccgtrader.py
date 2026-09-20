@@ -30,12 +30,12 @@ OUTPUT_ROOT = Path(
 # Download timing
 # ------------------------------------------------------------
 
-MIN_DELAY = 1.0
-MAX_DELAY = 2.0
+MIN_DELAY = 0.1
+MAX_DELAY = 1.0
 
 # Delay between pages/sets/games
-MIN_PAGE_DELAY = 2.0
-MAX_PAGE_DELAY = 4.0
+MIN_PAGE_DELAY = 1.0
+MAX_PAGE_DELAY = 2.0
 
 MAX_RETRIES = 3
 
@@ -322,6 +322,53 @@ def get_image_extension(
         return ".avif"
 
     return ".jpg"
+
+
+def data_uri_extension(image_url):
+    """
+    Return the file extension for a data URI image URL.
+    e.g. "data:image/png;base64,..." -> ".png"
+    Falls back to ".jpg" if the MIME type is unknown.
+    """
+    match = re.search(
+        r"data:image/([a-zA-Z0-9.+-]+)",
+        image_url
+    )
+
+    if not match:
+        return ".jpg"
+
+    mime_type = match.group(1).lower()
+
+    if mime_type in (
+        "png",
+        "jpeg",
+        "jpg",
+        "gif",
+        "webp",
+        "avif",
+        "bmp",
+    ):
+        if mime_type == "jpeg":
+            return ".jpg"
+
+        return f".{mime_type}"
+
+    return ".jpg"
+
+
+def card_image_extension(image_url):
+    """
+    Determine the correct file extension for a card image,
+    handling both normal HTTP URLs and embedded data URIs.
+    """
+    if not image_url:
+        return ".jpg"
+
+    if image_url.startswith("data:"):
+        return data_uri_extension(image_url)
+
+    return get_image_extension(image_url, "")
 
 
 # ============================================================
@@ -1014,6 +1061,8 @@ async def discover_cards(
             "No cards found after retries"
         ),
     }
+
+
 # ============================================================
 # DOWNLOAD ONE IMAGE
 # ============================================================
@@ -1034,6 +1083,86 @@ def download_image(
             "status": "failed",
             "error": "No image URL"
         }
+
+    # ====================================================
+    # NEW: handle embedded base64 data URIs
+    # ====================================================
+
+    if image_url.startswith("data:"):
+
+        try:
+
+            import base64 as _base64
+
+            # Split off the "data:image/png;base64," prefix
+            header, b64data = image_url.split(",", 1)
+
+            img_bytes = _base64.b64decode(b64data)
+
+            if not img_bytes:
+
+                return {
+                    "status": "failed",
+                    "error": "Empty data URI payload"
+                }
+
+            # The caller already computed the correct
+            # extension via card_image_extension(), so
+            # output_path should already end with the
+            # right suffix. Just write the bytes.
+
+            temp_path = (
+                output_path.with_suffix(
+                    output_path.suffix + ".tmp"
+                )
+            )
+
+            temp_path.parent.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            with temp_path.open("wb") as f:
+                f.write(img_bytes)
+
+            if (
+                not temp_path.exists()
+                or temp_path.stat().st_size < 1000
+            ):
+
+                try:
+                    temp_path.unlink()
+                except Exception:
+                    pass
+
+                return {
+                    "status": "failed",
+                    "error": (
+                        "Data URI image too small"
+                    )
+                }
+
+            os.replace(
+                temp_path,
+                output_path
+            )
+
+            content_type = f"image/{output_path.suffix.lstrip('.')}"
+
+            return {
+                "status": "downloaded",
+                "size": output_path.stat().st_size,
+                "content_type": content_type,
+            }
+
+        except Exception as e:
+
+            return {
+                "status": "failed",
+                "error": (
+                    f"Data URI decode failed: {e}"
+                )
+            }
 
     headers = {
         "Referer": set_url,
@@ -1296,9 +1425,22 @@ def download_set(
             key
         )
 
+        # ====================================================
+        # NEW: determine the correct extension up front so
+        # filename, skip check, and save all agree.
+        # ====================================================
+
+        image_url = card.get(
+            "image_url"
+        ) or ""
+
+        ext = card_image_extension(
+            image_url
+        )
+
         filename = (
             safe_filename(card_name)
-            + ".jpg"
+            + ext
         )
 
         output_path = (
@@ -1756,73 +1898,64 @@ async def main():
                 page
             )
 
-            print()
-            print(
-                f"Games currently visible: "
-                f"{len(games)}"
-            )
-
             if not games:
 
-                print()
                 print(
-                    "ERROR: No games found."
+                    "No games found. "
+                    "Stopping."
                 )
 
                 break
 
+            print(
+                f"Games on page: "
+                f"{len(games)}"
+            )
+
             # ------------------------------------------------
-            # Determine next game.
-            #
-            # We use a progress file so a restart doesn't
-            # require starting from the beginning.
+            # Load existing progress.
             # ------------------------------------------------
 
             progress = load_progress()
 
-            completed_games = set(
+            processed_games = set(
                 progress.get(
-                    "completed_games",
+                    "processed_games",
                     []
                 )
             )
+
+            # ------------------------------------------------
+            # Pick the next unprocessed game.
+            # ------------------------------------------------
 
             next_game = None
 
             for game in games:
 
-                if game["url"] not in completed_games:
+                if (
+                    game["url"]
+                    not in processed_games
+                ):
 
                     next_game = game
 
                     break
 
-            # ------------------------------------------------
-            # Everything currently discovered is complete.
-            # ------------------------------------------------
-
-            if next_game is None:
-
-                print()
-                print(
-                    "=" * 70
-                )
+            if not next_game:
 
                 print(
-                    "ALL DISCOVERED GAMES COMPLETE"
-                )
-
-                print(
-                    "=" * 70
+                    "All games on this page "
+                    "have been processed."
                 )
 
                 break
 
-            # ------------------------------------------------
-            # Process next game
-            # ------------------------------------------------
-
             game_number += 1
+
+            # ------------------------------------------------
+            # Process the game.
+            # ------------------------------------------------
 
             game_results = await process_game(
                 page,
@@ -1830,45 +1963,47 @@ async def main():
                 game_number
             )
 
-            results.extend(
-                game_results
-            )
-
             # ------------------------------------------------
-            # Mark game complete only after all its sets have
-            # been processed.
+            # Record progress.
             # ------------------------------------------------
 
             progress = load_progress()
 
-            completed_games = set(
+            processed = set(
                 progress.get(
-                    "completed_games",
+                    "processed_games",
                     []
                 )
             )
 
-            completed_games.add(
+            processed.add(
                 next_game["url"]
             )
 
-            progress[
-                "completed_games"
-            ] = sorted(
-                completed_games
+            progress["processed_games"] = (
+                sorted(processed)
             )
 
-            progress[
-                "last_completed_game"
-            ] = {
-                "name": next_game["name"],
-                "url": next_game["url"],
-                "completed_at": (
-                    time.strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                ),
-            }
+            progress["last_processed_game"] = (
+                next_game["url"]
+            )
+
+            progress["results"] = (
+                progress.get(
+                    "results",
+                    []
+                )
+            )
+
+            progress["results"].extend(
+                game_results
+            )
+
+            progress["last_updated"] = (
+                time.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+            )
 
             save_progress(
                 progress
@@ -1876,159 +2011,39 @@ async def main():
 
             print()
             print(
-                "=" * 70
-            )
-
-            print(
-                f"GAME COMPLETE: "
-                f"{next_game['name']}"
-            )
-
-            print(
-                "=" * 70
+                "Progress saved."
             )
 
             # ------------------------------------------------
-            # Wait before returning to index and finding the
-            # next game.
+            # Continue to next game.
             # ------------------------------------------------
 
             page_delay()
 
-        # ====================================================
-        # FINAL SUMMARY
-        # ====================================================
-
-        print()
-        print()
-        print(
-            "=" * 70
-        )
-
-        print(
-            "CCG TRADER HARVEST COMPLETE"
-        )
-
-        print(
-            "=" * 70
-        )
-
-        if results:
-
-            total_cards = sum(
-                r.get(
-                    "cards",
-                    0
-                )
-                for r in results
-            )
-
-            total_downloaded = sum(
-                r.get(
-                    "downloaded",
-                    0
-                )
-                for r in results
-            )
-
-            total_skipped = sum(
-                r.get(
-                    "skipped",
-                    0
-                )
-                for r in results
-            )
-
-            total_failed = sum(
-                r.get(
-                    "failed",
-                    0
-                )
-                for r in results
-            )
-
-            print()
-            print(
-                f"Cards discovered: "
-                f"{total_cards}"
-            )
-
-            print(
-                f"Downloaded:       "
-                f"{total_downloaded}"
-            )
-
-            print(
-                f"Skipped:          "
-                f"{total_skipped}"
-            )
-
-            print(
-                f"Failed:           "
-                f"{total_failed}"
-            )
-
-        print()
-        print(
-            f"Progress file:"
-        )
-
-        print(
-            OUTPUT_ROOT
-            / PROGRESS_NAME
-        )
-
-        print()
-        print(
-            f"Output root:"
-        )
-
-        print(
-            OUTPUT_ROOT
-        )
-
-    except KeyboardInterrupt:
-
-        print()
-        print()
-        print(
-            "=" * 70
-        )
-
-        print(
-            "STOPPED BY USER"
-        )
-
-        print(
-            "=" * 70
-        )
-
-        print()
-        print(
-            "Downloaded images and manifests "
-            "have already been saved."
-        )
-
-        print(
-            "Run the script again to resume."
-        )
-
     finally:
 
-        print()
-        print(
-            "Closing Vivaldi..."
-        )
-
         try:
+
             browser.stop()
+
         except Exception:
             pass
 
+    print()
+    print(
+        "Harvest complete."
+    )
 
-# ============================================================
-# ENTRY POINT
-# ============================================================
+    print(
+        f"Games processed: "
+        f"{len(results)}"
+    )
+
+    print()
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+
+    asyncio.run(
+        main()
+    )

@@ -5,15 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ae22b5c9-6a16-41cc-bf68-e0eb1ef0c697" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/TCGs/folder_allcards.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TCGs/folder_neopets.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ccgtrader.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/TCGs/test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/CardDatabase.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/CardDatabase.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Old Files/clean.py" beforeDir="false" afterPath="$PROJECT_DIR$/Old Files/clean.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Old Files/temp.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TCGs/allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/TCGs/allcards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TCGs/jap_cards_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/TCGs/jap_cards_main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Utilities/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TCGs/folder_allcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/TCGs/folder_allcards.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/web_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/web_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ccgtrader.py" beforeDir="false" afterPath="$PROJECT_DIR$/ccgtrader.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -22,7 +20,6 @@
   </component>
   <component name="EmbeddingIndexingInfo">
     <option name="cachedIndexableFilesCount" value="1062" />
-    <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -50,6 +47,65 @@
     <commands />
     <urls />
   </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.0000000000000162" />
+      <entry key="MS500" value="1.0017433577278603" />
+      <entry key="S2" value="1.2222543521646525" />
+      <entry key="S5" value="1.759113639297167" />
+      <entry key="S10" value="2.4172438088015564" />
+      <entry key="S30" value="3.6544632230108" />
+      <entry key="S60" value="4.283272486016434" />
+      <entry key="M2" value="5.075315288049708" />
+      <entry key="M5" value="7.190406042922236" />
+      <entry key="M10" value="9.458912565358546" />
+      <entry key="M15" value="10.747098653368242" />
+      <entry key="M30" value="12.513097658271194" />
+      <entry key="H1" value="13.646178704122532" />
+      <entry key="H2" value="14.292375192609072" />
+      <entry key="H4" value="14.638073856134575" />
+      <entry key="D1" value="14.938512798881096" />
+      <entry key="W1" value="14.99118702605379" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="0.0" />
+      <entry key="S60" value="0.0" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="0.0" />
+      <entry key="M10" value="0.0" />
+      <entry key="M15" value="0.0" />
+      <entry key="M30" value="0.0" />
+      <entry key="H1" value="0.0" />
+      <entry key="H2" value="0.0" />
+      <entry key="H4" value="0.0" />
+      <entry key="D1" value="0.0" />
+      <entry key="W1" value="0.0" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="0.00537321022710844" />
+      <entry key="MS500" value="0.352177368965186" />
+      <entry key="S2" value="0.9349847979608585" />
+      <entry key="S5" value="1.5577432584284603" />
+      <entry key="S10" value="2.259222117949492" />
+      <entry key="S30" value="3.5664668316068635" />
+      <entry key="S60" value="4.230617401518208" />
+      <entry key="M2" value="5.044149998763357" />
+      <entry key="M5" value="7.1732075659242795" />
+      <entry key="M10" value="9.44769583641263" />
+      <entry key="M15" value="10.738576109242937" />
+      <entry key="M30" value="12.50808717242861" />
+      <entry key="H1" value="13.643423516569095" />
+      <entry key="H2" value="14.290924748985661" />
+      <entry key="H4" value="14.637328922284276" />
+      <entry key="D1" value="14.93838576729255" />
+      <entry key="W1" value="14.991168806372446" />
+    </decayedShown>
+  </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
   &quot;associatedIndex&quot;: 8
@@ -62,51 +118,54 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.AI_gui.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Altered.executor&quot;: &quot;Run&quot;,
-    &quot;Python.a.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ai_headless.executor&quot;: &quot;Run&quot;,
-    &quot;Python.allcards.executor&quot;: &quot;Run&quot;,
-    &quot;Python.audit_sync.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ccgtrader.executor&quot;: &quot;Run&quot;,
-    &quot;Python.db_meta.executor&quot;: &quot;Run&quot;,
-    &quot;Python.folder_neopets.executor&quot;: &quot;Run&quot;,
-    &quot;Python.inspect_tcg_master.executor&quot;: &quot;Run&quot;,
-    &quot;Python.jap_cards_main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.legend_five.executor&quot;: &quot;Run&quot;,
-    &quot;Python.manager.executor&quot;: &quot;Run&quot;,
-    &quot;Python.menu.executor&quot;: &quot;Run&quot;,
-    &quot;Python.neopets.executor&quot;: &quot;Run&quot;,
-    &quot;Python.progress_download_jap.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_me.executor&quot;: &quot;Run&quot;,
-    &quot;Python.utility.executor&quot;: &quot;Run&quot;,
-    &quot;Python.web_base.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/seeya/OneDrive/Desktop/CardDatabase&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "JavaScript Debug.index.html.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.AI_gui.executor": "Run",
+    "Python.Altered.executor": "Run",
+    "Python.a.executor": "Run",
+    "Python.ai_headless.executor": "Run",
+    "Python.allcards.executor": "Run",
+    "Python.audit_sync.executor": "Run",
+    "Python.ccgtrader.executor": "Run",
+    "Python.db_meta.executor": "Run",
+    "Python.folder_allcards.executor": "Run",
+    "Python.folder_neopets.executor": "Run",
+    "Python.inspect_tcg_master.executor": "Run",
+    "Python.jap_cards_main.executor": "Run",
+    "Python.legend_five.executor": "Run",
+    "Python.manager.executor": "Run",
+    "Python.menu.executor": "Run",
+    "Python.neopets.executor": "Run",
+    "Python.progress_download_jap.executor": "Run",
+    "Python.test.executor": "Run",
+    "Python.test_me.executor": "Run",
+    "Python.utility.executor": "Run",
+    "Python.web_base.executor": "Run",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "C:/Users/seeya/OneDrive/Desktop/CardDatabase",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecapSpentCounter">
     <option name="endsOfQuotaMs" value="1777075221535" />
     <option name="spentUsd" value="0.007328" />
@@ -132,8 +191,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-PY-261.23567.174" />
-        <option value="bundled-python-sdk-024ed6589d45-c2ffad84badb-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.23567.174" />
+        <option value="bundled-python-sdk-eff1e8def5f5-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10315.174" />
       </set>
     </attachedChunks>
   </component>
