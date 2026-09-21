@@ -3,9 +3,10 @@ import json
 import os
 import random
 import re
+import sys
 import time
 from pathlib import Path
-from urllib.parse import urljoin, urlparse, unquote
+from urllib.parse import urljoin, urlparse, unquote, quote, urlunparse
 
 import requests
 import nodriver as uc
@@ -26,43 +27,39 @@ OUTPUT_ROOT = Path(
     r"G:\My Drive\CCG Trader"
 )
 
-# ------------------------------------------------------------
-# Download timing
-# ------------------------------------------------------------
-
 MIN_DELAY = 0.1
 MAX_DELAY = 1.0
 
-# Delay between pages/sets/games
 MIN_PAGE_DELAY = 1.0
 MAX_PAGE_DELAY = 2.0
 
 MAX_RETRIES = 3
 
-# ------------------------------------------------------------
-# Testing
-# ------------------------------------------------------------
-
-# True = discover only
-# False = actually download images
 DISCOVERY_ONLY = False
-
-# ------------------------------------------------------------
-# Page loading
-# ------------------------------------------------------------
 
 GAME_PAGE_WAIT = 4
 SET_PAGE_WAIT = 5
 
-# Retry a set if it temporarily renders with no cards
 SET_DISCOVERY_RETRIES = 3
-
-# ------------------------------------------------------------
-# Files
-# ------------------------------------------------------------
 
 MANIFEST_NAME = "_download_manifest.json"
 PROGRESS_NAME = "_harvest_progress.json"
+
+
+# ============================================================
+# VERBOSE LOGGING — everything prints, nothing is silent
+# ============================================================
+
+def log(msg):
+    print(msg, flush=True)
+
+
+def log_step(msg):
+    log(f"  >> {msg}")
+
+
+def log_card(msg):
+    log(f"        >> {msg}")
 
 
 # ============================================================
@@ -93,16 +90,13 @@ session.headers.update({
 
 def polite_delay():
     delay = random.uniform(MIN_DELAY, MAX_DELAY)
-    print(f"        Waiting {delay:.1f}s...")
+    log_card(f"Waiting {delay:.1f}s before next download...")
     time.sleep(delay)
 
 
 def page_delay():
-    delay = random.uniform(
-        MIN_PAGE_DELAY,
-        MAX_PAGE_DELAY
-    )
-    print(f"    Page delay: {delay:.1f}s...")
+    delay = random.uniform(MIN_PAGE_DELAY, MAX_PAGE_DELAY)
+    log_step(f"Page delay: {delay:.1f}s...")
     time.sleep(delay)
 
 
@@ -111,25 +105,9 @@ def safe_filename(name):
         name = "Unknown Card"
 
     name = unquote(str(name))
-
-    name = re.sub(
-        r'[<>:"/\\|?*]',
-        "_",
-        name
-    )
-
-    name = re.sub(
-        r"[\x00-\x1f]",
-        "_",
-        name
-    )
-
-    name = re.sub(
-        r"\s+",
-        " ",
-        name
-    ).strip()
-
+    name = re.sub(r'[<>:"/\\|?*]', "_", name)
+    name = re.sub(r"[\x00-\x1f]", "_", name)
+    name = re.sub(r"\s+", " ", name).strip()
     name = name.rstrip(". ")
 
     if not name:
@@ -159,65 +137,67 @@ def manifest_key(card):
 
 
 # ============================================================
+# URL QUOTING — fixes the latin-1 codec error
+# ============================================================
+
+def _quote_url(url):
+    if not url:
+        return url
+
+    parts = urlparse(url)
+
+    quoted_path = quote(parts.path, safe="/%")
+    quoted_query = quote(parts.query, safe="=&%")
+
+    return urlunparse((
+        parts.scheme,
+        parts.netloc,
+        quoted_path,
+        parts.params,
+        quoted_query,
+        parts.fragment,
+    ))
+
+
+# ============================================================
 # MANIFEST / PROGRESS
 # ============================================================
 
 def load_json(path):
     if not path.exists():
+        log_step(f"No existing file at {path.name} — starting fresh")
         return {}
 
     try:
-        with path.open(
-            "r",
-            encoding="utf-8"
-        ) as f:
+        with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
 
         if isinstance(data, dict):
+            log_step(f"Loaded {path.name} ({len(data)} entries)")
             return data
 
     except Exception as e:
-        print(
-            f"    WARNING: Could not read "
-            f"{path.name}: {e}"
-        )
+        log_step(f"WARNING: Could not read {path.name}: {e}")
 
     return {}
 
 
 def save_json(path, data):
-    temp_path = path.with_suffix(
-        path.suffix + ".tmp"
-    )
+    temp_path = path.with_suffix(path.suffix + ".tmp")
 
-    with temp_path.open(
-        "w",
-        encoding="utf-8"
-    ) as f:
-        json.dump(
-            data,
-            f,
-            indent=2,
-            ensure_ascii=False
-        )
+    with temp_path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
-    os.replace(
-        temp_path,
-        path
-    )
+    os.replace(temp_path, path)
+    log_step(f"Saved {path.name}")
 
 
 def load_progress():
-    return load_json(
-        OUTPUT_ROOT / PROGRESS_NAME
-    )
+    return load_json(OUTPUT_ROOT / PROGRESS_NAME)
 
 
 def save_progress(progress):
-    save_json(
-        OUTPUT_ROOT / PROGRESS_NAME,
-        progress
-    )
+    save_json(OUTPUT_ROOT / PROGRESS_NAME, progress)
 
 
 # ============================================================
@@ -225,8 +205,8 @@ def save_progress(progress):
 # ============================================================
 
 def is_valid_image_response(response):
-
     if response.status_code != 200:
+        log_card(f"Invalid: HTTP {response.status_code}")
         return False
 
     content_type = (
@@ -238,32 +218,28 @@ def is_valid_image_response(response):
     )
 
     if not content_type.startswith("image/"):
+        log_card(f"Invalid: Content-Type '{content_type}' is not an image")
         return False
 
     if not response.content:
+        log_card("Invalid: Empty body")
         return False
 
     if len(response.content) < 1000:
+        log_card(f"Invalid: Only {len(response.content)} bytes (<1000)")
         return False
 
     data = response.content[:32]
 
-    # JPEG
     if data.startswith(b"\xff\xd8\xff"):
         return True
 
-    # PNG
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return True
 
-    # GIF
-    if (
-        data.startswith(b"GIF87a")
-        or data.startswith(b"GIF89a")
-    ):
+    if data.startswith(b"GIF87a") or data.startswith(b"GIF89a"):
         return True
 
-    # WEBP
     if (
         len(data) >= 12
         and data[:4] == b"RIFF"
@@ -271,53 +247,29 @@ def is_valid_image_response(response):
     ):
         return True
 
-    # Other image formats
-    # Accept if the server explicitly identifies
-    # it as an image and it has reasonable size.
     return True
 
 
-def get_image_extension(
-    image_url,
-    content_type
-):
-    parsed = urlparse(
-        image_url or ""
-    )
-
+def get_image_extension(image_url, content_type):
+    parsed = urlparse(image_url or "")
     path = parsed.path.lower()
 
-    for ext in (
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".webp",
-        ".gif",
-        ".avif",
-        ".bmp",
-    ):
+    for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".bmp"):
         if path.endswith(ext):
             if ext == ".jpeg":
                 return ".jpg"
-
             return ext
 
-    content_type = (
-        content_type or ""
-    ).lower()
+    content_type = (content_type or "").lower()
 
     if "jpeg" in content_type:
         return ".jpg"
-
     if "png" in content_type:
         return ".png"
-
     if "webp" in content_type:
         return ".webp"
-
     if "gif" in content_type:
         return ".gif"
-
     if "avif" in content_type:
         return ".avif"
 
@@ -325,43 +277,22 @@ def get_image_extension(
 
 
 def data_uri_extension(image_url):
-    """
-    Return the file extension for a data URI image URL.
-    e.g. "data:image/png;base64,..." -> ".png"
-    Falls back to ".jpg" if the MIME type is unknown.
-    """
-    match = re.search(
-        r"data:image/([a-zA-Z0-9.+-]+)",
-        image_url
-    )
+    match = re.search(r"data:image/([a-zA-Z0-9.+-]+)", image_url)
 
     if not match:
         return ".jpg"
 
     mime_type = match.group(1).lower()
 
-    if mime_type in (
-        "png",
-        "jpeg",
-        "jpg",
-        "gif",
-        "webp",
-        "avif",
-        "bmp",
-    ):
+    if mime_type in ("png", "jpeg", "jpg", "gif", "webp", "avif", "bmp"):
         if mime_type == "jpeg":
             return ".jpg"
-
         return f".{mime_type}"
 
     return ".jpg"
 
 
 def card_image_extension(image_url):
-    """
-    Determine the correct file extension for a card image,
-    handling both normal HTTP URLs and embedded data URIs.
-    """
     if not image_url:
         return ".jpg"
 
@@ -376,31 +307,14 @@ def card_image_extension(image_url):
 # ============================================================
 
 async def find_games_on_page(page):
-    """
-    Read the currently rendered /games/ page and return
-    the game links currently visible.
+    log_step("Scanning /games/ page for game links...")
 
-    We do NOT build the entire crawl up front.
-    This function is only responsible for finding the
-    current game's links.
-    """
-
-    links = await page.select_all(
-        'a[href*="/games/"]'
-    )
-
+    links = await page.select_all('a[href*="/games/"]')
     games = {}
 
     for link in links:
-
         try:
-
-            # Use the element's attrs property.
-            attrs = getattr(
-                link,
-                "attrs",
-                None
-            )
+            attrs = getattr(link, "attrs", None)
 
             if not attrs:
                 continue
@@ -413,30 +327,18 @@ async def find_games_on_page(page):
             href = normalize_url(href)
 
             parsed = urlparse(href)
-
             path = parsed.path.rstrip("/")
 
             if not path.startswith("/games/"):
                 continue
 
-            remainder = (
-                path[len("/games/"):]
-                .strip("/")
-            )
+            remainder = path[len("/games/"):].strip("/")
 
             if not remainder:
                 continue
 
-            parts = [
-                p
-                for p in remainder.split("/")
-                if p
-            ]
+            parts = [p for p in remainder.split("/") if p]
 
-            # Exactly:
-            #
-            # /games/<game>/
-            #
             if len(parts) != 1:
                 continue
 
@@ -450,16 +352,10 @@ async def find_games_on_page(page):
             except Exception:
                 name = ""
 
-            name = (
-                name or ""
-            ).strip()
+            name = (name or "").strip()
 
             if not name:
-                name = (
-                    slug
-                    .replace("-", " ")
-                    .title()
-                )
+                name = slug.replace("-", " ").title()
 
             games[href] = {
                 "name": name,
@@ -470,60 +366,39 @@ async def find_games_on_page(page):
         except Exception:
             continue
 
-    return sorted(
-        games.values(),
-        key=lambda x: x["name"].lower()
-    )
+    games_list = sorted(games.values(), key=lambda x: x["name"].lower())
+    log_step(f"Found {len(games_list)} games on page")
+
+    return games_list
 
 
 # ============================================================
 # DISCOVER SETS INSIDE ONE GAME
 # ============================================================
 
-async def discover_sets(
-    page,
-    game
-):
+async def discover_sets(page, game):
     game_url = game["url"]
     game_slug = game["slug"]
 
-    print()
-    print(
-        "-" * 70
-    )
-    print(
-        f"ENTERING GAME: {game['name']}"
-    )
-    print(
-        game_url
-    )
-    print(
-        "-" * 70
-    )
+    log("")
+    log("=" * 70)
+    log(f"ENTERING GAME: {game['name']}")
+    log(f"URL: {game_url}")
+    log("=" * 70)
 
-    await page.get(
-        game_url
-    )
+    log_step(f"Loading game page: {game_url}")
+    await page.get(game_url)
+    log_step(f"Waiting {GAME_PAGE_WAIT}s for page to render...")
+    await asyncio.sleep(GAME_PAGE_WAIT)
 
-    await asyncio.sleep(
-        GAME_PAGE_WAIT
-    )
-
-    links = await page.select_all(
-        f'a[href*="/games/{game_slug}/"]'
-    )
+    log_step(f"Scanning for set links under /games/{game_slug}/...")
+    links = await page.select_all(f'a[href*="/games/{game_slug}/"]')
 
     sets = {}
 
     for link in links:
-
         try:
-
-            attrs = getattr(
-                link,
-                "attrs",
-                None
-            )
+            attrs = getattr(link, "attrs", None)
 
             if not attrs:
                 continue
@@ -536,25 +411,18 @@ async def discover_sets(
             href = normalize_url(href)
 
             parsed = urlparse(href)
-
             path = parsed.path.rstrip("/")
 
-            prefix = (
-                f"/games/{game_slug}/"
-            )
+            prefix = f"/games/{game_slug}/"
 
             if not path.startswith(prefix):
                 continue
 
-            remainder = (
-                path[len(prefix):]
-                .strip("/")
-            )
+            remainder = path[len(prefix):].strip("/")
 
             if not remainder:
                 continue
 
-            # Only direct sets.
             if "/" in remainder:
                 continue
 
@@ -565,16 +433,10 @@ async def discover_sets(
             except Exception:
                 name = ""
 
-            name = (
-                name or ""
-            ).strip()
+            name = (name or "").strip()
 
             if not name:
-                name = (
-                    set_slug
-                    .replace("-", " ")
-                    .title()
-                )
+                name = set_slug.replace("-", " ").title()
 
             sets[href] = {
                 "name": name,
@@ -587,16 +449,12 @@ async def discover_sets(
         except Exception:
             continue
 
-    sets_list = sorted(
-        sets.values(),
-        key=lambda x: x["name"].lower()
-    )
+    sets_list = sorted(sets.values(), key=lambda x: x["name"].lower())
 
-    print()
-    print(
-        f"Sets discovered: "
-        f"{len(sets_list)}"
-    )
+    log(f"Sets discovered: {len(sets_list)}")
+
+    for s in sets_list:
+        log(f"    - {s['name']}  ({s['url']})")
 
     return sets_list
 
@@ -605,53 +463,29 @@ async def discover_sets(
 # DISCOVER CARDS INSIDE ONE SET
 # ============================================================
 
-async def discover_cards(
-    page,
-    set_info
-):
+async def discover_cards(page, set_info):
     set_url = set_info["url"]
 
-    for attempt in range(
-        1,
-        SET_DISCOVERY_RETRIES + 1
-    ):
-
-        print()
-        print(
-            f"    Discovering cards "
-            f"(attempt "
-            f"{attempt}/"
-            f"{SET_DISCOVERY_RETRIES})"
-        )
+    for attempt in range(1, SET_DISCOVERY_RETRIES + 1):
+        log("")
+        log(f"    Discovering cards in '{set_info['name']}' "
+            f"(attempt {attempt}/{SET_DISCOVERY_RETRIES})")
 
         try:
-
-            await page.get(
-                set_url
-            )
-
-            # Give the dynamic page time to render.
-            await asyncio.sleep(
-                SET_PAGE_WAIT
-            )
-
-            # ------------------------------------------------
-            # Get the actual set name.
-            # ------------------------------------------------
+            log_step(f"Loading set page: {set_url}")
+            await page.get(set_url)
+            log_step(f"Waiting {SET_PAGE_WAIT}s for cards to render...")
+            await asyncio.sleep(SET_PAGE_WAIT)
 
             set_name = None
 
             try:
-
                 set_name = await page.evaluate("""
                     (() => {
                         const h1 = document.querySelector("h1");
-                        return h1
-                            ? h1.innerText.trim()
-                            : "";
+                        return h1 ? h1.innerText.trim() : "";
                     })()
                 """)
-
             except Exception:
                 pass
 
@@ -659,39 +493,27 @@ async def discover_cards(
                 set_name = set_info["name"]
 
             set_name = set_name.strip()
+            log_step(f"Set name from page: '{set_name}'")
 
-            # ------------------------------------------------
-            # Get card information directly from the browser.
-            #
-            # IMPORTANT:
-            # Return JSON.stringify(...) so nodriver gives
-            # Python one plain string instead of trying to
-            # convert a JavaScript array of objects.
-            # ------------------------------------------------
-
+            log_step("Extracting card data from DOM...")
             raw_json = await page.evaluate("""
                 (() => {
 
                     const elements = Array.from(
-                        document.querySelectorAll(
-                            'a[href*="/card/"]'
-                        )
+                        document.querySelectorAll('a[href*="/card/"]')
                     );
 
                     const cards = elements.map((a) => {
 
-                        const img =
-                            a.querySelector("img");
+                        const img = a.querySelector("img");
 
-                        const titleElement =
-                            a.querySelector(
-                                ".MuiImageListItemBar-title"
-                            );
+                        const titleElement = a.querySelector(
+                            ".MuiImageListItemBar-title"
+                        );
 
-                        const subtitleElement =
-                            a.querySelector(
-                                ".MuiImageListItemBar-subtitle"
-                            );
+                        const subtitleElement = a.querySelector(
+                            ".MuiImageListItemBar-subtitle"
+                        );
 
                         return {
                             href: a.href || "",
@@ -708,9 +530,7 @@ async def discover_cards(
                                 : "",
 
                             alt: img
-                                ? (
-                                    img.getAttribute("alt") || ""
-                                )
+                                ? (img.getAttribute("alt") || "")
                                 : "",
 
                             title: titleElement
@@ -729,182 +549,60 @@ async def discover_cards(
                 })()
             """)
 
-            # ------------------------------------------------
-            # Convert JSON string into normal Python objects.
-            # ------------------------------------------------
-
             if not raw_json:
-
-                print(
-                    "    Browser returned no card data."
-                )
+                log_step("Browser returned no card data")
 
                 if attempt < SET_DISCOVERY_RETRIES:
-
-                    retry_delay = random.uniform(
-                        5,
-                        8
-                    )
-
-                    print(
-                        f"    Retrying in "
-                        f"{retry_delay:.1f}s..."
-                    )
-
-                    await asyncio.sleep(
-                        retry_delay
-                    )
+                    retry_delay = random.uniform(5, 8)
+                    log_step(f"Retrying in {retry_delay:.1f}s...")
+                    await asyncio.sleep(retry_delay)
 
                 continue
 
             try:
-
-                raw_cards = json.loads(
-                    raw_json
-                )
-
+                raw_cards = json.loads(raw_json)
             except Exception as e:
-
-                print(
-                    "    ERROR parsing browser "
-                    f"JSON: {e}"
-                )
-
-                print(
-                    f"    Raw result type: "
-                    f"{type(raw_json)}"
-                )
-
-                print(
-                    f"    Raw result preview: "
-                    f"{str(raw_json)[:500]}"
-                )
+                log_step(f"ERROR parsing browser JSON: {e}")
 
                 if attempt < SET_DISCOVERY_RETRIES:
-
-                    retry_delay = random.uniform(
-                        5,
-                        8
-                    )
-
-                    print(
-                        f"    Retrying in "
-                        f"{retry_delay:.1f}s..."
-                    )
-
-                    await asyncio.sleep(
-                        retry_delay
-                    )
+                    retry_delay = random.uniform(5, 8)
+                    log_step(f"Retrying in {retry_delay:.1f}s...")
+                    await asyncio.sleep(retry_delay)
 
                 continue
 
-            print(
-                f"    Raw card elements: "
-                f"{len(raw_cards)}"
-            )
-
-            # ------------------------------------------------
-            # Convert browser records into our card records.
-            # ------------------------------------------------
+            log_step(f"Raw card elements found: {len(raw_cards)}")
 
             cards = {}
 
             for raw in raw_cards:
-
                 try:
-
-                    card_url = (
-                        raw.get("href")
-                        or ""
-                    ).strip()
+                    card_url = (raw.get("href") or "").strip()
 
                     if not card_url:
                         continue
 
-                    card_url = normalize_url(
-                        card_url
-                    )
+                    card_url = normalize_url(card_url)
 
-                    # ------------------------------------------------
-                    # Card ID
-                    # ------------------------------------------------
+                    match = re.search(r"/card/(\d+)", card_url)
+                    card_id = match.group(1) if match else None
 
-                    match = re.search(
-                        r"/card/(\d+)",
-                        card_url
-                    )
-
-                    card_id = (
-                        match.group(1)
-                        if match
-                        else None
-                    )
-
-                    # ------------------------------------------------
-                    # Image URL
-                    # ------------------------------------------------
-
-                    image_url = (
-                        raw.get("image_src")
-                        or ""
-                    ).strip()
+                    image_url = (raw.get("image_src") or "").strip()
 
                     if image_url:
-                        image_url = normalize_url(
-                            image_url
-                        )
+                        image_url = normalize_url(image_url)
 
-                    # ------------------------------------------------
-                    # Card name
-                    # ------------------------------------------------
-
-                    card_name = (
-                        raw.get("title")
-                        or raw.get("alt")
-                        or ""
-                    ).strip()
+                    card_name = (raw.get("title") or raw.get("alt") or "").strip()
 
                     if not card_name:
-
-                        path_parts = (
-                            urlparse(
-                                card_url
-                            )
-                            .path
-                            .strip("/")
-                            .split("/")
-                        )
+                        path_parts = urlparse(card_url).path.strip("/").split("/")
 
                         if len(path_parts) >= 3:
-
-                            card_name = (
-                                path_parts[-1]
-                                .replace(
-                                    "-",
-                                    " "
-                                )
-                                .title()
-                            )
-
+                            card_name = path_parts[-1].replace("-", " ").title()
                         else:
+                            card_name = f"Card {card_id or 'Unknown'}"
 
-                            card_name = (
-                                f"Card "
-                                f"{card_id or 'Unknown'}"
-                            )
-
-                    # ------------------------------------------------
-                    # Rarity
-                    # ------------------------------------------------
-
-                    rarity = (
-                        raw.get("rarity")
-                        or ""
-                    ).strip()
-
-                    # ------------------------------------------------
-                    # Build card
-                    # ------------------------------------------------
+                    rarity = (raw.get("rarity") or "").strip()
 
                     card = {
                         "id": card_id,
@@ -914,91 +612,36 @@ async def discover_cards(
                         "image_url": image_url,
                     }
 
-                    cards[
-                        manifest_key(card)
-                    ] = card
+                    cards[manifest_key(card)] = card
 
                 except Exception as e:
-
-                    print(
-                        "    WARNING processing "
-                        f"card: {e}"
-                    )
-
+                    log_step(f"WARNING processing card: {e}")
                     continue
 
-            cards_list = list(
-                cards.values()
-            )
-
-            # ------------------------------------------------
-            # Diagnostics
-            # ------------------------------------------------
+            cards_list = list(cards.values())
 
             cards_with_images = sum(
-                1
-                for card in cards_list
-                if card.get("image_url")
+                1 for card in cards_list if card.get("image_url")
             )
+            cards_without_images = len(cards_list) - cards_with_images
 
-            cards_without_images = (
-                len(cards_list)
-                - cards_with_images
-            )
-
-            print(
-                f"    Cards discovered: "
-                f"{len(cards_list)}"
-            )
-
-            print(
-                f"    With image URLs:   "
-                f"{cards_with_images}"
-            )
-
-            print(
-                f"    Without image URLs:"
-                f" {cards_without_images}"
-            )
-
-            # ------------------------------------------------
-            # Show first few cards.
-            # ------------------------------------------------
+            log(f"    Cards discovered: {len(cards_list)}")
+            log(f"    With image URLs:   {cards_with_images}")
+            log(f"    Without image URLs: {cards_without_images}")
 
             if cards_list:
-
-                print()
-
+                log("")
+                log("    First 5 cards:")
                 for card in cards_list[:5]:
-
-                    print(
-                        f"    CARD: "
-                        f"{card['name']}"
-                    )
-
-                    print(
-                        f"        ID:    "
-                        f"{card.get('id')}"
-                    )
-
-                    print(
-                        f"        Image: "
-                        f"{card.get('image_url')}"
-                    )
-
-                    print(
-                        f"        Rarity: "
-                        f"{card.get('rarity')}"
-                    )
+                    log(f"    CARD: {card['name']}")
+                    log(f"        ID:    {card.get('id')}")
+                    log(f"        Image: {card.get('image_url')}")
+                    log(f"        Rarity: {card.get('rarity')}")
 
                 if len(cards_list) > 5:
+                    log(f"    ... {len(cards_list) - 5} more")
 
-                    print(
-                        f"    ... "
-                        f"{len(cards_list) - 5} more"
-                    )
-
-                print()
+                log("")
 
                 return {
                     **set_info,
@@ -1006,60 +649,26 @@ async def discover_cards(
                     "cards": cards_list,
                 }
 
-            # ------------------------------------------------
-            # No cards successfully parsed.
-            # ------------------------------------------------
-
-            print(
-                "    No usable cards were parsed."
-            )
+            log("    No usable cards were parsed.")
 
             if attempt < SET_DISCOVERY_RETRIES:
-
-                retry_delay = random.uniform(
-                    5,
-                    8
-                )
-
-                print(
-                    f"    Retrying in "
-                    f"{retry_delay:.1f}s..."
-                )
-
-                await asyncio.sleep(
-                    retry_delay
-                )
+                retry_delay = random.uniform(5, 8)
+                log(f"    Retrying in {retry_delay:.1f}s...")
+                await asyncio.sleep(retry_delay)
 
         except Exception as e:
-
-            print(
-                f"    ERROR discovering cards: "
-                f"{e}"
-            )
+            log(f"    ERROR discovering cards: {e}")
 
             if attempt < SET_DISCOVERY_RETRIES:
-
-                retry_delay = random.uniform(
-                    5,
-                    8
-                )
-
-                print(
-                    f"    Retrying in "
-                    f"{retry_delay:.1f}s..."
-                )
-
-                await asyncio.sleep(
-                    retry_delay
-                )
+                retry_delay = random.uniform(5, 8)
+                log(f"    Retrying in {retry_delay:.1f}s...")
+                await asyncio.sleep(retry_delay)
 
     return {
         **set_info,
         "name": set_info["name"],
         "cards": [],
-        "error": (
-            "No cards found after retries"
-        ),
+        "error": "No cards found after retries",
     }
 
 
@@ -1067,87 +676,50 @@ async def discover_cards(
 # DOWNLOAD ONE IMAGE
 # ============================================================
 
-def download_image(
-    card,
-    output_path,
-    set_url
-):
-
-    image_url = card.get(
-        "image_url"
-    )
+def download_image(card, output_path, set_url):
+    image_url = card.get("image_url")
 
     if not image_url:
+        log_card("No image URL")
+        return {"status": "failed", "error": "No image URL"}
 
-        return {
-            "status": "failed",
-            "error": "No image URL"
-        }
-
-    # ====================================================
-    # NEW: handle embedded base64 data URIs
-    # ====================================================
+    # ------------------------------------------------
+    # Handle embedded base64 data URIs
+    # ------------------------------------------------
 
     if image_url.startswith("data:"):
+        log_card("Image is an embedded data URI — decoding base64...")
 
         try:
-
             import base64 as _base64
 
-            # Split off the "data:image/png;base64," prefix
             header, b64data = image_url.split(",", 1)
-
             img_bytes = _base64.b64decode(b64data)
 
             if not img_bytes:
+                log_card("Empty data URI payload")
+                return {"status": "failed", "error": "Empty data URI payload"}
 
-                return {
-                    "status": "failed",
-                    "error": "Empty data URI payload"
-                }
-
-            # The caller already computed the correct
-            # extension via card_image_extension(), so
-            # output_path should already end with the
-            # right suffix. Just write the bytes.
-
-            temp_path = (
-                output_path.with_suffix(
-                    output_path.suffix + ".tmp"
-                )
-            )
-
-            temp_path.parent.mkdir(
-                parents=True,
-                exist_ok=True
-            )
+            temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+            temp_path.parent.mkdir(parents=True, exist_ok=True)
 
             with temp_path.open("wb") as f:
                 f.write(img_bytes)
 
-            if (
-                not temp_path.exists()
-                or temp_path.stat().st_size < 1000
-            ):
-
+            if not temp_path.exists() or temp_path.stat().st_size < 1000:
                 try:
                     temp_path.unlink()
                 except Exception:
                     pass
+                log_card("Data URI image too small")
+                return {"status": "failed", "error": "Data URI image too small"}
 
-                return {
-                    "status": "failed",
-                    "error": (
-                        "Data URI image too small"
-                    )
-                }
-
-            os.replace(
-                temp_path,
-                output_path
-            )
+            os.replace(temp_path, output_path)
 
             content_type = f"image/{output_path.suffix.lstrip('.')}"
+
+            log_card(f"Data URI decoded to {output_path.name} "
+                     f"({output_path.stat().st_size} bytes)")
 
             return {
                 "status": "downloaded",
@@ -1156,19 +728,16 @@ def download_image(
             }
 
         except Exception as e:
+            log_card(f"Data URI decode failed: {e}")
+            return {"status": "failed", "error": f"Data URI decode failed: {e}"}
 
-            return {
-                "status": "failed",
-                "error": (
-                    f"Data URI decode failed: {e}"
-                )
-            }
+    # ------------------------------------------------
+    # Normal HTTP download — quote URL and Referer
+    # ------------------------------------------------
 
     headers = {
-        "Referer": set_url,
-        "User-Agent": session.headers[
-            "User-Agent"
-        ],
+        "Referer": _quote_url(set_url),
+        "User-Agent": session.headers["User-Agent"],
         "Accept": (
             "image/avif,image/webp,"
             "image/apng,image/svg+xml,"
@@ -1176,74 +745,40 @@ def download_image(
         ),
     }
 
-    temporary_statuses = {
-        408,
-        425,
-        429,
-        500,
-        502,
-        503,
-        504,
-    }
+    temporary_statuses = {408, 425, 429, 500, 502, 503, 504}
 
-    for attempt in range(
-        1,
-        MAX_RETRIES + 1
-    ):
+    for attempt in range(1, MAX_RETRIES + 1):
+        log_card(f"GET {_quote_url(image_url)} (attempt {attempt}/{MAX_RETRIES})")
 
         try:
-
             response = session.get(
-                image_url,
+                _quote_url(image_url),
                 headers=headers,
                 timeout=45
             )
 
-            if is_valid_image_response(
-                response
-            ):
+            log_card(f"HTTP {response.status_code}, "
+                     f"Content-Type: {response.headers.get('Content-Type', '')}")
 
-                content_type = (
-                    response.headers.get(
-                        "Content-Type",
-                        ""
-                    )
-                )
+            if is_valid_image_response(response):
+                content_type = response.headers.get("Content-Type", "")
 
-                temp_path = (
-                    output_path.with_suffix(
-                        output_path.suffix
-                        + ".tmp"
-                    )
-                )
+                temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
 
-                with temp_path.open(
-                    "wb"
-                ) as f:
+                with temp_path.open("wb") as f:
+                    f.write(response.content)
 
-                    f.write(
-                        response.content
-                    )
-
-                if (
-                    not temp_path.exists()
-                    or temp_path.stat().st_size < 1000
-                ):
-
+                if not temp_path.exists() or temp_path.stat().st_size < 1000:
                     try:
                         temp_path.unlink()
                     except Exception:
                         pass
+                    raise RuntimeError("Image was empty or too small")
 
-                    raise RuntimeError(
-                        "Image was empty "
-                        "or too small"
-                    )
+                os.replace(temp_path, output_path)
 
-                os.replace(
-                    temp_path,
-                    output_path
-                )
+                log_card(f"Saved to {output_path.name} "
+                         f"({output_path.stat().st_size} bytes)")
 
                 return {
                     "status": "downloaded",
@@ -1254,30 +789,12 @@ def download_image(
             status = response.status_code
 
             if status in temporary_statuses:
-
-                print(
-                    f"        Temporary HTTP "
-                    f"{status} "
-                    f"(attempt "
-                    f"{attempt}/"
-                    f"{MAX_RETRIES})"
-                )
+                log_card(f"Temporary HTTP {status} — will retry")
 
                 if attempt < MAX_RETRIES:
-
-                    wait = (
-                        3 * attempt
-                    )
-
-                    print(
-                        f"        Retry in "
-                        f"{wait}s..."
-                    )
-
-                    time.sleep(
-                        wait
-                    )
-
+                    wait = 3 * attempt
+                    log_card(f"Retry in {wait}s...")
+                    time.sleep(wait)
                     continue
 
             return {
@@ -1290,760 +807,260 @@ def download_image(
             }
 
         except Exception as e:
+            log_card(f"Download error (attempt {attempt}/{MAX_RETRIES}): {e}")
 
-            print(
-                f"        Download error "
-                f"(attempt "
-                f"{attempt}/"
-                f"{MAX_RETRIES}): "
-                f"{e}"
-            )
+            if "latin-1" in str(e):
+                log_card(f">>> image_url:  {image_url!r}")
+                log_card(f">>> quoted url: {_quote_url(image_url)!r}")
+                log_card(f">>> referer:    {set_url!r}")
+                log_card(f">>> quot ref:   {_quote_url(set_url)!r}")
 
             if attempt < MAX_RETRIES:
-
-                wait = (
-                    3 * attempt
-                )
-
-                print(
-                    f"        Retry in "
-                    f"{wait}s..."
-                )
-
-                time.sleep(
-                    wait
-                )
-
+                wait = 3 * attempt
+                log_card(f"Retry in {wait}s...")
+                time.sleep(wait)
             else:
+                return {"status": "failed", "error": str(e)}
 
-                return {
-                    "status": "failed",
-                    "error": str(e)
-                }
-
-    return {
-        "status": "failed",
-        "error": "Maximum retries exceeded"
-    }
+    return {"status": "failed", "error": "Maximum retries exceeded"}
 
 
 # ============================================================
 # DOWNLOAD ONE SET
 # ============================================================
 
-def download_set(
-    set_data
-):
-
-    game_name = set_data[
-        "game_name"
-    ]
-
-    set_name = set_data[
-        "name"
-    ]
-
-    set_url = set_data[
-        "url"
-    ]
-
-    cards = set_data.get(
-        "cards",
-        []
-    )
-
-    game_folder = (
-        OUTPUT_ROOT
-        / safe_folder_name(game_name)
-    )
-
-    set_folder = (
-        game_folder
-        / safe_folder_name(set_name)
-    )
-
-    set_folder.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    manifest_path = (
-        set_folder
-        / MANIFEST_NAME
-    )
-
-    manifest = load_json(
-        manifest_path
-    )
-
-    downloaded = 0
-    skipped = 0
-    failed = 0
-
-    print()
-    print(
-        "=" * 70
-    )
-
-    print(
-        f"DOWNLOADING: {game_name}"
-    )
-
-    print(
-        f"SET:         {set_name}"
-    )
-
-    print(
-        f"CARDS:       {len(cards)}"
-    )
-
-    print(
-        f"FOLDER:      {set_folder}"
-    )
-
-    print(
-        "=" * 70
-    )
-
-    for index, card in enumerate(
-        cards,
-        start=1
-    ):
-
-        card_name = (
-            card.get(
-                "name",
-                f"Card {index}"
-            )
-        )
-
-        key = manifest_key(
-            card
-        )
-
-        existing = manifest.get(
-            key
-        )
-
-        # ====================================================
-        # NEW: determine the correct extension up front so
-        # filename, skip check, and save all agree.
-        # ====================================================
-
-        image_url = card.get(
-            "image_url"
-        ) or ""
-
-        ext = card_image_extension(
-            image_url
-        )
-
-        filename = (
-            safe_filename(card_name)
-            + ext
-        )
-
-        output_path = (
-            set_folder
-            / filename
-        )
-
-        # ====================================================
-        # SKIP EXISTING FILE
-        # ====================================================
-
-        if output_path.exists():
-
-            try:
-                size = output_path.stat().st_size
-            except Exception:
-                size = 0
-
-            if size >= 1000:
-
-                skipped += 1
-
-                # Keep manifest synchronized
-                manifest[key] = {
-                    **card,
-                    "path": str(
-                        output_path
-                    ),
-                    "status": "downloaded",
-                    "size": size,
-                    "content_type": (
-                        existing.get(
-                            "content_type"
-                        )
-                        if existing
-                        else "image/*"
-                    ),
-                }
-
-                save_json(
-                    manifest_path,
-                    manifest
-                )
-
-                print(
-                    f"[{index}/{len(cards)}] "
-                    f"SKIP  {card_name}"
-                )
-
-                continue
-
-        # ====================================================
-        # MANIFEST-BASED SKIP
-        # ====================================================
-
-        if existing:
-
-            old_path = existing.get(
-                "path"
-            )
-
-            if old_path:
-
-                old_path_obj = Path(
-                    old_path
-                )
-
-                if old_path_obj.exists():
-
-                    try:
-                        size = (
-                            old_path_obj.stat()
-                            .st_size
-                        )
-                    except Exception:
-                        size = 0
-
-                    if (
-                        size >= 1000
-                        and existing.get(
-                            "status"
-                        ) == "downloaded"
-                    ):
-
-                        skipped += 1
-
-                        print(
-                            f"[{index}/{len(cards)}] "
-                            f"SKIP  {card_name}"
-                        )
-
-                        continue
-
-        # ====================================================
-        # DOWNLOAD
-        # ====================================================
-
-        print(
-            f"[{index}/{len(cards)}] "
-            f"GET   {card_name}"
-        )
-
-        result = download_image(
-            card,
-            output_path,
-            set_url
-        )
-
-        if (
-            result["status"]
-            == "downloaded"
-        ):
-
-            downloaded += 1
-
-            manifest[key] = {
-                **card,
-                "path": str(
-                    output_path
-                ),
-                "status": "downloaded",
-                "size": result.get(
-                    "size"
-                ),
-                "content_type": result.get(
-                    "content_type"
-                ),
-                "downloaded_at": (
-                    time.strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                ),
-            }
-
-            save_json(
-                manifest_path,
-                manifest
-            )
-
-            print(
-                f"        OK "
-                f"({result.get('size', 0):,} bytes)"
-            )
-
-        else:
-
-            failed += 1
-
-            manifest[key] = {
-                **card,
-                "path": str(
-                    output_path
-                ),
-                "status": "failed",
-                "error": result.get(
-                    "error",
-                    "Unknown error"
-                ),
-                "failed_at": (
-                    time.strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                ),
-            }
-
-            save_json(
-                manifest_path,
-                manifest
-            )
-
-            print(
-                f"        FAILED: "
-                f"{result.get('error')}"
-            )
-
-        if index < len(cards):
-            polite_delay()
-
-    print()
-    print(
-        f"SET COMPLETE: {set_name}"
-    )
-
-    print(
-        f"    Downloaded: {downloaded}"
-    )
-
-    print(
-        f"    Skipped:    {skipped}"
-    )
-
-    print(
-        f"    Failed:     {failed}"
-    )
-
-    return {
-        "game": game_name,
-        "set": set_name,
-        "cards": len(cards),
-        "downloaded": downloaded,
-        "skipped": skipped,
-        "failed": failed,
+def download_set(set_data):
+    game_name = set_data["game_name"]
+    set_name = set_data["name"]
+    set_url = set_data["url"]
+    cards = set_data.get("cards", [])
+
+    game_folder = OUTPUT_ROOT / safe_folder_name(game_name)
+    set_folder = game_folder / safe_folder_name(set_name)
+
+    log_step(f"Creating folder: {set_folder}")
+    set_folder.mkdir(parents=True, exist_ok=True)
+
+    manifest_path = set_folder / MANIFEST_NAME
+    manifest = load_json(manifest_path)
+
+    results = {
+        "downloaded": 0,
+        "skipped": 0,
+        "failed": 0,
+        "failures": [],
     }
 
+    log("")
+    log("-" * 70)
+    log(f"SET: {set_name}")
+    log(f"Game: {game_name}")
+    log(f"URL: {set_url}")
+    log(f"Cards in set: {len(cards)}")
+    log("-" * 70)
 
-# ============================================================
-# PROCESS ONE GAME
-# ============================================================
+    for index, card in enumerate(cards, start=1):
+        card_id = card.get("id")
+        card_name = card.get("name")
+        image_url = card.get("image_url")
 
-async def process_game(
-    page,
-    game,
-    game_number
-):
+        log(f"    [{index}/{len(cards)}] {card_name} (id={card_id})")
 
-    print()
-    print()
-    print(
-        "#" * 70
-    )
+        if not image_url:
+            log_card("No image URL — skipping")
+            results["skipped"] += 1
+            continue
 
-    print(
-        f"GAME: {game_number}"
-    )
+        key = manifest_key(card)
 
-    print(
-        f"NAME: {game['name']}"
-    )
+        # Skip already-downloaded files
+        if key in manifest and manifest[key].get("status") == "downloaded":
+            log_card("Already in manifest — skipping")
+            results["skipped"] += 1
+            continue
 
-    print(
-        f"URL:  {game['url']}"
-    )
+        # Build output path with the correct extension
+        ext = card_image_extension(image_url)
+        output_path = set_folder / f"{safe_filename(card_name)}{ext}"
 
-    print(
-        "#" * 70
-    )
+        # Skip if file already exists
+        if output_path.exists() and output_path.stat().st_size >= 1000:
+            manifest[key] = {
+                "status": "downloaded",
+                "file": output_path.name,
+            }
+            log_card(f"File already exists — skipping ({output_path.name})")
+            results["skipped"] += 1
+            continue
 
-    try:
+        if DISCOVERY_ONLY:
+            manifest[key] = {"status": "discovered"}
+            log_card("Discovery-only mode — not downloading")
+            results["skipped"] += 1
+            continue
 
-        sets = await discover_sets(
-            page,
-            game
-        )
+        result = download_image(card, output_path, set_url)
 
-    except Exception as e:
-
-        print(
-            f"ERROR discovering sets "
-            f"for {game['name']}: {e}"
-        )
-
-        return []
-
-    results = []
-
-    for set_number, set_info in enumerate(
-        sets,
-        start=1
-    ):
-
-        print()
-        print(
-            f"SET {set_number}/{len(sets)}"
-        )
-
-        try:
-
-            set_data = await discover_cards(
-                page,
-                set_info
+        if result["status"] == "downloaded":
+            manifest[key] = {
+                "status": "downloaded",
+                "file": output_path.name,
+                "size": result.get("size"),
+                "content_type": result.get("content_type"),
+            }
+            results["downloaded"] += 1
+            log_card(f"DOWNLOADED -> {output_path.name}")
+        else:
+            manifest[key] = {
+                "status": "failed",
+                "error": result.get("error"),
+            }
+            results["failed"] += 1
+            results["failures"].append(
+                {
+                    "card": card_name,
+                    "id": card_id,
+                    "error": result.get("error"),
+                }
             )
+            log_card(f"FAILED: {result.get('error')}")
 
-            cards = set_data.get(
-                "cards",
-                []
-            )
+        polite_delay()
 
-            if not cards:
+    save_json(manifest_path, manifest)
 
-                print(
-                    "    WARNING: "
-                    "No cards discovered "
-                    "for this set."
-                )
+    log("")
+    log(f"SET COMPLETE: {set_name}")
+    log(f"    Downloaded: {results['downloaded']}")
+    log(f"    Skipped:    {results['skipped']}")
+    log(f"    Failed:     {results['failed']}")
 
-                results.append({
-                    "game": game["name"],
-                    "set": set_info["name"],
-                    "cards": 0,
-                    "downloaded": 0,
-                    "skipped": 0,
-                    "failed": 1,
-                })
-
-                continue
-
-            if DISCOVERY_ONLY:
-
-                print(
-                    f"    DISCOVERY ONLY: "
-                    f"{len(cards)} cards"
-                )
-
-                results.append({
-                    "game": game["name"],
-                    "set": set_data["name"],
-                    "cards": len(cards),
-                    "downloaded": 0,
-                    "skipped": 0,
-                    "failed": 0,
-                })
-
-            else:
-
-                result = download_set(
-                    set_data
-                )
-
-                results.append(
-                    result
-                )
-
-        except Exception as e:
-
-            print(
-                f"    ERROR processing "
-                f"set: {e}"
-            )
-
-            results.append({
-                "game": game["name"],
-                "set": set_info["name"],
-                "cards": 0,
-                "downloaded": 0,
-                "skipped": 0,
-                "failed": 1,
-            })
-
-        if set_number < len(sets):
-            page_delay()
+    if results["failures"]:
+        log("")
+        log("    Failures:")
+        for failure in results["failures"][:10]:
+            log(f"        - {failure['card']}: {failure['error']}")
 
     return results
 
 
 # ============================================================
-# MAIN
+# MAIN LOOP
 # ============================================================
 
 async def main():
+    log("=" * 70)
+    log("CCG TRADER HARVESTER")
+    log("=" * 70)
 
-    print()
-    print(
-        "=" * 70
-    )
+    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
-    print(
-        "CCG TRADER CARD IMAGE HARVESTER"
-    )
+    progress = load_progress()
+    processed_games = progress.get("processed_games", {})
 
-    print(
-        "=" * 70
-    )
+    # Fix corrupted/legacy progress where processed_games is a list
+    if not isinstance(processed_games, dict):
+        log("WARNING: processed_games was not a dict — resetting it")
+        processed_games = {}
+        progress["processed_games"] = processed_games
 
-    print()
+    log(f"Previously processed games: {len(processed_games)}")
 
-    print(
-        f"Browser:        {BROWSER_PATH}"
-    )
-
-    print(
-        f"Output:         {OUTPUT_ROOT}"
-    )
-
-    print(
-        f"Card delay:     "
-        f"{MIN_DELAY}-{MAX_DELAY} seconds"
-    )
-
-    print(
-        f"Discovery only: "
-        f"{DISCOVERY_ONLY}"
-    )
-
-    print()
-
-    OUTPUT_ROOT.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    if not os.path.exists(
-        BROWSER_PATH
-    ):
-
-        raise FileNotFoundError(
-            "Vivaldi was not found at:\n"
-            f"{BROWSER_PATH}"
-        )
-
-    print(
-        "Starting Vivaldi..."
-    )
-
+    log(f"Starting browser: {BROWSER_PATH}")
     browser = await uc.start(
         browser_executable_path=BROWSER_PATH,
-        browser_args=[
-            "--window-size=1920,1080",
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-        ]
+        headless=False,
     )
 
-    results = []
-
     try:
+        log(f"Opening {GAMES_URL}")
+        page = await browser.get(GAMES_URL)
 
-        page = await browser.get(
-            GAMES_URL
-        )
-
-        # ====================================================
-        # MAIN GAME LOOP
-        # ====================================================
-
-        game_number = 0
+        log(f"Waiting {GAME_PAGE_WAIT}s for games page to render...")
+        await asyncio.sleep(GAME_PAGE_WAIT)
 
         while True:
+            games = await find_games_on_page(page)
 
-            # ------------------------------------------------
-            # Always return to /games/ before finding games.
-            # ------------------------------------------------
+            unprocessed = [
+                game
+                for game in games
+                if game["url"] not in processed_games
+            ]
 
-            print()
-            print(
-                "=" * 70
-            )
+            log("")
+            log(f"Games on page: {len(games)}")
+            log(f"Unprocessed:   {len(unprocessed)}")
 
-            print(
-                "RETURNING TO GAME INDEX"
-            )
+            if not unprocessed:
+                log("")
+                log("All games on this page are already processed.")
+                log("Reloading games page...")
+                await page.get(GAMES_URL)
+                await asyncio.sleep(GAME_PAGE_WAIT)
 
-            print(
-                "=" * 70
-            )
+                games = await find_games_on_page(page)
+                unprocessed = [
+                    game
+                    for game in games
+                    if game["url"] not in processed_games
+                ]
 
-            await page.get(
-                GAMES_URL
-            )
-
-            await asyncio.sleep(
-                GAME_PAGE_WAIT
-            )
-
-            games = await find_games_on_page(
-                page
-            )
-
-            if not games:
-
-                print(
-                    "No games found. "
-                    "Stopping."
-                )
-
-                break
-
-            print(
-                f"Games on page: "
-                f"{len(games)}"
-            )
-
-            # ------------------------------------------------
-            # Load existing progress.
-            # ------------------------------------------------
-
-            progress = load_progress()
-
-            processed_games = set(
-                progress.get(
-                    "processed_games",
-                    []
-                )
-            )
-
-            # ------------------------------------------------
-            # Pick the next unprocessed game.
-            # ------------------------------------------------
-
-            next_game = None
-
-            for game in games:
-
-                if (
-                    game["url"]
-                    not in processed_games
-                ):
-
-                    next_game = game
-
+                if not unprocessed:
+                    log("")
+                    log("No unprocessed games found after reload.")
+                    log("Harvest complete!")
                     break
 
-            if not next_game:
+            game = unprocessed[0]
 
-                print(
-                    "All games on this page "
-                    "have been processed."
-                )
+            log("")
+            log(f"Processing game: {game['name']}")
+            log(f"URL: {game['url']}")
 
-                break
+            sets = await discover_sets(page, game)
 
-            game_number += 1
+            if not sets:
+                log("")
+                log("No sets discovered for this game.")
+                processed_games[game["url"]] = {
+                    "name": game["name"],
+                    "sets": 0,
+                    "status": "no_sets",
+                }
+                progress["processed_games"] = processed_games
+                save_progress(progress)
+                continue
 
-            # ------------------------------------------------
-            # Process the game.
-            # ------------------------------------------------
+            for set_info in sets:
+                set_data = await discover_cards(page, set_info)
 
-            game_results = await process_game(
-                page,
-                next_game,
-                game_number
-            )
+                if not set_data.get("cards"):
+                    log(f"    No cards for set: {set_info['name']}")
+                    continue
 
-            # ------------------------------------------------
-            # Record progress.
-            # ------------------------------------------------
+                download_set(set_data)
+                page_delay()
 
-            progress = load_progress()
+            processed_games[game["url"]] = {
+                "name": game["name"],
+                "sets": len(sets),
+                "status": "complete",
+            }
 
-            processed = set(
-                progress.get(
-                    "processed_games",
-                    []
-                )
-            )
+            progress["processed_games"] = processed_games
+            save_progress(progress)
 
-            processed.add(
-                next_game["url"]
-            )
-
-            progress["processed_games"] = (
-                sorted(processed)
-            )
-
-            progress["last_processed_game"] = (
-                next_game["url"]
-            )
-
-            progress["results"] = (
-                progress.get(
-                    "results",
-                    []
-                )
-            )
-
-            progress["results"].extend(
-                game_results
-            )
-
-            progress["last_updated"] = (
-                time.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-            )
-
-            save_progress(
-                progress
-            )
-
-            print()
-            print(
-                "Progress saved."
-            )
-
-            # ------------------------------------------------
-            # Continue to next game.
-            # ------------------------------------------------
+            log("")
+            log(f"Game complete: {game['name']}")
+            log(f"Total processed games: {len(processed_games)}")
 
             page_delay()
 
     finally:
-
-        try:
-
-            browser.stop()
-
-        except Exception:
-            pass
-
-    print()
-    print(
-        "Harvest complete."
-    )
-
-    print(
-        f"Games processed: "
-        f"{len(results)}"
-    )
-
-    print()
+        log("Stopping browser...")
+        browser.stop()
 
 
 if __name__ == "__main__":
-
-    asyncio.run(
-        main()
-    )
+    asyncio.run(main())
