@@ -5,7 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ae22b5c9-6a16-41cc-bf68-e0eb1ef0c697" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/magic_bypass.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -14,7 +13,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="70" />
+    <option name="cachedIndexableFilesCount" value="73" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -154,6 +153,7 @@
       <workItem from="1789787208541" duration="29000" />
       <workItem from="1789893209839" duration="1563000" />
       <workItem from="1789898861201" duration="1000" />
+      <workItem from="1789955383100" duration="40000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <option name="closed" value="true" />
