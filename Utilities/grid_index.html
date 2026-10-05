@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Card Sorter Pro</title>
+    <style>
+        :root { --bg: #121212; --text: #e0e0e0; --primary: #bb86fc; --yes: #4caf50; --no: #cf6679; }
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: sans-serif; }
+        body { display: flex; flex-direction: column; }
+        #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .user-btn { width: 80%; max-width: 300px; padding: 20px; margin: 10px; border-radius: 12px; border: 2px solid var(--primary); background: #1a1a1a; color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
+        #status-bar { height: 45px; background: #000; display: flex; justify-content: space-around; align-items: center; font-size: 0.8rem; border-bottom: 1px solid #222; flex-shrink: 0; cursor: pointer; }
+
+        #stage { flex: 1; display: flex; align-items: center; justify-content: center; background: #111; overflow: hidden; min-height: 0; padding: 10px; }
+        #grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 6px; width: 100%; height: 100%; max-width: 800px; }
+        .card-tile { position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden; border-radius: 6px; border: 3px solid #333; background: #1a1a1a; cursor: pointer; box-sizing: border-box; }
+        .card-tile img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .card-tile.selected { border-color: var(--no); }
+        .card-tile.selected::after { content: 'NO'; position: absolute; top: 4px; right: 4px; background: var(--no); color: #fff; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; }
+        .card-tile.empty { border-style: dashed; border-color: #444; cursor: default; }
+        #wait-msg { display: none; color: var(--primary); text-align: center; }
+        #grid-count { display: block; text-align: center; color: #999; font-size: 0.8rem; padding: 6px; flex-shrink: 0; }
+
+        #sync-progress { display: none; text-align: center; padding: 8px; color: var(--text); font-size: 0.9rem; background: #1a1a1a; border-top: 1px solid #333; flex-shrink: 0; }
+        #sync-file { font-size: 0.75rem; color: #999; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #controls { height: 220px; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding: 12px; background: #1a1a1a; border-top: 1px solid #333; flex-shrink: 0; }
+        button { border: none; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer; font-size: 1.5rem; }
+        #btn-undo { background-color: #333; }
+        #btn-next { background-color: var(--yes); }
+        #btn-sync, #btn-fetch { grid-column: 1 / -1; height: 50px; font-size: 1rem; }
+        #btn-sync { background-color: var(--primary); color: #000; transition: background-color 0.3s; }
+        #btn-fetch { background-color: #2a2a2a; color: var(--text); border: 1px solid #444; }
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        #folder-list { overflow-y: auto; margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .folder-btn { background: #222; border: 1px solid #444; padding: 18px; color: white; border-radius: 8px; text-align: left; }
+        #shutdown-btn { background: #444; color: #ff5555; margin-top: auto; padding: 15px; font-size: 0.9rem; border: 1px solid #666; }
+    </style>
+</head>
+<body>
+    <div id="login-overlay">
+        <h1 style="color: var(--primary)">Card Sorter</h1>
+        <button class="user-btn" onclick="setUser('seeya')">SEEYA</button>
+        <button class="user-btn" onclick="setUser('riverleaf')">RIVERLEAF</button>
+    </div>
+    <div id="status-bar" onclick="openModal()">
+        <span>INBOX: <b id="stat-inbox">0</b></span>
+        <span>SET: <b id="stat-folder">...</b> ⚙️</span>
+        <span>DONE: <b id="stat-total">0</b></span>
+    </div>
+    <div id="stage">
+        <div id="grid"></div>
+        <div id="wait-msg"><h3>Inbox Empty</h3></div>
+    </div>
+    <div id="grid-count"><span id="grid-count-text">tap cards to mark NO — NEXT files them</span></div>
+    <div id="sync-progress">
+        <span id="sync-count">0 / 0</span>
+        <div id="sync-file"></div>
+    </div>
+    <div id="controls">
+        <button id="btn-undo" onclick="undo()">⟲</button>
+        <button id="btn-next" onclick="nextBatch()">NEXT ➡</button>
+        <button id="btn-sync" onclick="sync()">SYNC TO GOOGLE DRIVE</button>
+        <button id="btn-fetch" onclick="fetchNow()">⬇️ FETCH NEW CARDS</button>
+    </div>
+    <div id="modal">
+        <div style="display:flex; justify-content:space-between;"><h3>Settings</h3><span style="font-size: 2.5rem;" onclick="closeModal()">&times;</span></div>
+        <div id="folder-list"></div>
+        <button id="shutdown-btn" onclick="shutdownServer()">🛑 SHUTDOWN SERVER (CLOSE APP)</button>
+    </div>
+
+    <script>
+        let currentUser = localStorage.getItem('card_sorter_user');
+        let curBatch = [];
+        let selected = new Set();
+
+        if (currentUser) initApp();
+        function setUser(name) { currentUser = name; localStorage.setItem('card_sorter_user', name); initApp(); }
+        function initApp() { document.getElementById('login-overlay').style.display = 'none'; updateStats(); loadGrid(); setInterval(updateStats, 5000); }
+
+        async function updateStats() {
+            try {
+                const res = await fetch(`/api/stats?user=${currentUser}`);
+                const data = await res.json();
+                document.getElementById('stat-inbox').innerText = data.inbox;
+                document.getElementById('stat-total').innerText = data.total;
+                document.getElementById('stat-folder').innerText = data.folder.toUpperCase();
+                document.getElementById('wait-msg').style.display = (data.inbox === 0) ? 'block' : 'none';
+                refreshButtonColor(data.pending);
+            } catch(e){}
+        }
+
+        function refreshButtonColor(pendingCount) {
+            const btn = document.getElementById('btn-sync');
+            if (btn.innerText.includes("⏳") || btn.innerText.includes("✅")) {
+                btn.style.backgroundColor = "var(--primary)";
+                btn.style.color = "#000";
+                return;
+            }
+            if (pendingCount > 1000) {
+                btn.style.backgroundColor = "var(--no)";
+                btn.style.color = "white";
+                btn.innerText = `⚠️ SYNC REQUIRED (${pendingCount} CARDS)`;
+            } else if (pendingCount > 200) {
+                btn.style.backgroundColor = "#ffd700";
+                btn.style.color = "#000";
+                btn.innerText = `⚡ SYNC SOON (${pendingCount} CARDS)`;
+            } else {
+                btn.style.backgroundColor = "var(--yes)";
+                btn.style.color = "#000";
+                btn.innerText = pendingCount > 0 ? `SYNC ${pendingCount} CARDS` : "SYNC TO GOOGLE DRIVE";
+            }
+        }
+
+        async function loadGrid() {
+            const res = await fetch(`/api/next_batch?user=${currentUser}`);
+            const data = await res.json();
+            curBatch = data.batch || [];
+            selected.clear();
+
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+
+            if (curBatch.length === 0) {
+                document.getElementById('wait-msg').style.display = 'block';
+                document.getElementById('grid-count-text').innerText = 'Inbox empty';
+                return;
+            }
+            document.getElementById('wait-msg').style.display = 'none';
+
+            for (let i = 0; i < 9; i++) {
+                const item = curBatch[i];
+                const tile = document.createElement('div');
+                tile.className = 'card-tile';
+                if (item) {
+                    const img = document.createElement('img');
+                    img.src = item.url + "?t=" + Date.now();
+                    img.dataset.path = item.path;
+                    tile.appendChild(img);
+                    tile.addEventListener('click', () => toggleSelect(item.path, tile));
+                } else {
+                    tile.classList.add('empty');
+                }
+                grid.appendChild(tile);
+            }
+            document.getElementById('grid-count-text').innerText =
+                `${curBatch.length} / 9 shown · ${selected.size} to NO · ${curBatch.length - selected.size} to YES — NEXT files them`;
+        }
+
+        function toggleSelect(path, tile) {
+            if (selected.has(path)) {
+                selected.delete(path);
+                tile.classList.remove('selected');
+            } else {
+                selected.add(path);
+                tile.classList.add('selected');
+            }
+            document.getElementById('grid-count-text').innerText =
+                `${curBatch.length} / 9 shown · ${selected.size} to NO · ${curBatch.length - selected.size} to YES — NEXT files them`;
+        }
+
+        async function nextBatch() {
+            if (curBatch.length === 0) { loadGrid(); return; }
+            const all = curBatch.map(i => i.path);
+            await fetch('/api/decision_batch', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user: currentUser, all: all, selected: [...selected] })
+            });
+            updateStats();
+            loadGrid();
+        }
+
+        async function undo() {
+            const res = await fetch('/api/undo', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user: currentUser})});
+            if (res.ok) { updateStats(); loadGrid(); }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('modal').style.display === 'flex') return;
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+            else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nextBatch(); }
+        });
+
+        async function sync() {
+            const btn = document.getElementById('btn-sync');
+            const prog = document.getElementById('sync-progress');
+            const count = document.getElementById('sync-count');
+            const file = document.getElementById('sync-file');
+
+            btn.innerText = "⏳ SYNCING...";
+            btn.style.backgroundColor = "var(--primary)";
+            btn.style.color = "#000";
+            prog.style.display = 'block';
+
+            const resPromise = fetch('/api/sync_to_drive', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user: currentUser})});
+
+            const poll = setInterval(async () => {
+                try {
+                    const r = await fetch('/api/sync_status');
+                    const s = await r.json();
+                    count.innerText = `${s.done} / ${s.total}`;
+                    file.innerText = s.current || '';
+                } catch(e) {}
+            }, 800);
+
+            try {
+                const res = await resPromise;
+                if (res.ok) {
+                    btn.innerText = "✅ SUCCESS";
+                    btn.style.backgroundColor = "var(--yes)";
+                    btn.style.color = "#000";
+                } else {
+                    btn.innerText = "❌ FAILED";
+                    btn.style.backgroundColor = "var(--no)";
+                    btn.style.color = "white";
+                }
+            } catch (e) {
+                btn.innerText = "❌ ERROR";
+                btn.style.backgroundColor = "var(--no)";
+                btn.style.color = "white";
+            }
+
+            clearInterval(poll);
+
+            setTimeout(() => {
+                btn.innerText = "SYNC TO GOOGLE DRIVE";
+                prog.style.display = 'none';
+                updateStats();
+            }, 2000);
+        }
+
+        async function fetchNow() {
+            const btn = document.getElementById('btn-fetch');
+            const oldText = btn.innerText;
+            btn.innerText = "⏳ FETCHING...";
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/fetch_now', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user: currentUser})
+                });
+                const data = await res.json();
+                if (data.copied > 0) {
+                    btn.innerText = `✅ ${data.copied} FETCHED`;
+                    btn.style.backgroundColor = "var(--yes)";
+                } else {
+                    btn.innerText = "✅ INBOX FULL";
+                    btn.style.backgroundColor = "var(--yes)";
+                }
+            } catch (e) {
+                btn.innerText = "❌ ERROR";
+                btn.style.backgroundColor = "var(--no)";
+            }
+            setTimeout(() => {
+                btn.innerText = oldText;
+                btn.style.backgroundColor = "";
+                btn.disabled = false;
+                updateStats(); loadGrid();
+            }, 2000);
+        }
+
+        async function openModal() {
+            document.getElementById('modal').style.display = 'flex';
+            const res = await fetch('/api/list_folders');
+            const data = await res.json();
+            const list = document.getElementById('folder-list');
+            list.innerHTML = `<button class="folder-btn" onclick="selectFolder('ALL')">📂 ALL FOLDERS</button>`;
+            data.folders.forEach(f => { list.innerHTML += `<button class="folder-btn" onclick="selectFolder('${f.replace(/'/g, "\\'")}')">📁 ${f}</button>`; });
+        }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        async function selectFolder(name) { await fetch('/api/set_folder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user: currentUser, folder: name})}); closeModal(); updateStats(); loadGrid(); }
+
+        async function shutdownServer() {
+            if (!confirm("Are you sure you want to stop the server? This will close the application.")) return;
+            try {
+                await fetch('/api/shutdown', { method: 'POST' });
+            } catch (e) {}
+            document.body.innerHTML = "<div style='display:flex; height:100vh; align-items:center; justify-content:center; color:white;'><h1>Server Stopped. You can close this tab.</h1></div>";
+        }
+    </script>
+</body>
+</html>
+

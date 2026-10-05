@@ -5,9 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ae22b5c9-6a16-41cc-bf68-e0eb1ef0c697" name="Changes" comment="update">
+      <change afterPath="$PROJECT_DIR$/Utilities/grid_index.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/new_web_base.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/menu.py" beforeDir="false" afterPath="$PROJECT_DIR$/menu.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/skipped_images.sqlite" beforeDir="false" afterPath="$PROJECT_DIR$/skipped_images.sqlite" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -33,12 +33,12 @@
     &quot;assignee&quot;: &quot;Seeyaflying&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Seeyaflying/CardDatabase.git&quot;,
-    &quot;accountId&quot;: &quot;f92a586e-3d5b-4065-9f53-e10ad069d33d&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Seeyaflying/CardDatabase.git",
+    "accountId": "fcfeb351-ec00-40ee-a9e7-6b16ed9ebb95"
   }
-}</component>
+}]]></component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
@@ -152,8 +152,10 @@
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "C:/Users/seeya/OneDrive/Desktop/CardDatabase",
     "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.jshint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.jshint": "",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
@@ -177,9 +179,9 @@
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\TCGs" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Readme" />
-      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\TCG Wrapper" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\AI" />
     </key>
@@ -187,7 +189,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-eff1e8def5f5-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10315.174" />
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-PY-262.10968.92" />
+        <option value="bundled-python-sdk-73a66231627c-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10968.92" />
       </set>
     </attachedChunks>
   </component>
@@ -215,6 +218,7 @@
       <workItem from="1789893209839" duration="1563000" />
       <workItem from="1789898861201" duration="1000" />
       <workItem from="1791169140000" duration="1010000" />
+      <workItem from="1791180307134" duration="8201000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <option name="closed" value="true" />
