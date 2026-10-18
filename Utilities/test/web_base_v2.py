@@ -11,7 +11,6 @@ from datetime import datetime
 from urllib.parse import unquote
 from flask import Flask, render_template, send_from_directory, jsonify, request
 from flask_cors import CORS
-
 import config_v2
 import db_v2
 
@@ -305,6 +304,8 @@ def fetch_now():
     return jsonify({"status": "success", "copied": copied})
 
 
+
+
 @app.route('/api/stats')
 def api_stats():
     user = request.args.get('user')
@@ -314,15 +315,28 @@ def api_stats():
     pending_sync = sum([len(files) for r, d, files in os.walk(paths['yes'])]) + \
                    sum([len(files) for r, d, files in os.walk(paths['no'])])
 
-    # card_tracker counts — "done" = reviewed yes AND uploaded
-    total_done = tracker_coll().count_documents({"status": "yes", "uploaded": True})
+    # today's date as a string (matches processed_at format: YYYY-MM-DD)
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    # DONE = cards marked yes today (rolling daily total)
+    today_done = tracker_coll().count_documents({
+        "status": "yes",
+        "processed_at": {"$regex": f"^{today}"}
+    })
+
+    # TOTAL DONE = old base + ALL yes-marked cards ever
+    BASE_DONE = 1880868
+    current_done = tracker_coll().count_documents({"status": "yes"})
+    total_done_count = BASE_DONE + current_done
 
     return jsonify({
         "inbox": inbox_c,
         "pending": pending_sync,
-        "total": total_done,
+        "total": today_done,
+        "total_done": total_done_count,
         "folder": user_prefs.get(user, "WAITING") or "ALL"
     })
+
 
 
 @app.route('/api/list_folders')

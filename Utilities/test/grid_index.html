@@ -46,7 +46,7 @@
     <div id="status-bar" onclick="openModal()">
         <span>INBOX: <b id="stat-inbox">0</b></span>
         <span>SET: <b id="stat-folder">...</b> ⚙️</span>
-        <span>DONE: <b id="stat-total">0</b></span>
+        <span>DONE: <b id="stat-total">0</b><br><small id="stat-total-done" style="font-size:0.6rem; color:#999;">TOTAL DONE: 0</small></span>
     </div>
     <div id="stage">
         <div id="grid"></div>
@@ -84,6 +84,7 @@
                 const data = await res.json();
                 document.getElementById('stat-inbox').innerText = data.inbox;
                 document.getElementById('stat-total').innerText = data.total;
+                document.getElementById('stat-total-done').innerText = `TOTAL DONE: ${data.total_done}`;  // NEW
                 document.getElementById('stat-folder').innerText = data.folder.toUpperCase();
                 document.getElementById('wait-msg').style.display = (data.inbox === 0) ? 'block' : 'none';
                 refreshButtonColor(data.pending);
@@ -282,4 +283,3 @@
     </script>
 </body>
 </html>
-
