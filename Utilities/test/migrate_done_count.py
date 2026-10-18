@@ -24,23 +24,33 @@ def main():
     database = db.get_db()
     print("=== DONE COUNT MIGRATION ===")
     print(f"Database: {config.DB_NAME}")
+    print()
 
     total_seeded = 0
 
     for coll_name in OLD_COLLECTIONS:
+        print(f"--- Checking collection: {coll_name} ---")
         try:
             coll = database[coll_name]
             count = coll.count_documents({})
             if count == 0:
-                print(f"[{coll_name}] empty (0 docs) — skipping")
+                print(f"  [{coll_name}] empty (0 docs) — skipping")
+                print()
                 continue
-            print(f"[{coll_name}] found {count} docs")
+            print(f"  [{coll_name}] found {count} docs")
         except Exception as e:
-            print(f"[{coll_name}] error: {e}")
+            print(f"  [{coll_name}] error: {e}")
+            print()
             continue
 
         done_docs = []
+        scanned = 0
+        print(f"  Scanning {count} docs for done cards...")
         for doc in coll.find({}):
+            scanned += 1
+            if scanned % 100000 == 0:
+                print(f"    ...scanned {scanned:,} / {count:,} docs")
+
             status = doc.get("status", "")
             uploaded = doc.get("uploaded", False)
             is_done = (
@@ -57,7 +67,7 @@ def main():
             )
             game_name = doc.get("game_name") or doc.get("game") or doc.get("album")
             if not image_name or not game_name:
-                print(f"  [SKIP] {doc.get('_id')} — missing image_name/game_name")
+                print(f"    [SKIP] {doc.get('_id')} — missing image_name/game_name")
                 continue
 
             done_docs.append({
@@ -69,7 +79,11 @@ def main():
                 "is_duplicate": doc.get("is_duplicate", False),
             })
 
+        print(f"  Found {len(done_docs)} done cards in [{coll_name}]")
+        print(f"  Seeding into card_tracker...")
+
         tracker = db.tracker_coll()
+        seeded_here = 0
         for d in done_docs:
             result = tracker.update_one(
                 {"image_name": d["image_name"], "game_name": d["game_name"]},
@@ -88,14 +102,17 @@ def main():
                 upsert=True,
             )
             if result.upserted_id:
-                total_seeded += 1
+                seeded_here += 1
 
-    print(f"\n=== RESULT ===")
+        print(f"  Seeded {seeded_here} new cards from [{coll_name}]")
+        total_seeded += seeded_here
+        print()
+
+    print("=== RESULT ===")
     print(f"Seeded {total_seeded} done cards into card_tracker")
     print(f"card_tracker total: {db.tracker_total()}")
     print(f"card_tracker done:  {db.tracker_done()}")
 
-    # ---- VERIFICATION (auto-runs) ----
     print("\n=== VERIFICATION ===")
     print(f"Confirmed done count: {db.tracker_done()}")
     print("Migration complete. Data is saved to MongoDB.")
