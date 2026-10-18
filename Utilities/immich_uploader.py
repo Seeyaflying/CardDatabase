@@ -1,36 +1,43 @@
 import hashlib
-import sqlite3
+from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from tqdm import tqdm
+import pymongo
 import config
 
 headers = {"x-api-key": config.IMMICH_API_KEY}
 SUPPORTED = config.IMAGE_EXTS
 SKIP_FOLDERS = {"backed up"}
 
-def setup_database():
-    conn = sqlite3.connect(config.IMMICH_DB)
-    conn.execute("""CREATE TABLE IF NOT EXISTS uploads (
-        hash TEXT PRIMARY KEY, filepath TEXT, asset_id TEXT, album TEXT)""")
-    conn.commit()
-    conn.close()
+MONGO_COLL = "immich_upload"
 
-def already_uploaded(file_hash):
-    conn = sqlite3.connect(config.IMMICH_DB)
-    cur = conn.cursor()
-    cur.execute("SELECT hash FROM uploads WHERE hash=?", (file_hash,))
-    result = cur.fetchone()
-    conn.close()
-    return result is not None
 
-def save_upload(file_hash, filepath, asset_id, album):
-    conn = sqlite3.connect(config.IMMICH_DB)
-    conn.execute("INSERT OR IGNORE INTO uploads VALUES (?,?,?,?)",
-                 (file_hash, filepath, asset_id, album))
-    conn.commit()
-    conn.close()
+def get_mongo_collection():
+    client = pymongo.MongoClient(config.MONGO_URI)
+    return client[config.DB_NAME][MONGO_COLL]
+
+
+def save_to_mongo(path, asset_id, album, status, is_duplicate):
+    """Upsert one record per uploaded card into immich_upload."""
+    doc = {
+        "asset_id": asset_id,
+        "name": path.stem,
+        "filename": path.name,
+        "set": None,                    # single-file mode has no set subfolder
+        "game": album,
+        "uploaded": datetime.now().isoformat(),
+        "status": status,               # Uploaded / Duplicate / Failed
+        "is_duplicate": is_duplicate,
+    }
+    try:
+        coll = get_mongo_collection()
+        coll.replace_one({"asset_id": asset_id}, doc, upsert=True)
+        print(f"[MONGO] Recorded {path.name} -> {asset_id}")
+    except Exception as e:
+        print(f"[MONGO-ERROR] Could not write {path.name}: {e}")
+
 
 def calculate_hash(path):
     sha = hashlib.sha256()
@@ -39,10 +46,12 @@ def calculate_hash(path):
             sha.update(chunk)
     return sha.hexdigest()
 
+
 def load_albums():
     r = requests.get(f"{config.IMMICH_URL}/api/albums", headers=headers)
     r.raise_for_status()
     return {a["albumName"]: a["id"] for a in r.json()}
+
 
 def create_album(name):
     r = requests.post(f"{config.IMMICH_URL}/api/albums", headers=headers,
@@ -50,12 +59,14 @@ def create_album(name):
     r.raise_for_status()
     return r.json()["id"]
 
+
 def get_album(name, albums):
     if name in albums:
         return albums[name]
     print(f"Creating album: {name}")
     albums[name] = create_album(name)
     return albums[name]
+
 
 def upload_image(path):
     with open(path, "rb") as image:
@@ -65,27 +76,38 @@ def upload_image(path):
                                 "fileCreatedAt": "2025-01-01T00:00:00.000Z",
                                 "fileModifiedAt": "2025-01-01T00:00:00.000Z"})
     r.raise_for_status()
-    return r.json()["id"]
+    body = r.json()
+    if isinstance(body, list):
+        item = body[0]
+        is_dup = (not item.get("success", True)) or item.get("error") == "duplicate"
+        return item.get("id"), is_dup
+    is_dup = body.get("status") == "duplicate"
+    return body.get("id"), is_dup
+
 
 def add_to_album(album_id, asset_id):
     requests.put(f"{config.IMMICH_URL}/api/albums/{album_id}/assets",
                  headers=headers, json={"ids": [asset_id]})
 
+
 def process_image(path, album_name, album_id):
-    file_hash = calculate_hash(path)
-    if already_uploaded(file_hash):
-        return "Skipped"
     try:
-        asset_id = upload_image(path)
+        asset_id, is_dup = upload_image(path)
+        if is_dup:
+            print(f"{path.name}: ALREADY EXISTS (no album call)")
+            save_to_mongo(path, asset_id, album_name, "Duplicate", True)
+            return "Duplicate"
         add_to_album(album_id, asset_id)
-        save_upload(file_hash, str(path), asset_id, album_name)
+        print(f"{path.name}: UPLOADED")
+        save_to_mongo(path, asset_id, album_name, "Uploaded", False)
         return "Uploaded"
     except Exception as e:
         print(f"\nERROR {path}: {e}")
+        save_to_mongo(path, None, album_name, "Failed", False)
         return "Failed"
 
+
 def main():
-    setup_database()
     print("Loading Immich albums...")
     albums = load_albums()
     root = config.CARD_UPLOAD
@@ -106,6 +128,7 @@ def main():
             for job in tqdm(as_completed(jobs), total=len(jobs)):
                 job.result()
     print("\nIMPORT COMPLETE")
+
 
 if __name__ == "__main__":
     main()
