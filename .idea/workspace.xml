@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ae22b5c9-6a16-41cc-bf68-e0eb1ef0c697" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/Utilities/grid_index.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Utilities/new_web_base.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="ae22b5c9-6a16-41cc-bf68-e0eb1ef0c697" name="Changes" comment="update" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -36,7 +32,7 @@
   <component name="GithubPullRequestsUISettings"><![CDATA[{
   "selectedUrlAndAccountId": {
     "url": "https://github.com/Seeyaflying/CardDatabase.git",
-    "accountId": "fcfeb351-ec00-40ee-a9e7-6b16ed9ebb95"
+    "accountId": "f92a586e-3d5b-4065-9f53-e10ad069d33d"
   }
 }]]></component>
   <component name="McpProjectServerCommands">
@@ -114,56 +110,56 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.AI_gui.executor": "Run",
-    "Python.Altered.executor": "Run",
-    "Python.a.executor": "Run",
-    "Python.ai_headless.executor": "Run",
-    "Python.allcards.executor": "Run",
-    "Python.audit_sync.executor": "Run",
-    "Python.ccgtrader.executor": "Run",
-    "Python.db_meta.executor": "Run",
-    "Python.folder_neopets.executor": "Run",
-    "Python.immich_uploader.executor": "Run",
-    "Python.inspect_tcg_master.executor": "Run",
-    "Python.jap_cards_main.executor": "Run",
-    "Python.legend_five.executor": "Run",
-    "Python.magic_bypass.executor": "Run",
-    "Python.manager.executor": "Run",
-    "Python.menu.executor": "Run",
-    "Python.neopets.executor": "Run",
-    "Python.progress_download_jap.executor": "Run",
-    "Python.test.executor": "Run",
-    "Python.test_me.executor": "Run",
-    "Python.utility.executor": "Run",
-    "Python.web_base.executor": "Run",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "ai.playground.ignore.import.keys.banner.in.settings": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "C:/Users/seeya/OneDrive/Desktop/CardDatabase",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.jshint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.jshint": "",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "to.speed.mode.migration.done": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.AI_gui.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Altered.executor&quot;: &quot;Run&quot;,
+    &quot;Python.a.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ai_headless.executor&quot;: &quot;Run&quot;,
+    &quot;Python.allcards.executor&quot;: &quot;Run&quot;,
+    &quot;Python.audit_sync.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ccgtrader.executor&quot;: &quot;Run&quot;,
+    &quot;Python.db_meta.executor&quot;: &quot;Run&quot;,
+    &quot;Python.folder_neopets.executor&quot;: &quot;Run&quot;,
+    &quot;Python.immich_uploader.executor&quot;: &quot;Run&quot;,
+    &quot;Python.inspect_tcg_master.executor&quot;: &quot;Run&quot;,
+    &quot;Python.jap_cards_main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.legend_five.executor&quot;: &quot;Run&quot;,
+    &quot;Python.magic_bypass.executor&quot;: &quot;Run&quot;,
+    &quot;Python.manager.executor&quot;: &quot;Run&quot;,
+    &quot;Python.menu.executor&quot;: &quot;Run&quot;,
+    &quot;Python.neopets.executor&quot;: &quot;Run&quot;,
+    &quot;Python.progress_download_jap.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_me.executor&quot;: &quot;Run&quot;,
+    &quot;Python.utility.executor&quot;: &quot;Run&quot;,
+    &quot;Python.web_base.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/seeya/OneDrive/Desktop/CardDatabase&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;python.packages.toolwindow.project.migrated.to.right.top.v2&quot;: &quot;true&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecapSpentCounter">
     <option name="endsOfQuotaMs" value="1777075221535" />
     <option name="spentUsd" value="0.007328" />
@@ -189,8 +185,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-PY-262.10968.92" />
-        <option value="bundled-python-sdk-73a66231627c-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10968.92" />
+        <option value="bundled-python-sdk-eff1e8def5f5-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10315.174" />
       </set>
     </attachedChunks>
   </component>
@@ -219,6 +214,7 @@
       <workItem from="1789898861201" duration="1000" />
       <workItem from="1791169140000" duration="1010000" />
       <workItem from="1791180307134" duration="8201000" />
+      <workItem from="1791511935254" duration="21000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <option name="closed" value="true" />
