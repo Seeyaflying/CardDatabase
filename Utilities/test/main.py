@@ -4,7 +4,7 @@ main.py
 Card Sorter — unified menu.
 
 card_tracker is the single source of truth, shared by:
-  - scan_folders.py  (baseline + new card scans)
+  - scan_folders_v2.py  (baseline + new card scans)
   - web_app.py       (review cards)
   - uploader.py      (upload approved cards to Immich)
 
@@ -54,9 +54,9 @@ def main():
         choice = input("Choice: ").strip()
 
         if choice == "1":
-            run("scan_folders.py", "baseline")
+            run("scan_folders_v2.py", "baseline")
         elif choice == "2":
-            run("scan_folders.py", "new")
+            run("scan_folders_v2.py", "new")
         elif choice == "3":
             run("web_base_v2.py")
         elif choice == "4":

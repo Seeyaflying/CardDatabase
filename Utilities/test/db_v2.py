@@ -41,24 +41,25 @@ def mark_missing_source(filename, game):
 def tracker_find_one(image_name, game_name):
     return tracker_coll().find_one({"image_name": image_name, "game_name": game_name})
 
-def tracker_mark_pending(image_name, game_name, set_name, language):
-    """Insert a new pending card (used by scan_new)."""
-    tracker_coll().update_one(
-        {"image_name": image_name, "game_name": game_name},
-        {"$setOnInsert": {
-            "image_name": image_name,
-            "game_name": game_name,
-            "set": set_name,
-            "language": language,
-            "status": "pending",
-            "processed_at": None,
-            "uploaded": False,
-            "uploaded_at": None,
-            "asset_id": None,
-            "is_duplicate": False,
-        }},
-        upsert=True,
+def tracker_mark_pending(image_id, game_name, set_name=None, lang="english", file_path=None):
+    coll = get_db()[CARD_TRACKER_COLL]
+    doc = {
+        "image_name": image_id,
+        "game_name": game_name,
+        "set_name": set_name,
+        "lang": lang,
+        "status": "pending",
+        "processed_at": None,
+        "uploaded": False,
+    }
+    if file_path:
+        doc["file_path"] = file_path
+    coll.update_one(
+        {"image_name": image_id, "game_name": game_name},
+        {"$setOnInsert": doc},
+        upsert=True
     )
+
 
 def tracker_mark_reviewed(image_name, game_name, status):
     """Set yes/no when the web app makes a decision."""

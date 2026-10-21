@@ -5,10 +5,7 @@ import time
 import random
 import signal
 import logging
-from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from urllib.parse import unquote
 from flask import Flask, render_template, send_from_directory, jsonify, request
 from flask_cors import CORS
 import config_v2
@@ -46,8 +43,6 @@ if IS_WINDOWS:
     DRIVE_YES_DIR = r"T:\Full Card Database\Card Upload"   # uploader reads this
     DRIVE_NO_DIR = r"T:\Full Card Database\Skipped Cards"
     BASE_LOCAL_PATH = r"C:\Users\seeya\OneDrive\Desktop\Cards"
-    # Optional G: archive (not used right now):
-    # G_DRIVE_ARCHIVE = r"G:\My Drive\Card Database"
 else:
     DRIVE_SOURCE = os.path.expanduser("~/Desktop/GDrive/New Cards")
     DRIVE_YES_DIR = os.path.expanduser("~/Desktop/GDrive/Card Database")
@@ -117,7 +112,7 @@ def detect_language(game_name):
 def init_system():
     os.makedirs(BASE_LOCAL_PATH, exist_ok=True)
     tracker_coll().create_index([("image_name", 1), ("game_name", 1)])
-    db_v2.record_run("web_base.py")
+    db_v2.record_run("web_app_v2.py")
 
 
 def get_user_paths(username):
@@ -133,143 +128,26 @@ def get_user_paths(username):
     return paths
 
 
-def is_processed_by_anyone(rel_path):
-    parts = rel_path.replace("\\", "/").split("/")
-    if len(parts) < 2: return False
-    game_name, filename = parts[0], parts[-1]
-    name_only = os.path.splitext(filename)[0]
-    image_id = name_only.replace("_200w", "")
-    return tracker_coll().find_one(
-        {"image_name": image_id, "game_name": game_name}) is not None
-
-
 # ==========================
-# FETCH LOGIC (manual + auto)
+# NEW FLOW: SERVE PENDING FROM card_tracker DIRECTLY
 # ==========================
 
-def _fetch_core(user, tag, inbox_count):
-    """Shared scan + dedup + copy used by both fetch paths.
-    Returns the number of images copied into the inbox."""
-    paths = get_user_paths(user)
-    to_copy = []
-    target = user_prefs.get(user)
-
-    with download_lock:
-        if target and target != "ALL":
-            scan_root = os.path.join(DRIVE_SOURCE, target)
-            scan_paths = [scan_root] if os.path.isdir(scan_root) else []
-            print(f"{tag} {user}: scanning folder '{target}' (inbox at {inbox_count})")
-        else:
-            if os.path.exists(DRIVE_SOURCE):
-                scan_paths = [os.path.join(DRIVE_SOURCE, d) for d in os.listdir(DRIVE_SOURCE)
-                              if os.path.isdir(os.path.join(DRIVE_SOURCE, d))]
-                if target == "ALL":
-                    random.shuffle(scan_paths)
-                print(f"{tag} {user}: scanning source root ({len(scan_paths)} game folders)")
-            else:
-                scan_paths = []
-                print(f"{tag} {user}: WARNING - source {DRIVE_SOURCE} not found")
-
-        for scan_root in scan_paths:
-            if not os.path.exists(scan_root) or len(to_copy) >= SYNC_BATCH_SIZE: continue
-            for root, _, files in os.walk(scan_root):
-                for f in files:
-                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                        drive_p = os.path.join(root, f)
-                        rel_p = os.path.relpath(drive_p, DRIVE_SOURCE)
-                        to_copy.append((drive_p, os.path.join(paths['inbox'], rel_p)))
-                        if len(to_copy) >= SYNC_BATCH_SIZE: break
-
-        print(f"{tag} {user}: found {len(to_copy)} candidates before dedup")
-
-        # BATCHED dedup check + skip anything already in the inbox
-        if to_copy:
-            keys = set()
-            for dp, lp in to_copy:
-                rel_p = os.path.relpath(dp, DRIVE_SOURCE).replace("\\", "/")
-                parts = rel_p.split("/")
-                if len(parts) < 2: continue
-                game_name = parts[0]
-                image_id = os.path.splitext(parts[-1])[0].replace("_200w", "")
-                keys.add((image_id, game_name))
-
-            processed = set()
-            if keys:
-                query = {"$or": [
-                    {"image_name": k[0], "game_name": k[1]} for k in keys
-                ]}
-                for doc in tracker_coll().find(query):
-                    processed.add((doc["image_name"], doc["game_name"]))
-
-            to_copy = [
-                (dp, lp) for dp, lp in to_copy
-                if not os.path.exists(lp)
-                and (os.path.splitext(os.path.relpath(dp, DRIVE_SOURCE).replace("\\", "/").split("/")[-1])[0].replace("_200w", ""),
-                     os.path.relpath(dp, DRIVE_SOURCE).replace("\\", "/").split("/")[0]) not in processed
-            ]
-            print(f"{tag} {user}: {len(to_copy)} new after dedup ({len(keys) - len(processed)} already processed)")
-
-        if to_copy:
-            print(f"{tag} {user}: copying {len(to_copy)} images ({(len(to_copy)/SYNC_BATCH_SIZE)*100:.1f}% of batch cap)...")
-            copied = 0
-            errors = 0
-            for dp, lp in to_copy:
-                try:
-                    os.makedirs(os.path.dirname(lp), exist_ok=True)
-                    shutil.copy2(dp, lp)
-                    copied += 1
-                    print(f"{tag} {user}: downloaded {copied}: {os.path.basename(dp)}")
-                except Exception as e:
-                    errors += 1
-                    print(f"{tag} {user}: ERROR copying {os.path.basename(dp)}: {e}")
-            if errors:
-                print(f"{tag} {user}: {copied} copied, {errors} FAILED")
-            else:
-                print(f"{tag} {user}: DONE - {copied} images added to inbox")
-            games = Counter(
-                os.path.relpath(lp, paths['inbox']).split(os.sep)[0] for _, lp in to_copy)
-            for g, c in games.items():
-                print(f"  {g}: {c}")
-        else:
-            print(f"{tag} {user}: nothing new to fetch")
-
-        return len(to_copy)
-
-
-def manual_fetch(user):
-    """FETCH button: always pulls a full batch, ignores threshold and WAITING pref."""
-    tag = "[FETCH-BTN]"
-    paths = get_user_paths(user)
-    inbox_count = sum(len(files) for r, _, files in os.walk(paths['inbox']))
-    return _fetch_core(user, tag, inbox_count)
-
-
-def auto_fetch(user):
-    """Background worker: only tops up if inbox is under MIN_THRESHOLD and pref isn't WAITING."""
-    tag = "[FETCH-AUTO]"
-    paths = get_user_paths(user)
-    inbox_count = sum(len(files) for r, _, files in os.walk(paths['inbox']))
-
-    if inbox_count >= MIN_THRESHOLD:
-        print(f"{tag} {user}: inbox already has {inbox_count} items, skipping")
-        return 0
-
-    if user_prefs.get(user) == "WAITING":
-        print(f"{tag} {user}: pref WAITING, not filling inbox")
-        return 0
-
-    return _fetch_core(user, tag, inbox_count)
-
-
-def auto_sync_worker():
-    """Background thread: auto_fetch every 60 seconds."""
-    while True:
-        for user in list(active_users):
-            try:
-                auto_fetch(user)
-            except Exception as e:
-                print(f"[FETCH-AUTO] {user}: worker error - {e}")
-        time.sleep(60)
+def pending_cards(limit=9):
+    docs = tracker_coll().find({"status": "pending"}).limit(limit)
+    cards = []
+    for doc in docs:
+        game = doc.get("game_name", "Uncategorized")
+        image_id = doc.get("image_name", "")
+        set_name = doc.get("set_name")
+        file_path = doc.get("file_path")
+        cards.append({
+            "id": image_id,
+            "game": game,
+            "set": set_name,
+            "url": f"/api/card/{game}/{image_id}",
+            "path": file_path or os.path.join(game, image_id + ".jpg")
+        })
+    return cards
 
 
 # ==========================
@@ -294,26 +172,13 @@ def shutdown():
     return jsonify({"status": "shutdown"})
 
 
-@app.route('/api/fetch_now', methods=['POST'])
-def fetch_now():
-    """Manual endpoint: fill the inbox up to the batch cap regardless of threshold."""
-    user = request.json.get('user')
-    if user not in active_users:
-        return jsonify({"error": "invalid"}), 403
-    copied = manual_fetch(user)
-    return jsonify({"status": "success", "copied": copied})
-
-
-
-
 @app.route('/api/stats')
 def api_stats():
     user = request.args.get('user')
     if user not in active_users: return jsonify({"error": "invalid"}), 403
-    paths = get_user_paths(user)
-    inbox_c = sum([len(files) for r, d, files in os.walk(paths['inbox'])])
-    pending_sync = sum([len(files) for r, d, files in os.walk(paths['yes'])]) + \
-                   sum([len(files) for r, d, files in os.walk(paths['no'])])
+
+    # card_tracker counts
+    pending_count = tracker_coll().count_documents({"status": "pending"})
 
     # today's date as a string (matches processed_at format: YYYY-MM-DD)
     today = datetime.now().strftime("%Y-%m-%d")
@@ -330,13 +195,82 @@ def api_stats():
     total_done_count = BASE_DONE + current_done
 
     return jsonify({
-        "inbox": inbox_c,
-        "pending": pending_sync,
+        "inbox": pending_count,
+        "pending": pending_count,
         "total": today_done,
         "total_done": total_done_count,
         "folder": user_prefs.get(user, "WAITING") or "ALL"
     })
 
+
+@app.route('/api/next_batch')
+def api_next_batch():
+    user = request.args.get('user')
+    if user not in active_users: return jsonify({"error": "invalid"}), 403
+    cards = pending_cards(9)
+    return jsonify({"batch": cards})
+
+
+@app.route('/api/card/<game>/<image_id>')
+def serve_card(game, image_id):
+    doc = tracker_coll().find_one({"image_name": image_id, "game_name": game})
+    if not doc or not doc.get("file_path"):
+        return "Not found", 404
+    fpath = doc["file_path"]
+    if not os.path.exists(fpath):
+        return "Not found", 404
+    return send_file(fpath)
+
+
+@app.route('/api/decision_batch', methods=['POST'])
+def api_decision_batch():
+    data = request.json
+    user = data['user']
+    if user not in active_users: return jsonify({"error": "invalid"}), 403
+    selected_no = set(data.get('selected', []))
+    all_cards = data.get('all', [])
+
+    moved = 0
+    for card in all_cards:
+        image_id = card['id']
+        game = card['game']
+        dec = 'no' if image_id in selected_no else 'yes'
+        db_v2.tracker_mark_reviewed(image_id, game, dec)
+        moved += 1
+
+    print(f"[MOVE] Batch done: {moved} files for {user} ({len(selected_no)} no, {moved - len(selected_no)} yes)")
+    return jsonify({"status": "success", "moved": moved})
+
+
+@app.route('/api/undo', methods=['POST'])
+def api_undo():
+    user = request.json.get('user')
+    if not user_history.get(user): return jsonify({"status": "error"}), 400
+    batch = user_history[user].pop()
+
+    undone = 0
+    for last in batch:
+        db_v2.tracker_mark_reviewed(last["id"], last["game"], "pending")
+        undone += 1
+
+    print(f"[UNDO] Reversed {undone} files for {user} from last batch")
+    return jsonify({"status": "success", "undone": undone})
+
+
+# ==========================
+# SYNC (kept for compatibility — uploader handles Immich now)
+# ==========================
+
+@app.route('/api/sync_to_drive', methods=['POST'])
+def sync_to_drive():
+    user = request.json.get('user')
+    print(f"[SYNC] {user}: sync to drive is retired — use the uploader for Immich.")
+    return jsonify({"status": "success", "moved": 0, "deleted": 0})
+
+
+@app.route('/api/sync_status')
+def sync_status():
+    return jsonify(sync_progress)
 
 
 @app.route('/api/list_folders')
@@ -356,188 +290,7 @@ def set_folder():
     return jsonify({"status": "success"})
 
 
-@app.route('/images/<user>/<path:filename>')
-def serve_image(user, filename):
-    response = send_from_directory(get_user_paths(user)['inbox'], unquote(filename))
-    response.cache_control.max_age = 31536000
-    return response
-
-
-# ==========================
-# SINGLE-CARD ROUTES (kept for compatibility)
-# ==========================
-
-@app.route('/api/next')
-def api_next():
-    user = request.args.get('user')
-    paths = get_user_paths(user)
-    for root, _, files in os.walk(paths['inbox']):
-        for f in files:
-            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                rel = os.path.relpath(os.path.join(root, f), paths['inbox'])
-                return jsonify({"url": f"/images/{user}/{rel.replace(os.sep, '/')}", "path": rel})
-    return jsonify({"url": None})
-
-
-@app.route('/api/decision', methods=['POST'])
-def api_decision():
-    data = request.json
-    user, rel, dec = data['user'], data['path'], data['decision']
-
-    parts = rel.replace("\\", "/").split("/")
-    game_name = parts[0] if len(parts) > 1 else "Uncategorized"
-    name_only = os.path.splitext(parts[-1])[0]
-    lang = detect_language(game_name)
-    clean_id = name_only.replace("_200w", "")
-
-    paths = get_user_paths(user)
-    src = os.path.join(paths['inbox'], rel)
-    dest = os.path.join(paths['yes'] if dec == 'yes' else paths['no'], rel)
-
-    if os.path.exists(src):
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        shutil.move(src, dest)
-        print(f"Moved to {dec}: {rel}")
-        # card_tracker update — replaces the old progress write
-        db_v2.tracker_mark_reviewed(clean_id, game_name, dec)
-        # Wrapped in [] so it matches the batch format used by /api/undo
-        user_history[user].append([{"rel": rel, "dest": dest, "id": clean_id, "game": game_name, "lang": lang}])
-    return jsonify({"status": "success"})
-
-
-@app.route('/api/undo', methods=['POST'])
-def api_undo():
-    user = request.json.get('user')
-    if not user_history.get(user): return jsonify({"status": "error"}), 400
-    batch = user_history[user].pop()
-
-    undone = 0
-    for last in batch:
-        inbox_path = os.path.join(get_user_paths(user)['inbox'], last["rel"])
-        if os.path.exists(last["dest"]):
-            os.makedirs(os.path.dirname(inbox_path), exist_ok=True)
-            shutil.move(last["dest"], inbox_path)
-            # Undo resets the card_tracker record back to pending
-            db_v2.tracker_mark_reviewed(last["id"], last["game"], "pending")
-            undone += 1
-
-    print(f"[UNDO] Reversed {undone} files for {user} from last batch")
-    return jsonify({"status": "success", "undone": undone})
-
-
-# ==========================
-# 3x3 GRID ROUTES
-# ==========================
-
-@app.route('/api/next_batch')
-def api_next_batch():
-    user = request.args.get('user')
-    paths = get_user_paths(user)
-    candidates = []
-    for root, _, files in os.walk(paths['inbox']):
-        for f in files:
-            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                rel = os.path.relpath(os.path.join(root, f), paths['inbox'])
-                candidates.append({"url": f"/images/{user}/{rel.replace(os.sep, '/')}", "path": rel})
-    random.shuffle(candidates)
-    return jsonify({"batch": candidates[:9]})
-
-
-@app.route('/api/decision_batch', methods=['POST'])
-def api_decision_batch():
-    data = request.json
-    user = data['user']
-    selected_no = set(data.get('selected', []))
-    all_paths = data.get('all', [])
-    paths = get_user_paths(user)
-
-    batch_record = []
-    moved = 0
-    for rel in all_paths:
-        dec = 'no' if rel in selected_no else 'yes'
-
-        parts = rel.replace("\\", "/").split("/")
-        game_name = parts[0] if len(parts) > 1 else "Uncategorized"
-        name_only = os.path.splitext(parts[-1])[0]
-        lang = detect_language(game_name)
-        clean_id = name_only.replace("_200w", "")
-
-        src = os.path.join(paths['inbox'], rel)
-        dest = os.path.join(paths['yes'] if dec == 'yes' else paths['no'], rel)
-
-        if os.path.exists(src):
-            os.makedirs(os.path.dirname(dest), exist_ok=True)
-            shutil.move(src, dest)
-            print(f"Moved to {dec}: {rel}")
-            db_v2.tracker_mark_reviewed(clean_id, game_name, dec)
-            batch_record.append(
-                {"rel": rel, "dest": dest, "id": clean_id, "game": game_name, "lang": lang})
-            moved += 1
-
-    if batch_record:
-        user_history[user].append(batch_record)
-
-    print(f"[MOVE] Batch done: {moved} files for {user} ({len(selected_no)} no, {moved - len(selected_no)} yes)")
-    return jsonify({"status": "success", "moved": moved})
-
-
-@app.route('/api/sync_to_drive', methods=['POST'])
-def sync_to_drive():
-    user = request.json.get('user')
-    paths = get_user_paths(user)
-    moved_count = 0
-    deleted_count = 0
-    delete_failures = 0
-
-    print(f"[SYNC] Source root exists? {os.path.exists(DRIVE_SOURCE)} -> {DRIVE_SOURCE}")
-
-    total = 0
-    for label, dr_root, loc_root in [('YES', DRIVE_YES_DIR, paths['yes']), ('NO', DRIVE_NO_DIR, paths['no'])]:
-        if os.path.exists(loc_root):
-            total += sum(len(files) for r, d, files in os.walk(loc_root))
-    sync_progress.update({"active": True, "done": 0, "total": total, "current": ""})
-    print(f"[SYNC] Starting upload for {user}: {total} files...")
-
-    with download_lock:
-        for label, dr_root, loc_root in [('YES', DRIVE_YES_DIR, paths['yes']), ('NO', DRIVE_NO_DIR, paths['no'])]:
-            if not os.path.exists(loc_root):
-                continue
-            for root, _, files in os.walk(loc_root):
-                for f in files:
-                    l_path = os.path.join(root, f)
-                    rel = os.path.relpath(l_path, loc_root)
-                    d_path = os.path.join(dr_root, rel)
-                    os.makedirs(os.path.dirname(d_path), exist_ok=True)
-                    shutil.move(l_path, d_path)
-                    moved_count += 1
-                    sync_progress.update({"done": moved_count, "current": rel})
-                    print(f"[UPLOAD] {label}: {rel}")
-
-                    orig = os.path.join(DRIVE_SOURCE, rel)
-                    if os.path.exists(orig):
-                        try:
-                            os.remove(orig)
-                            deleted_count += 1
-                            print(f"[SYNC] Deleted source: {rel}")
-                        except Exception as e:
-                            delete_failures += 1
-                            print(f"[SYNC] ERROR deleting source {orig}: {e}")
-                    else:
-                        print(f"[SYNC] Source already gone or not found (T: content for {rel}): {'MISSING' if not os.path.exists(DRIVE_SOURCE) else 'no match at ' + orig}")
-        recursive_cleanup(os.path.join(BASE_LOCAL_PATH, "users", user))
-        recursive_cleanup(DRIVE_SOURCE)
-
-    sync_progress.update({"active": False, "current": ""})
-    print(f"[SYNC] Uploaded {moved_count} files for {user}; deleted {deleted_count} from source; {delete_failures} delete failures")
-    return jsonify({"status": "success", "moved": moved_count, "deleted": deleted_count})
-
-@app.route('/api/sync_status')
-def sync_status():
-    return jsonify(sync_progress)
-
-
 if __name__ == '__main__':
     init_system()
-    threading.Thread(target=auto_sync_worker, daemon=True).start()
     print("Card Sorter Server Active on http://localhost:5000")
     app.run(host='0.0.0.0', port=5000, debug=FLASK_DEBUG, threaded=True)

@@ -1,5 +1,5 @@
 """
-scan_folders.py
+scan_folders_v2.py
 ===============
 Populates the `card_tracker` collection.
 
@@ -75,7 +75,6 @@ def baseline():
 
 
 def scan_new():
-    """Scan New Cards and add anything not already tracked as pending."""
     root = Path(config_v2.NEW_CARDS_DIR)
     if not root.exists():
         print(f"[SCAN] New Cards not found: {root}")
@@ -93,16 +92,14 @@ def scan_new():
 
         if db_v2.tracker_find_one(image_id, game):
             skipped += 1
-            _dbg(f"SKIP (already tracked): {image_id} [{game}]")
             continue
 
-        db_v2.tracker_mark_pending(image_id, game, set_name, _lang(game))
+        # NEW: pass the absolute file path so the app can serve it directly
+        db_v2.tracker_mark_pending(image_id, game, set_name, _lang(game), file_path=str(img))
         added += 1
-        _dbg(f"ADD  (pending): {image_id} [{game}] set={set_name} lang={_lang(game)}")
 
     print(f"[SCAN] Added {added} pending, skipped {skipped} (already tracked)")
     print(f"[SCAN] card_tracker total: {db_v2.tracker_total()}")
-
 
 if __name__ == "__main__":
     print("What do you want to scan?")
@@ -118,5 +115,5 @@ if __name__ == "__main__":
         scan_new()
     else:
         print(f"Unknown mode: {choice}")
-        print("Usage: python scan_folders.py [baseline|new]")
+        print("Usage: python scan_folders_v2.py [baseline|new]")
         print("  (no arg defaults to baseline)")

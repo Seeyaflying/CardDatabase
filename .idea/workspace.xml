@@ -5,8 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ae22b5c9-6a16-41cc-bf68-e0eb1ef0c697" name="Changes" comment="update">
-      <change afterPath="$PROJECT_DIR$/Utilities/test/.env" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/db_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/db_v2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/scan_folders.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/scan_folders.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/web_base_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/web_base_v2.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,12 +35,12 @@
     &quot;assignee&quot;: &quot;Seeyaflying&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Seeyaflying/CardDatabase.git&quot;,
-    &quot;accountId&quot;: &quot;fcfeb351-ec00-40ee-a9e7-6b16ed9ebb95&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Seeyaflying/CardDatabase.git",
+    "accountId": "f92a586e-3d5b-4065-9f53-e10ad069d33d"
   }
-}</component>
+}]]></component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
@@ -195,8 +198,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-PY-262.10968.92" />
-        <option value="bundled-python-sdk-73a66231627c-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10968.92" />
+        <option value="bundled-python-sdk-eff1e8def5f5-5bd6d13a2a75-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-262.10315.174" />
       </set>
     </attachedChunks>
   </component>
@@ -229,6 +231,7 @@
       <workItem from="1792304536672" duration="7598000" />
       <workItem from="1792313653995" duration="2791000" />
       <workItem from="1792316533463" duration="27000" />
+      <workItem from="1792551104675" duration="4042000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <option name="closed" value="true" />
@@ -271,11 +274,6 @@
           <url>file://$PROJECT_DIR$/Utilities/test/config_v2.py</url>
           <line>16</line>
           <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/Utilities/test/scan_folders.py</url>
-          <line>99</line>
-          <option name="timeStamp" value="4" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
