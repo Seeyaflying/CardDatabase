@@ -61,7 +61,7 @@ PROTECTED_ROOTS = {
 # 2. STATE MANAGEMENT
 # ==============================================================
 active_users = {"seeya", "riverleaf"}
-user_prefs = {"seeya": "WAITING", "riverleaf": "WAITING"}
+user_prefs = {"seeya": "ALL", "riverleaf": "ALL"}
 user_history = {"seeya": [], "riverleaf": []}
 
 SYNC_BATCH_SIZE = 1500
@@ -71,10 +71,7 @@ download_lock = threading.Lock()
 
 sync_progress = {"active": False, "done": 0, "total": 0, "current": ""}
 
-JAPANESE_GAMES = {
-    "Weiss Schwarz", "Cardfight Vanguard", "Digimon", "Pokemon", "One Piece",
-    "Dragon Ball", "Yu-Gi-Oh", "Flesh and Blood", "Final Fantasy", "Gundam"
-}
+
 
 
 # ==========================
@@ -105,10 +102,6 @@ def tracker_coll():
     return db_v2.get_db()[CARD_TRACKER_COLL]
 
 
-def detect_language(game_name):
-    return "japanese" if game_name in JAPANESE_GAMES else "english"
-
-
 def init_system():
     os.makedirs(BASE_LOCAL_PATH, exist_ok=True)
     tracker_coll().create_index([("image_name", 1), ("game_name", 1)])
@@ -132,20 +125,72 @@ def get_user_paths(username):
 # NEW FLOW: SERVE PENDING FROM card_tracker DIRECTLY
 # ==========================
 
-def pending_cards(limit=9):
-    docs = tracker_coll().find({"status": "pending"}).limit(limit)
+def find_card_file(image_id, search_roots):
+    """Locate a file whose stem matches image_id (handles _200w / any extension).
+    Returns the absolute path or None."""
+    for root in search_roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, files in os.walk(root):
+            for f in files:
+                if os.path.splitext(f)[0].replace("_200w", "") == image_id:
+                    return os.path.join(dirpath, f)
+    return None
+
+
+def move_to_upload(image_id, game):
+    """Physically move a YES card from New Cards into Card Upload,
+    printing an explicit confirmation for every file."""
+    src = find_card_file(image_id, [DRIVE_SOURCE])
+    if not src:
+        print(f"[MOVE] ✗ {image_id} [{game}] — SOURCE NOT FOUND, file left in New Cards")
+        return False
+
+    game_name = (game or "").strip() or "Uncategorized"
+    dest_dir = os.path.join(DRIVE_YES_DIR, game_name) if game_name != "Uncategorized" else DRIVE_YES_DIR
+    os.makedirs(dest_dir, exist_ok=True)
+    dest = os.path.join(dest_dir, os.path.basename(src))
+    base, ext = os.path.splitext(dest)
+    n = 1
+    while os.path.exists(dest):
+        dest = f"{base}_{n}{ext}"
+        n += 1
+
+    try:
+        shutil.move(src, dest)
+    except Exception as e:
+        print(f"[MOVE] ✗ {image_id} [{game_name}] — MOVE FAILED ({e}), file left in New Cards")
+        return False
+
+    if os.path.exists(dest):
+        print(f"[MOVE] ✓ {image_id} [{game_name}]\n"
+              f"      {os.path.relpath(src, DRIVE_SOURCE)}  ->  {os.path.relpath(dest, DRIVE_YES_DIR)}")
+        return True
+    else:
+        print(f"[MOVE] ✓ DB marked yes but file not verified at destination for {image_id}")
+        return True
+
+
+def pending_cards(limit=9, folder=None):
+    """Return up to `limit` pending cards from card_tracker, optionally filtered
+    to one game folder. Skips anything already yes/no."""
+    query = {"status": "pending"}
+    if folder and folder != "ALL":
+        query["game_name"] = folder
+    docs = tracker_coll().find(query).limit(limit)
     cards = []
     for doc in docs:
         game = doc.get("game_name", "Uncategorized")
         image_id = doc.get("image_name", "")
         set_name = doc.get("set_name")
-        file_path = doc.get("file_path")
+        # Build a path the app can serve. Files live under DRIVE_SOURCE.
+        rel = os.path.join(game, image_id + ".jpg")
         cards.append({
             "id": image_id,
             "game": game,
             "set": set_name,
             "url": f"/api/card/{game}/{image_id}",
-            "path": file_path or os.path.join(game, image_id + ".jpg")
+            "path": rel
         })
     return cards
 
@@ -177,19 +222,20 @@ def api_stats():
     user = request.args.get('user')
     if user not in active_users: return jsonify({"error": "invalid"}), 403
 
-    # card_tracker counts
-    pending_count = tracker_coll().count_documents({"status": "pending"})
+    folder = user_prefs.get(user, "ALL") or "ALL"
 
-    # today's date as a string (matches processed_at format: YYYY-MM-DD)
+    # Pending count, filtered to the current folder
+    pending_query = {"status": "pending"}
+    if folder != "ALL":
+        pending_query["game_name"] = folder
+    pending_count = tracker_coll().count_documents(pending_query)
+
     today = datetime.now().strftime("%Y-%m-%d")
-
-    # DONE = cards marked yes today (rolling daily total)
     today_done = tracker_coll().count_documents({
         "status": "yes",
         "processed_at": {"$regex": f"^{today}"}
     })
 
-    # TOTAL DONE = old base + ALL yes-marked cards ever
     BASE_DONE = 1880868
     current_done = tracker_coll().count_documents({"status": "yes"})
     total_done_count = BASE_DONE + current_done
@@ -199,7 +245,7 @@ def api_stats():
         "pending": pending_count,
         "total": today_done,
         "total_done": total_done_count,
-        "folder": user_prefs.get(user, "WAITING") or "ALL"
+        "folder": folder
     })
 
 
@@ -207,19 +253,19 @@ def api_stats():
 def api_next_batch():
     user = request.args.get('user')
     if user not in active_users: return jsonify({"error": "invalid"}), 403
-    cards = pending_cards(9)
+    folder = user_prefs.get(user, "ALL")
+    cards = pending_cards(9, folder)
     return jsonify({"batch": cards})
 
 
 @app.route('/api/card/<game>/<image_id>')
 def serve_card(game, image_id):
-    doc = tracker_coll().find_one({"image_name": image_id, "game_name": game})
-    if not doc or not doc.get("file_path"):
-        return "Not found", 404
-    fpath = doc["file_path"]
-    if not os.path.exists(fpath):
-        return "Not found", 404
-    return send_file(fpath)
+    """Serve the actual image file. Looks in New Cards first, then Card Upload
+    (so a moved YES card still displays, including after an undo)."""
+    src = find_card_file(image_id, [DRIVE_SOURCE, DRIVE_YES_DIR])
+    if src:
+        return send_from_directory(os.path.dirname(src), os.path.basename(src))
+    return "Not found", 404
 
 
 @app.route('/api/decision_batch', methods=['POST'])
@@ -231,15 +277,36 @@ def api_decision_batch():
     all_cards = data.get('all', [])
 
     moved = 0
+    batch = []  # <-- record the batch so undo can reverse it
     for card in all_cards:
         image_id = card['id']
         game = card['game']
         dec = 'no' if image_id in selected_no else 'yes'
         db_v2.tracker_mark_reviewed(image_id, game, dec)
+        batch.append({"id": image_id, "game": game})
         moved += 1
+        if dec == 'yes':
+            move_to_upload(image_id, game)  # <-- physically move YES files to Card Upload
+
+    user_history[user].append(batch)  # <-- FIX: enables undo
 
     print(f"[MOVE] Batch done: {moved} files for {user} ({len(selected_no)} no, {moved - len(selected_no)} yes)")
     return jsonify({"status": "success", "moved": moved})
+
+
+@app.route('/api/skip_broken', methods=['POST'])
+def skip_broken():
+    """Mark a card that failed to load as 'no' so it leaves the queue,
+    then return a fresh batch so the grid refills."""
+    data = request.json
+    user = data['user']
+    if user not in active_users: return jsonify({"error": "invalid"}), 403
+    cards = data.get('cards', [])
+    for card in cards:
+        db_v2.tracker_mark_reviewed(card['id'], card['game'], 'no')
+    print(f"[SKIP] Skipped {len(cards)} unloadable card(s) for {user}")
+    folder = user_prefs.get(user, "ALL")
+    return jsonify({"status": "success", "batch": pending_cards(9, folder)})
 
 
 @app.route('/api/undo', methods=['POST'])

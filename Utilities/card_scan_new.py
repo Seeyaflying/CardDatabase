@@ -1,4 +1,4 @@
-import db
+from v1.Utilities import db
 import card_manager
 db.init_db()
 card_manager.scan_for_new_cards()

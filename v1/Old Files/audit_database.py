@@ -5,7 +5,7 @@ from datetime import datetime
 # ==============================================================
 # CONFIGURATION
 # ==============================================================
-DB_FILE = "../skipped_images.sqlite"
+DB_FILE = "../../skipped_images.sqlite"
 CARD_DATABASE_ROOT = r"G:/My Drive/Card Database"
 
 

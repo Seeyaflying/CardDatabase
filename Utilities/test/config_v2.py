@@ -16,6 +16,7 @@ NEW_CARDS_DIR       = r"T:\Full Card Database\New Cards"
 CARD_UPLOAD_DIR     = r"T:\Full Card Database\Card Upload"
 FOLDER_DATABASE_DIR = r"T:\Full Card Database\Folder Database"
 SKIPPED_DIR         = r"T:\Full Card Database\Skipped Cards"
+BOOKKEEPING_COLL = "bookkeeping"
 
 # G: drive — optional archive, not used right now
 G_DRIVE_DIR         = r"G:\My Drive\Card Database"

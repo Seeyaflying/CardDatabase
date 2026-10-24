@@ -41,13 +41,20 @@ def mark_missing_source(filename, game):
 def tracker_find_one(image_name, game_name):
     return tracker_coll().find_one({"image_name": image_name, "game_name": game_name})
 
-def tracker_mark_pending(image_id, game_name, set_name=None, lang="english", file_path=None):
-    coll = get_db()[CARD_TRACKER_COLL]
+def tracker_insert(doc):
+    """Insert one card_tracker document. Returns the inserted id.
+
+    Used by insert_main_folders_v2.py to add new 'pending' records.
+    """
+    return tracker_coll().insert_one(doc)
+
+def tracker_mark_pending(image_id, game_name, set_name=None, language=None, file_path=None):
+    coll = tracker_coll()
     doc = {
         "image_name": image_id,
         "game_name": game_name,
         "set_name": set_name,
-        "lang": lang,
+        "language": language,
         "status": "pending",
         "processed_at": None,
         "uploaded": False,
@@ -59,6 +66,8 @@ def tracker_mark_pending(image_id, game_name, set_name=None, lang="english", fil
         {"$setOnInsert": doc},
         upsert=True
     )
+
+
 
 
 def tracker_mark_reviewed(image_name, game_name, status):
@@ -86,6 +95,39 @@ def tracker_mark_uploaded(image_name, game_name, asset_id, set_name, is_duplicat
         upsert=True,
     )
 
+def tracker_mark_skipped(image_name, game_name):
+    """Flag an EXISTING card as skipped so miners don't re-download it."""
+    tracker_coll().update_one(
+        {"image_name": image_name, "game_name": game_name},
+        {"$set": {
+            "skipped": True,
+            "skipped_at": datetime.now().isoformat(),
+        }},
+    )
+
+
+def tracker_mark_skipped_new(image_name, game_name, set_name=None):
+    """Insert a NEW card as skipped (a blocklist entry) when no match exists."""
+    doc = {
+        "image_name": image_name,
+        "game_name": game_name,
+        "set_name": set_name,
+        "language": None,
+        "status": "skipped",
+        "processed_at": None,
+        "uploaded": False,
+        "skipped": True,
+        "skipped_at": datetime.now().isoformat(),
+    }
+    tracker_coll().update_one(
+        {"image_name": image_name, "game_name": game_name},
+        {"$setOnInsert": doc},
+        upsert=True,
+    )
+
+
+
+
 def tracker_total():
     return tracker_coll().count_documents({})
 
@@ -110,3 +152,31 @@ def close():
     if _client is not None:
         _client.close()
         _client = None
+
+# ============================================================
+# bookkeeping helpers — running totals (web app)
+# ============================================================
+
+def bookkeeping_inc(key, n=1):
+    """Increment a running counter in the bookkeeping collection."""
+    coll = get_db()[config_v2.BOOKKEEPING_COLL]
+    coll.update_one(
+        {"key": key},
+        {"$inc": {"value": n}},
+        upsert=True,
+    )
+
+def bookkeeping_get(key):
+    """Read a running counter from the bookkeeping collection (0 if absent)."""
+    coll = get_db()[config_v2.BOOKKEEPING_COLL]
+    doc = coll.find_one({"key": key})
+    return doc["value"] if doc else 0
+
+def bookkeeping_set(key, value):
+    """Set a running counter to an exact value (used to seed the baseline)."""
+    coll = get_db()[config_v2.BOOKKEEPING_COLL]
+    coll.update_one(
+        {"key": key},
+        {"$set": {"value": value}},
+        upsert=True,
+    )

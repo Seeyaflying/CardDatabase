@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lang_app — Assign Languages</title>
+<style>
+  :root { --bg:#12151c; --panel:#1c212b; --panel2:#241f3a; --line:#2c3340;
+          --text:#e8ecf1; --muted:#9aa4b2; --accent:#4a7bf7; --good:#7cc77c; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); margin:0; }
+
+  .app { height:100vh; max-height:1080px; display:flex; flex-direction:column;
+         margin:0 auto; padding:10px 16px; max-width:1600px; }
+
+  header { display:flex; align-items:center; justify-content:space-between;
+           gap:10px; padding:4px 0; }
+  h1 { font-size:17px; margin:0; white-space:nowrap; }
+  .count { font-size:13px; color:var(--good); white-space:nowrap; }
+
+  #grid { flex:1; min-height:0; display:grid; grid-template-columns:repeat(3,1fr);
+          grid-template-rows:repeat(3,1fr); gap:10px; }
+
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+          overflow:hidden; display:flex; flex-direction:column; min-height:0; }
+  .card .thumb { flex:1; min-height:0; width:100%; object-fit:contain; display:block;
+                 background:#0a0c10; padding:6px; cursor:zoom-in; }
+  .card .meta { font-size:12px; color:var(--muted); padding:4px 8px 2px;
+                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card select { width:calc(100% - 12px); margin:4px 6px 8px; padding:5px; background:#242b38;
+                 color:var(--text); border:1px solid var(--line); border-radius:5px; font-size:13px; }
+
+  .toolbar { display:flex; gap:10px; align-items:center; margin:8px 0 4px; flex-wrap:nowrap; }
+  button { padding:7px 16px; border:none; border-radius:6px; font-size:13px; cursor:pointer; }
+  .primary { background:var(--accent); color:#fff; }
+  .accent2 { background:var(--good); color:#07130a; }
+  .msg { font-size:13px; color:var(--muted); min-height:14px; margin-left:6px;
+         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .done { text-align:center; padding:40px; font-size:16px; }
+
+  .folderbar { background:var(--panel2); border:1px solid #6b4fd1; border-radius:8px;
+                padding:6px 10px; display:flex; gap:8px; align-items:center;
+                flex-wrap:nowrap; white-space:nowrap; margin:6px 0 0; overflow:hidden; }
+  .folderbar .lbl { font-size:13px; color:var(--muted); }
+  .folderbar select { padding:5px 8px; background:#242b38; color:var(--text);
+                      border:1px solid var(--line); border-radius:5px; font-size:13px; }
+
+  #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.92);
+              z-index:100; align-items:center; justify-content:center; padding:16px; cursor:zoom-out; }
+  #lightbox.open { display:flex; }
+  #lightbox img { max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; }
+  #lightbox .cap { position:absolute; left:0; right:0; bottom:0; text-align:center;
+                   padding:8px; font-size:13px; color:var(--muted); }
+
+  @media (max-width: 720px), (max-height: 520px) {
+    .app { height:auto; min-height:100vh; padding:8px; }
+    header { flex-wrap:wrap; }
+    h1 { font-size:15px; }
+    .count { font-size:12px; }
+    .folderbar { flex-wrap:wrap; white-space:normal; }
+    .folderbar .grow { flex:1; min-width:120px; }
+    #grid { grid-template-columns:1fr; grid-template-rows:none; gap:12px; padding-bottom:8px; }
+    .card { min-height:0; }
+    .card .thumb { aspect-ratio:3/4; flex:none; height:auto; }
+    .card .meta { font-size:13px; }
+    .card select { font-size:16px; padding:8px; }
+    .toolbar { flex-wrap:wrap; }
+    .toolbar button { flex:1; padding:12px; font-size:15px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>lang_app — Assign Languages</h1>
+    <div class="count" id="counter">Loading…</div>
+  </header>
+
+  <div id="grid"></div>
+
+  <div class="toolbar">
+    <button class="primary" id="saveAll">Save all changes</button>
+    <button class="primary" id="skipAll">Skip rest</button>
+    <span class="msg" id="msg"></span>
+  </div>
+
+  <div class="folderbar">
+    <span class="lbl">Folder:</span>
+    <select id="folderSel" class="grow"><option value="">— pick —</option></select>
+    <button class="primary" id="loadFolder">Load</button>
+    <select id="folderLang" class="grow"><option value="english" selected>english</option></select>
+        <button class="primary" id="applyFolder">Apply</button>
+  </div>
+</div>
+
+<div id="lightbox"><div class="cap" id="lbCap"></div></div>
+
+<script>
+const LANGS = {{ langs | tojson }};
+let currentBatch = [];
+let currentFolder = { game: null, set: null };
+
+async function loadFolders() {
+  const res = await fetch('/api/folders');
+  const data = await res.json();
+  const sel = document.getElementById('folderSel');
+  const prev = sel.value;   // keep the user's current selection visible
+  sel.innerHTML = '<option value="">— pick —</option>' + data.folders.map(f =>
+    `<option value="${f.game}||${f.set}">${escapeHtml(f.game)} / ${escapeHtml(f.set)} (${f.count})</option>`
+  ).join('');
+  // Restore the previous selection if that folder still exists.
+  sel.value = [...sel.options].some(o => o.value === prev) ? prev : '';
+}
+
+async function loadBatch() {
+  const params = new URLSearchParams();
+  if (currentFolder.game) params.set('game', currentFolder.game);
+  if (currentFolder.set) params.set('set', currentFolder.set);
+  const qs = params.toString();
+  const res = await fetch('/api/pending_batch' + (qs ? '?' + qs : ''));
+  const data = await res.json();
+  document.getElementById('counter').textContent =
+    `${data.pending} pending · ${data.total_done} total done`;
+  await loadFolders();
+  const grid = document.getElementById('grid');
+  if (data.done) {
+    grid.innerHTML = '<div class="done">No pending cards' +
+      (currentFolder.game ? ' in this folder — it\'s finished. ' : '') +
+      '<br><button id="goAll" class="accent2">All folders</button></div>';
+    document.getElementById('goAll').addEventListener('click', () => {
+      currentFolder = { game: null, set: null };
+      loadBatch();
+    });
+    return;
+  }
+  currentBatch = data.cards;
+  grid.innerHTML = data.cards.map(c => `
+    <div class="card" data-id="${c.id}">
+      ${c.image_url
+        ? `<img loading="lazy" src="${c.image_url}" data-full="${c.full_url || ''}" alt="card" class="thumb">`
+        : '<div class="thumb" style="cursor:default;">no image</div>'}
+      <div class="meta" title="${escapeHtml(c.image_name)} — ${escapeHtml(c.game || '')}${c.set ? ' / ' + escapeHtml(c.set) : ''}">${escapeHtml(c.image_name)} — ${escapeHtml(c.game || '')}${c.set ? ' / ' + escapeHtml(c.set) : ''}</div>
+      <select class="langSel">
+        <option value="">Skip (null)</option>
+        ${LANGS.map(l => `<option value="${l}">${l}</option>`).join('')}
+      </select>
+    </div>`).join('');
+  document.querySelectorAll('.card').forEach(card => {
+    const rec = currentBatch.find(r => r.id === card.dataset.id);
+    card.querySelector('.langSel').value = (rec.language) ? rec.language : 'english';
+  });
+  document.querySelectorAll('.thumb').forEach(img => {
+    img.addEventListener('click', () => {
+      const full = img.dataset && img.dataset.full;
+      if (!full) return;
+      const lb = document.getElementById('lightbox');
+      lb.querySelector('img')?.remove();
+      const big = document.createElement('img');
+      big.src = full;
+      lb.querySelector('.cap').before(big);
+      document.getElementById('lbCap').textContent = img.parentElement.querySelector('.meta').textContent;
+      lb.classList.add('open');
+    });
+  });
+}
+
+// Selecting a folder only remembers it — it does NOT load yet.
+// Press Load to fill the grid, or leave it selected to Apply the whole folder.
+document.getElementById('folderSel').addEventListener('change', () => {
+  const val = document.getElementById('folderSel').value;
+  if (!val) { currentFolder = { game: null, set: null }; }
+  else {
+    const [game, set] = val.split('||');
+    currentFolder = { game, set };
+  }
+});
+
+document.getElementById('loadFolder').addEventListener('click', () => {
+  loadBatch();
+});
+
+document.getElementById('saveAll').addEventListener('click', async () => {
+  if (!currentBatch.length) { document.getElementById('msg').textContent = 'Nothing loaded.'; return; }
+  const cards = currentBatch.map(rec => ({
+    id: rec.id,
+    language: document.querySelector(`.card[data-id="${rec.id}"] .langSel`).value || null
+  }));
+  document.getElementById('msg').textContent = 'Saving…';
+  await fetch('/api/assign_batch', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({cards})
+  });
+  document.getElementById('msg').textContent = 'Saved — loading next batch.';
+  loadBatch();
+});
+
+document.getElementById('skipAll').addEventListener('click', async () => {
+  if (!currentBatch.length) { document.getElementById('msg').textContent = 'Nothing loaded.'; return; }
+  const cards = currentBatch.map(rec => ({id: rec.id, language: null}));
+  document.getElementById('msg').textContent = 'Skipping…';
+  await fetch('/api/assign_batch', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({cards})
+  });
+  document.getElementById('msg').textContent = 'Skipped — loading next batch.';
+  loadBatch();
+});
+
+document.getElementById('applyFolder').addEventListener('click', async () => {
+  const val = document.getElementById('folderSel').value;
+  if (!val) { document.getElementById('msg').textContent = 'Pick a folder first.'; return; }
+  const [game, set] = val.split('||');
+  const lang = document.getElementById('folderLang').value || null;
+  document.getElementById('msg').textContent = 'Applying to whole folder…';
+  const res = await fetch('/api/assign_folder', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({game, set, language: lang})
+  });
+  const d = await res.json();
+  document.getElementById('msg').textContent = `Applied — ${d.folder_modified} cards done.`;
+  currentFolder = { game, set };
+  loadBatch();
+});
+
+const lightbox = document.getElementById('lightbox');
+lightbox.addEventListener('click', () => lightbox.classList.remove('open'));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') lightbox.classList.remove('open');
+});
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+loadBatch();
+</script>
+</body>
+</html>

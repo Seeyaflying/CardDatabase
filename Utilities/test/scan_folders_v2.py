@@ -20,13 +20,9 @@ from pathlib import Path
 import config_v2
 import db_v2
 import sys
+import os
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff"}
-
-JAPANESE_GAMES = {
-    "Weiss Schwarz", "Cardfight Vanguard", "Digimon", "Pokemon", "One Piece",
-    "Dragon Ball", "Yu-Gi-Oh", "Flesh and Blood", "Final Fantasy", "Gundam"
-}
 
 # ============================================================
 # DEBUG MODE — flip to False for quiet runs
@@ -39,81 +35,99 @@ def _dbg(msg):
         print(f"[DEBUG] {msg}")
 
 
-def _lang(game_name):
-    return "japanese" if game_name in JAPANESE_GAMES else "english"
+def _scan_folder(root, mark_done):
+    if not root.exists():
+        print(f"[SCAN] Folder not found: {root}")
+        return 0, 0
+
+    added = skipped = 0
+    print(f"[SCAN] Scanning {root} ...")
+
+    for dirpath, dirnames, filenames in os.walk(root):
+        current = Path(dirpath)
+        rel = current.relative_to(root).parts
+
+        # Print the folder we're about to scan (game name, then set name).
+        if rel:
+            label = rel[0] if len(rel) == 1 else f"{rel[0]} / {rel[1]}"
+            print(f"[SCAN] {label}")
+
+        for name in filenames:
+            img = current / name
+            if img.suffix.lower() not in IMAGE_EXTS:
+                continue
+
+            game = rel[0]
+            # Set is the SECOND level below the root (Root/Game/Set/file.jpg).
+            set_name = rel[1] if len(rel) >= 2 else None
+            image_id = img.stem.replace("_200w", "")
+
+            if db_v2.tracker_find_one(image_id, game):
+                skipped += 1
+                _dbg(f"SKIP (already tracked): {image_id} [{game}]")
+                continue
+
+            if mark_done:
+                db_v2.tracker_mark_reviewed(image_id, game, "yes")
+                db_v2.tracker_mark_uploaded(image_id, game, None, set_name, False)
+                _dbg(f"ADD  (done/uploaded): {image_id} [{game}] set={set_name}")
+            else:
+                # No hardcoded language — null means the app decides per card/folder.
+                db_v2.tracker_mark_pending(
+                    image_id, game, set_name, None, file_path=str(img)
+                )
+                _dbg(f"ADD  (pending): {image_id} [{game}] set={set_name}")
+            added += 1
+
+    return added, skipped
 
 
 def baseline():
     """ONE-TIME: scan Folder Database only. Mark all as done/uploaded."""
-    root = Path(config_v2.FOLDER_DATABASE_DIR)
-    if not root.exists():
-        print(f"[BASELINE] Folder Database not found: {root}")
-        return
-
-    added = skipped = 0
-    print(f"[BASELINE] Scanning {root} ...")
-    for img in root.rglob("*"):
-        if img.suffix.lower() not in IMAGE_EXTS:
-            continue
-        rel = img.relative_to(root).parts
-        game = rel[0]
-        set_name = rel[-2] if len(rel) > 2 else None
-        image_id = img.stem.replace("_200w", "")
-
-        if db_v2.tracker_find_one(image_id, game):
-            skipped += 1
-            _dbg(f"SKIP (already tracked): {image_id} [{game}]")
-            continue
-
-        db_v2.tracker_mark_reviewed(image_id, game, "yes")
-        db_v2.tracker_mark_uploaded(image_id, game, None, set_name, False)
-        added += 1
-        _dbg(f"ADD  (done/uploaded): {image_id} [{game}] set={set_name}")
-
+    added, skipped = _scan_folder(Path(config_v2.FOLDER_DATABASE_DIR), mark_done=True)
     print(f"[BASELINE] Added {added}, skipped {skipped} (already present)")
     print(f"[BASELINE] card_tracker total: {db_v2.tracker_total()}")
 
 
 def scan_new():
-    root = Path(config_v2.NEW_CARDS_DIR)
-    if not root.exists():
-        print(f"[SCAN] New Cards not found: {root}")
-        return
-
-    added = skipped = 0
-    print(f"[SCAN] Scanning {root} ...")
-    for img in root.rglob("*"):
-        if img.suffix.lower() not in IMAGE_EXTS:
-            continue
-        rel = img.relative_to(root).parts
-        game = rel[0]
-        set_name = rel[-2] if len(rel) > 2 else None
-        image_id = img.stem.replace("_200w", "")
-
-        if db_v2.tracker_find_one(image_id, game):
-            skipped += 1
-            continue
-
-        # NEW: pass the absolute file path so the app can serve it directly
-        db_v2.tracker_mark_pending(image_id, game, set_name, _lang(game), file_path=str(img))
-        added += 1
-
+    """Scan New Cards, add files not already tracked as pending."""
+    added, skipped = _scan_folder(Path(config_v2.NEW_CARDS_DIR), mark_done=False)
     print(f"[SCAN] Added {added} pending, skipped {skipped} (already tracked)")
     print(f"[SCAN] card_tracker total: {db_v2.tracker_total()}")
 
+
+def main_menu():
+    """Interactive menu for choosing what to scan."""
+    while True:
+        print("\n=== Card Sorter — Scan Menu ===")
+        print("  1. Baseline — Folder Database (mark all as done/uploaded)")
+        print("  2. New Cards (add pending)")
+        print("  3. Exit")
+        choice = input("Enter 1, 2, or 3: ").strip()
+
+        if choice == "1":
+            baseline()
+        elif choice == "2":
+            scan_new()
+        elif choice == "3":
+            print("Exiting.")
+            break
+        else:
+            print("Invalid choice. Try again.")
+
+
 if __name__ == "__main__":
-    print("What do you want to scan?")
-    print("  1. Folder Database (baseline — already uploaded/tagged)")
-    print("  2. New Cards (add pending)")
-    choice = input("Enter 1 or 2: ").strip()
-
-    choice = sys.argv[1] if len(sys.argv) > 1 else "baseline"
-
-    if choice in ("baseline", "1"):
-        baseline()
-    elif choice in ("new", "2"):
-        scan_new()
+    # CLI arg overrides the menu (handy for automation):
+    #   python scan_folders_v2.py baseline
+    #   python scan_folders_v2.py new
+    if len(sys.argv) > 1:
+        mode = sys.argv[1]
+        if mode in ("baseline", "1"):
+            baseline()
+        elif mode in ("new", "2"):
+            scan_new()
+        else:
+            print(f"Unknown mode: {mode}")
+            print("Usage: python scan_folders_v2.py [baseline|new]")
     else:
-        print(f"Unknown mode: {choice}")
-        print("Usage: python scan_folders_v2.py [baseline|new]")
-        print("  (no arg defaults to baseline)")
+        main_menu()

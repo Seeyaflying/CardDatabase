@@ -5,11 +5,59 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ae22b5c9-6a16-41cc-bf68-e0eb1ef0c697" name="Changes" comment="update">
+      <change afterPath="$PROJECT_DIR$/Utilities/test/add_magic_lang.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/db_list_examples.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/delete_empty.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/import_main_folder_v2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/lang_app.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/lang_index.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/merge_skipped_v2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/move_me.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/new_vs_others.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Utilities/test/verify_main_folders_v2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/CardDatabase.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/CardDatabase.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/English.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/Juypter/English.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Magic.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/Juypter/Magic.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/audit_database.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/audit_database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/audit_sync.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/audit_sync.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/clean.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/clean.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/db.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/dbcheck.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/dbcheck.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/immich.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/immich.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/jap_cards_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/jap_cards_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/jap_cards_update.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/jap_cards_update.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/japallcards.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/japallcards.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/move.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/move.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/old_db.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/old_db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/skipped_json_maker.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/skipped_json_maker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Old Files/web_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Old Files/web_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Utilities/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/card_archive_only.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/card_archive_only.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/card_build_index.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/card_build_index.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/card_copy_archive.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/card_copy_archive.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/card_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/card_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/card_remove_empty.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/card_remove_empty.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/card_reorganize.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/card_reorganize.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/card_scan_new.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/card_scan_new.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/card_verify.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/card_verify.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Utilities/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/db.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Utilities/db.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/db_check.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/db_check.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/grid_index.html" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Utilities/grid_index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/immich_uploader.py" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Utilities/immich_uploader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/v1/Utilities/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/new_web_base.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/config_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/config_v2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Utilities/test/db_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/db_v2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Utilities/test/scan_folders.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/scan_folders.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/grid_index.html" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/grid_index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Utilities/test/scan_folders_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/scan_folders_v2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Utilities/test/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Utilities/test/web_base_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/Utilities/test/web_base_v2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ccgtrader.py" beforeDir="false" afterPath="$PROJECT_DIR$/ccgtrader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/menu.py" beforeDir="false" afterPath="$PROJECT_DIR$/menu.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,35 +83,35 @@
     &quot;assignee&quot;: &quot;Seeyaflying&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/Seeyaflying/CardDatabase.git",
-    "accountId": "f92a586e-3d5b-4065-9f53-e10ad069d33d"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Seeyaflying/CardDatabase.git&quot;,
+    &quot;accountId&quot;: &quot;f92a586e-3d5b-4065-9f53-e10ad069d33d&quot;
   }
-}]]></component>
+}</component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0000074813673003" />
-      <entry key="MS500" value="1.1285827715724581" />
-      <entry key="S2" value="2.692550717265033" />
-      <entry key="S5" value="5.120907990738237" />
-      <entry key="S10" value="7.025532659896048" />
-      <entry key="S30" value="9.216550635634976" />
-      <entry key="S60" value="10.219831157859243" />
-      <entry key="M2" value="11.914090549281122" />
-      <entry key="M5" value="15.383436724999019" />
-      <entry key="M10" value="17.67242610704279" />
-      <entry key="M15" value="18.64578112844266" />
-      <entry key="M30" value="19.748999215720605" />
-      <entry key="H1" value="20.354813813304887" />
-      <entry key="H2" value="20.672325109789192" />
-      <entry key="H4" value="20.834871489760253" />
-      <entry key="D1" value="20.97229748993203" />
-      <entry key="W1" value="20.996038040303954" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0" />
+      <entry key="S60" value="1.0" />
+      <entry key="M2" value="1.0000000000000007" />
+      <entry key="M5" value="1.0000013475558494" />
+      <entry key="M10" value="1.0016518072871232" />
+      <entry key="M15" value="1.0180890083865342" />
+      <entry key="M30" value="1.23451676449913" />
+      <entry key="H1" value="2.543239264271694" />
+      <entry key="H2" value="7.904812975456176" />
+      <entry key="H4" value="18.230305399203566" />
+      <entry key="D1" value="40.550343438563644" />
+      <entry key="W1" value="46.84997309673962" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -85,23 +133,23 @@
       <entry key="W1" value="0.0" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.9012573947568538" />
-      <entry key="MS500" value="1.1060668071257427" />
-      <entry key="S2" value="2.6806618137979967" />
-      <entry key="S5" value="5.1121116860968865" />
-      <entry key="S10" value="7.019435420894722" />
-      <entry key="S30" value="9.21368254794954" />
-      <entry key="S60" value="10.21813596149977" />
-      <entry key="M2" value="11.912960149879591" />
-      <entry key="M5" value="15.38273489867295" />
-      <entry key="M10" value="17.671991208958705" />
-      <entry key="M15" value="18.645467259109044" />
-      <entry key="M30" value="19.74882868082212" />
-      <entry key="H1" value="20.35472480488252" />
-      <entry key="H2" value="20.672279624372905" />
-      <entry key="H4" value="20.834848495783266" />
-      <entry key="D1" value="20.972293622186914" />
-      <entry key="W1" value="20.9960374868948" />
+      <entry key="MS100" value="0.9460576467255959" />
+      <entry key="MS500" value="0.9889709163809315" />
+      <entry key="S2" value="0.9972312513520695" />
+      <entry key="S5" value="0.9988915792636801" />
+      <entry key="S10" value="0.9994456359721023" />
+      <entry key="S30" value="0.999815177833572" />
+      <entry key="S60" value="0.9999075846464872" />
+      <entry key="M2" value="0.9999537912556202" />
+      <entry key="M5" value="0.9999828626923963" />
+      <entry key="M10" value="1.0016418884860234" />
+      <entry key="M15" value="1.0180780011848227" />
+      <entry key="M30" value="1.2344848893910279" />
+      <entry key="H1" value="2.543145671634619" />
+      <entry key="H2" value="7.904619021983227" />
+      <entry key="H4" value="18.230083931166288" />
+      <entry key="D1" value="40.55026713456193" />
+      <entry key="W1" value="46.8499607180624" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -116,62 +164,70 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.AI_gui.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Altered.executor&quot;: &quot;Run&quot;,
-    &quot;Python.a.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ai_headless.executor&quot;: &quot;Run&quot;,
-    &quot;Python.allcards.executor&quot;: &quot;Run&quot;,
-    &quot;Python.audit_sync.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ccgtrader.executor&quot;: &quot;Run&quot;,
-    &quot;Python.db_meta.executor&quot;: &quot;Run&quot;,
-    &quot;Python.folder_neopets.executor&quot;: &quot;Run&quot;,
-    &quot;Python.immich_folder_uploader.executor&quot;: &quot;Run&quot;,
-    &quot;Python.immich_uploader.executor&quot;: &quot;Run&quot;,
-    &quot;Python.inspect_tcg_master.executor&quot;: &quot;Run&quot;,
-    &quot;Python.jap_cards_main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.legend_five.executor&quot;: &quot;Run&quot;,
-    &quot;Python.magic_bypass.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.manager.executor&quot;: &quot;Run&quot;,
-    &quot;Python.menu.executor&quot;: &quot;Run&quot;,
-    &quot;Python.migrate_done_count.executor&quot;: &quot;Run&quot;,
-    &quot;Python.neopets.executor&quot;: &quot;Run&quot;,
-    &quot;Python.probe.executor&quot;: &quot;Run&quot;,
-    &quot;Python.progress_download_jap.executor&quot;: &quot;Run&quot;,
-    &quot;Python.scan_folders.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_me.executor&quot;: &quot;Run&quot;,
-    &quot;Python.utility.executor&quot;: &quot;Run&quot;,
-    &quot;Python.web_base.executor&quot;: &quot;Run&quot;,
-    &quot;Python.web_base_v2.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/seeya/OneDrive/Desktop/CardDatabase/Utilities/test&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.jshint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.jshint&quot;: &quot;&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;python.packages.toolwindow.project.migrated.to.right.top.v2&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "JavaScript Debug.lang_index.html.executor": "Run",
+    "KEY_CHAT_IN_TOOLWINDOW": "false",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.AI_gui.executor": "Run",
+    "Python.Altered.executor": "Run",
+    "Python.a.executor": "Run",
+    "Python.ai_headless.executor": "Run",
+    "Python.allcards.executor": "Run",
+    "Python.audit_sync.executor": "Run",
+    "Python.backfill_delete_me_after_use.executor": "Run",
+    "Python.ccgtrader.executor": "Run",
+    "Python.db_meta.executor": "Run",
+    "Python.db_v2.executor": "Run",
+    "Python.folder_neopets.executor": "Run",
+    "Python.immich_folder_uploader.executor": "Run",
+    "Python.immich_uploader.executor": "Run",
+    "Python.import_main_folder_v2.executor": "Run",
+    "Python.inspect_tcg_master.executor": "Run",
+    "Python.jap_cards_main.executor": "Run",
+    "Python.lang_app.executor": "Run",
+    "Python.legend_five.executor": "Run",
+    "Python.magic_bypass.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.manager.executor": "Run",
+    "Python.menu.executor": "Run",
+    "Python.merge_skipped_v2.executor": "Run",
+    "Python.migrate_done_count.executor": "Run",
+    "Python.neopets.executor": "Run",
+    "Python.probe.executor": "Run",
+    "Python.progress_download_jap.executor": "Run",
+    "Python.scan_folders.executor": "Run",
+    "Python.test.executor": "Run",
+    "Python.test2.executor": "Run",
+    "Python.test_me.executor": "Run",
+    "Python.utility.executor": "Run",
+    "Python.web_base.executor": "Run",
+    "Python.web_base_v2.executor": "Run",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "C:/Users/seeya/OneDrive/Desktop/CardDatabase/Utilities/test",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.jshint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.jshint": "",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecapSpentCounter">
     <option name="endsOfQuotaMs" value="1777075221535" />
     <option name="spentUsd" value="0.007328" />
@@ -188,11 +244,11 @@
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\v1" />
+      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase" />
+      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities\Juypter" />
+      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\v1\Utilities" />
       <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities\test" />
-      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Old Files" />
-      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Utilities" />
-      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\TCGs" />
-      <recent name="C:\Users\seeya\OneDrive\Desktop\CardDatabase\Readme" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -231,7 +287,9 @@
       <workItem from="1792304536672" duration="7598000" />
       <workItem from="1792313653995" duration="2791000" />
       <workItem from="1792316533463" duration="27000" />
-      <workItem from="1792551104675" duration="4042000" />
+      <workItem from="1792551104675" duration="4147000" />
+      <workItem from="1792565774178" duration="12371000" />
+      <workItem from="1792623032314" duration="13428000" />
     </task>
     <task id="LOCAL-00001" summary="update">
       <option name="closed" value="true" />
@@ -267,22 +325,12 @@
     <MESSAGE value="update" />
     <option name="LAST_COMMIT_MESSAGE" value="update" />
   </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/Utilities/test/config_v2.py</url>
-          <line>16</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
-  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/immich_uploader_py$immich_uploader.coverage" NAME="immich_uploader Coverage Results" MODIFIED="1792309126839" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities" />
     <SUITE FILE_PATH="coverage/immich_uploader_py$immich_folder_uploader.coverage" NAME="immich_folder_uploader Coverage Results" MODIFIED="1792309212851" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities" />
     <SUITE FILE_PATH="coverage/CardDatabase$manager.coverage" NAME="manager Coverage Results" MODIFIED="1776128449434" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/test_py$db_meta.coverage" NAME="db_meta Coverage Results" MODIFIED="1789516888542" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$backfill_delete_me_after_use.coverage" NAME="backfill_delete_me_after_use Coverage Results" MODIFIED="1792570627484" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
     <SUITE FILE_PATH="coverage/web_base_py$web_base.coverage" NAME="web_base Coverage Results" MODIFIED="1775524844403" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/immich_uploader_py$test.coverage" NAME="test Coverage Results" MODIFIED="1792309849030" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities" />
     <SUITE FILE_PATH="coverage/immich_uploader_py$main.coverage" NAME="main Coverage Results" MODIFIED="1792313029980" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
@@ -290,6 +338,7 @@
     <SUITE FILE_PATH="coverage/menu_py$progress_download_jap.coverage" NAME="progress_download_jap Coverage Results" MODIFIED="1789631993757" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/web_base_py$audit_sync.coverage" NAME="audit_sync Coverage Results" MODIFIED="1775529843855" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/main_py$test.coverage" NAME="test Coverage Results" MODIFIED="1792315327871" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$merge_skipped_v2.coverage" NAME="merge_skipped_v2 Coverage Results" MODIFIED="1792624182436" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
     <SUITE FILE_PATH="coverage/neopets_py$neopets.coverage" NAME="neopets Coverage Results" MODIFIED="1789527635448" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
     <SUITE FILE_PATH="coverage/menu_py$jap_cards_main.coverage" NAME="jap_cards_main Coverage Results" MODIFIED="1789634707001" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
     <SUITE FILE_PATH="coverage/neopets_py$ai_headless.coverage" NAME="ai_headless Coverage Results" MODIFIED="1789532940172" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/AI" />
@@ -297,23 +346,30 @@
     <SUITE FILE_PATH="coverage/test_py$test.coverage" NAME="test Coverage Results" MODIFIED="1789512431885" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/neopets_py$menu.coverage" NAME="menu Coverage Results" MODIFIED="1789533395881" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/jap_cards_main_py$folder_neopets.coverage" NAME="folder_neopets Coverage Results" MODIFIED="1789717760139" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$import_main_folder_v2.coverage" NAME="import_main_folder_v2 Coverage Results" MODIFIED="1792577756436" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
     <SUITE FILE_PATH="coverage/CardDatabase$AI_gui.coverage" NAME="AI_gui Coverage Results" MODIFIED="1775330716476" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/immich_uploader_py$probe.coverage" NAME="probe Coverage Results" MODIFIED="1792305634862" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$ccgtrader.coverage" NAME="ccgtrader Coverage Results" MODIFIED="1792571604839" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/CardDatabase$Altered.coverage" NAME="Altered Coverage Results" MODIFIED="1776128171085" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ccgtrader_py$menu.coverage" NAME="menu Coverage Results" MODIFIED="1791169184054" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/main_py$web_base_v2.coverage" NAME="web_base_v2 Coverage Results" MODIFIED="1792315916470" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
     <SUITE FILE_PATH="coverage/jap_cards_db_py$inspect_tcg_master.coverage" NAME="inspect_tcg_master Coverage Results" MODIFIED="1789557767711" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/neopets_py$a.coverage" NAME="a Coverage Results" MODIFIED="1789527112607" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/main_py$migrate_done_count.coverage" NAME="migrate_done_count Coverage Results" MODIFIED="1792314507183" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$db_v2.coverage" NAME="db_v2 Coverage Results" MODIFIED="1792624388806" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
     <SUITE FILE_PATH="coverage/CardDatabase$neopets.coverage" NAME="neopets Coverage Results" MODIFIED="1776128352027" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/CardDatabase$jap_cards_main.coverage" NAME="jap_cards_main Coverage Results" MODIFIED="1776128236054" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$lang_app.coverage" NAME="lang_app Coverage Results" MODIFIED="1792637036421" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
     <SUITE FILE_PATH="coverage/CardDatabase$legend_five.coverage" NAME="legend_five Coverage Results" MODIFIED="1776127966900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/test_py$web_base.coverage" NAME="web_base Coverage Results" MODIFIED="1789523369622" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities" />
     <SUITE FILE_PATH="coverage/neopets_py$AI_gui.coverage" NAME="AI_gui Coverage Results" MODIFIED="1789532597483" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/AI" />
     <SUITE FILE_PATH="coverage/ccgtrader_py$immich_uploader.coverage" NAME="immich_uploader Coverage Results" MODIFIED="1791170115688" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities" />
     <SUITE FILE_PATH="coverage/immich_uploader_py$scan_folders.coverage" NAME="scan_folders Coverage Results" MODIFIED="1792312503235" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$web_base_v2.coverage" NAME="web_base_v2 Coverage Results" MODIFIED="1792642658126" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
     <SUITE FILE_PATH="coverage/CardDatabase$utility.coverage" NAME="utility Coverage Results" MODIFIED="1776128897401" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/jap_cards_main_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1789706044667" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$test2.coverage" NAME="test2 Coverage Results" MODIFIED="1792634587213" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
+    <SUITE FILE_PATH="coverage/web_base_v2_py$test.coverage" NAME="test Coverage Results" MODIFIED="1792635232609" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Utilities/test" />
     <SUITE FILE_PATH="coverage/test_py$allcards.coverage" NAME="allcards Coverage Results" MODIFIED="1789515873663" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/TCGs" />
     <SUITE FILE_PATH="coverage/ccgtrader_py$magic_bypass.coverage" NAME="magic_bypass Coverage Results" MODIFIED="1789894847734" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>

@@ -1,3 +1,15 @@
+"""
+CCG Trader Harvester
+====================
+Scrapes card images from CCG Trader (ccgtrader.net) into a local folder.
+
+Runs rarely (e.g. once a year) to pick up new sets. Self-contained:
+writes images + its own JSON state to OUTPUT_ROOT. No MongoDB involved.
+
+BLOCKED_GAMES: hardcoded list of games to skip. Add more names here
+as you find them on CCG Trader.
+"""
+
 import asyncio
 import json
 import os
@@ -45,6 +57,23 @@ SET_DISCOVERY_RETRIES = 3
 MANIFEST_NAME = "_download_manifest.json"
 PROGRESS_NAME = "_harvest_progress.json"
 
+# ============================================================
+# BLOCKLIST — games to skip entirely
+# Add more game names here as you find them on CCG Trader.
+# ============================================================
+
+BLOCKED_GAMES = [
+    "magic: the gathering",
+    "magic the gathering",
+    "mtg",
+    "pokemon",
+    "pokémon",
+    "pokémon tcg",
+    "yugioh",
+    "yu-gi-oh",
+    "yu gi oh",
+]
+
 
 # ============================================================
 # VERBOSE LOGGING — everything prints, nothing is silent
@@ -87,6 +116,12 @@ session.headers.update({
 # ============================================================
 # GENERAL HELPERS
 # ============================================================
+
+def is_blocked(game_name):
+    """Return True if a game name matches the blocklist."""
+    name = game_name.lower()
+    return any(block in name for block in BLOCKED_GAMES)
+
 
 def polite_delay():
     delay = random.uniform(MIN_DELAY, MAX_DELAY)
@@ -986,6 +1021,7 @@ async def main():
                 game
                 for game in games
                 if game["url"] not in processed_games
+                and not is_blocked(game["name"])
             ]
 
             log("")
@@ -1004,6 +1040,7 @@ async def main():
                     game
                     for game in games
                     if game["url"] not in processed_games
+                    and not is_blocked(game["name"])
                 ]
 
                 if not unprocessed:

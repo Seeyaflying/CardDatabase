@@ -1,7 +1,6 @@
 import shutil
-from pathlib import Path
-import config
-import db
+from v1.Utilities import db, config
+
 
 def _matrix_row(game, indexed, on_g, on_t, src_gone, missing_g, missing_t, orphans):
     flag = "OK " if (missing_g == 0 and missing_t == 0 and orphans == 0) else "!! "

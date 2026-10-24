@@ -15,8 +15,13 @@ Flow:
   4. Run the Immich uploader
   5. Status report
 """
+from pathlib import Path
+
 import subprocess
 import sys
+import scan_folders_v2
+import os
+
 
 
 def run(script, *args):
@@ -54,9 +59,9 @@ def main():
         choice = input("Choice: ").strip()
 
         if choice == "1":
-            run("scan_folders_v2.py", "baseline")
+            scan_folders_v2.baseline()
         elif choice == "2":
-            run("scan_folders_v2.py", "new")
+            scan_folders_v2.scan_new()
         elif choice == "3":
             run("web_base_v2.py")
         elif choice == "4":

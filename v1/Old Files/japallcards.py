@@ -16,13 +16,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # --- CONFIGURATION: Paths ---
-UTILS_DIR = "../Utilities"
+UTILS_DIR = "../../Utilities"
 CHROME_DRIVER_PATH = os.path.join(UTILS_DIR, "chromedriver.exe" if platform.system() == "Windows" else "chromedriver")
 
 # --- USER CONFIGURATION ---
 BASE_SAVE_DIR = "G:/My Drive/New Cards"
 CHECK_FOLDER = "G:/My Drive/Card Database"
-DB_FILE = "../skipped_images.sqlite"
+DB_FILE = "../../skipped_images.sqlite"
 
 # --- SETTINGS ---
 MAX_DOWNLOAD_WORKERS = 40

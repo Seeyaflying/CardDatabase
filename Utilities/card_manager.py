@@ -4,8 +4,7 @@ import sys
 import time
 from collections import deque
 from pathlib import Path
-import config
-import db
+from v1.Utilities import db, config
 
 BASE_DIR = Path.home() / "card-database-manager"
 REPORT_FILE = BASE_DIR / "verification-report.txt"
